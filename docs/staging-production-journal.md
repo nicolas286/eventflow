@@ -103,3 +103,16 @@ Inventorier les métadonnées SQL et les sources des fonctions déployées, iden
 - Protection `dev` adaptée au push direct demandé (suppression de l'obligation historique de PR). `main` impose une approbation, invalide les approbations devenues obsolètes, exige les checks `frontend` et `database` à jour et la résolution des conversations. Ces règles s'appliquent aussi aux administrateurs.
 - Cron de rappels staging installé : trente secondes, secret de service propre au staging dans Vault ; quatre premières réponses HTTP : 200. Cron d'expiration : toutes les deux minutes. Le script de bootstrap vérifie la référence liée et efface le contenu SQL temporaire contenant le secret après exécution.
 - Contrôle du bundle publié ajouté au workflow pour rendre la vérification de séparation systématique après chaque publication.
+
+## Étape 9 — Promotion production prête
+
+- Second déploiement staging réussi sur `d5d29ff`, contrôle du bundle publié inclus : https://github.com/nicolas286/eventflow/actions/runs/34987829542.
+- Variables GitHub `STAGING_DEPLOY_ENABLED=true` et `PRODUCTION_DEPLOY_ENABLED=true` ; les deux cibles du manifeste sont actives.
+- PR **#181**, `dev` vers `main`, ouverte et prête à relire : https://github.com/nicolas286/eventflow/pull/181. Elle n'est pas fusionnée. Sa fusion après approbation et checks réussis déclenchera automatiquement le backend puis le front production.
+- Vérification SQL production : toujours 28 migrations, dernière version `20260806170408`. Le seed des plans et les deux autres nouvelles migrations attendent la promotion de cette PR.
+- Les secrets d'intégrations externes ne sont pas copiés entre projets : Mollie payant non configuré en staging, Resend remplacé par la capture des e-mails métier, Billit bloqué. Seuls les jetons de déploiement CLI sont réutilisés dans GitHub, conformément à l'autorisation reçue.
+- Points de recette séparés encore ouverts : paiement Mollie sandbox/OAuth et e-mails Supabase Auth de reset. Le parcours gratuit et les e-mails métier avec PDF sont validés.
+
+### État attendu après fusion de la PR
+
+Un push sur `dev` déploie staging ; une fusion approuvée dans `main` déploie production. Aucun lancement manuel de Supabase ou de Netlify n'est nécessaire dans ce circuit. La première exécution production ne sera observable qu'après cette fusion ; les exécutions staging sont déjà validées.

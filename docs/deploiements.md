@@ -36,6 +36,8 @@ Le CLI Supabase utilise son jeton d'accès et un rôle de connexion temporaire ;
 
 Les variables de dépôt `STAGING_DEPLOY_ENABLED` et `PRODUCTION_DEPLOY_ENABLED` contrôlent les workflows. La propriété `deploymentEnabled` du manifeste est un second contrôle. Un déploiement demande les deux contrôles actifs. L'activation production ne publie rien à elle seule : un push dans `main`, normalement issu d'une PR approuvée, déclenche la publication.
 
+Les deux interrupteurs sont actifs depuis la validation staging du 15 septembre 2026. La [PR initiale #181](https://github.com/nicolas286/eventflow/pull/181) apporte les workflows à `main` ; sa fusion sera le premier déclenchement de cette chaîne en production.
+
 Les builds Git automatiques Netlify doivent être arrêtés ; les publications CLI/API de GitHub Actions restent possibles. Ne pas réactiver les builds Netlify en parallèle. Un nouveau rattachement de dépôt peut les réactiver : revérifier ce réglage après un renommage.
 
 ## Travail quotidien
