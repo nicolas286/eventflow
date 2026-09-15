@@ -116,3 +116,17 @@ Inventorier les métadonnées SQL et les sources des fonctions déployées, iden
 ### État attendu après fusion de la PR
 
 Un push sur `dev` déploie staging ; une fusion approuvée dans `main` déploie production. Aucun lancement manuel de Supabase ou de Netlify n'est nécessaire dans ce circuit. La première exécution production ne sera observable qu'après cette fusion ; les exécutions staging sont déjà validées.
+
+## Étape 10 — Production déployée et incident Mollie résolu
+
+- PR #181 fusionnée le 15 septembre 2026 à 15:42:41 UTC ; [déploiement production réussi](https://github.com/nicolas286/eventflow/actions/runs/34990265915). Les trois migrations complémentaires sont appliquées : les deux projets disposent de 31 migrations, seed des plans compris.
+- Incident `ORG_TOKEN_REFRESH_FAILED` signalé sur « Souper sur la baie ». Le diagnostic et la résolution figurent dans le [compte rendu Mollie](incident-mollie-refresh-2026-09-15.md).
+- À la demande du propriétaire, correctif limité au `redirect_uri` des trois chemins de renouvellement OAuth, poussé sur `dev` puis fusionné dans `main` via la [PR #182](https://github.com/nicolas286/eventflow/pull/182). Déploiements staging et production réussis ; résolution confirmée par le propriétaire.
+- Dernière protection `main` observée : checks `frontend` et `database` à jour et application aux administrateurs maintenus, nombre d'approbations obligatoires désormais à zéro. La revue reste la convention souhaitée, mais n'est plus imposée par ce réglage.
+
+## Étape 11 — Documentation et conventions pour la suite
+
+- README actualisé ; architecture courante décrite dans [ARCHITECTURE.md](ARCHITECTURE.md), qui remplace le README d'architecture à la racine.
+- Consignes générales et locales dans les fichiers `AGENTS.md`, complétées par les [rôles spécialisés](agents/ORCHESTRATION.md). Convention inspirée de Nexora et adaptée aux dossiers, outils et limites actuels d'Eventflow.
+- [Configuration Mollie staging](todo/mollie-staging.md) et [refactoring ultérieur](todo/refactoring.md) consignés séparément. Les e-mails de reset Supabase Auth restent aussi à valider.
+- Cette étape modifie uniquement la documentation ; elle ne configure pas les paiements et n'engage aucun refactoring applicatif.

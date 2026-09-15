@@ -1,5 +1,7 @@
 # Incident Mollie — Souper sur la baie — 15 septembre 2026
 
+**Statut : résolu, confirmé par le propriétaire après déploiement du correctif.** Les observations ci-dessous conservent la chronologie du diagnostic.
+
 ## Périmètre et méthode
 
 Diagnostic demandé après une erreur `ORG_TOKEN_REFRESH_FAILED` sur une commande payante du site production. Consultation des logs Supabase et des métadonnées SQL, comparaison du code réellement déployé avec l'export réalisé avant la séparation staging. Aucun appel de renouvellement, paiement ou reconnexion Mollie déclenché pendant ce diagnostic ; aucun changement de code applicatif ni de données de production.
@@ -50,4 +52,12 @@ Le propriétaire a demandé de corriger l'hypothèse `redirect_uri`, de pousser 
 - Ajout du `MOLLIE_CONNECT_REDIRECT_URI` configuré au corps des requêtes de renouvellement dans `register-tickets`, `mollie-webhook-tickets` et `mollie-webhook`.
 - Aucune requête OAuth envoyée si cette configuration est absente ou vide, comme pour les identifiants OAuth manquants.
 - Tests exécutant les trois helpers réels avec un transport simulé : URL de callback conservée, encodage correct et absence d'appel avec une configuration incomplète.
-- Aucun changement de schéma, de connexion Mollie ou de journalisation dans ce correctif. L'hypothèse restera à confirmer sur une tentative métier après déploiement.
+- Aucun changement de schéma, de connexion Mollie ou de journalisation dans ce correctif.
+
+## Résolution confirmée
+
+La [PR #182](https://github.com/nicolas286/eventflow/pull/182) a été déployée sur staging puis fusionnée dans `main` au commit `d666e1f`. Le [déploiement production](https://github.com/nicolas286/eventflow/actions/runs/34993386088) a réussi. Validation du correctif : 33 tests Vitest et 11 tests de déploiement Node, ainsi que le build frontend.
+
+Le propriétaire a ensuite confirmé que l'ajout de `redirect_uri` résolvait le problème. Cette confirmation métier clôt l'incident ; aucun paiement supplémentaire n'a été déclenché par l'agent pour la reproduire. La journalisation ciblée du refus prestataire reste une amélioration distincte, non incluse dans ce correctif.
+
+La prochaine recette des paiements de test est décrite dans le [TODO Mollie staging](todo/mollie-staging.md), notamment le renouvellement d'un jeton expiré.
