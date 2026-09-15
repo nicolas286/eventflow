@@ -1,3 +1,4 @@
+import { assertMollieApiKey } from "../_shared/environment-safety.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -44,6 +45,7 @@ Deno.serve(async (req)=>{
       error: "Method not allowed"
     }, 405);
     const mollieKey = Deno.env.get("MOLLIE_API_KEY");
+    assertMollieApiKey(mollieKey);
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const functionsBase = Deno.env.get("FUNCTIONS_URL");

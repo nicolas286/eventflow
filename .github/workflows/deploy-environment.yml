@@ -1,0 +1,75 @@
+name: Deploy one environment
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: eventflow-deployment-${{ inputs.target }}
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    env:
+      APP_ENV: ${{ inputs.target }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
+      PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
+      VITE_TURNSTILE_SITEKEY: ${{ vars.VITE_TURNSTILE_SITEKEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.84.2
+      - name: Refuse a mismatched or disabled destination
+        run: node scripts/deployment/check-target.mjs "$APP_ENV"
+      - name: Refuse an obsolete commit before any deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest=$(git ls-remote origin "$GITHUB_REF" | cut -f1)
+          test "$latest" = "$GITHUB_SHA"
+      - run: npm ci
+      - run: npm test
+      - name: Build before changing the backend
+        run: npm run build
+      - name: Rebuild and verify migrations before changing the backend
+        run: |
+          supabase db start
+          supabase db query --local --file tests/database/baseline.sql
+      - name: Stop the verification database
+        if: always()
+        run: supabase stop --no-backup
+      - name: Link the explicit target in this disposable runner
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+      - name: Inspect pending migrations
+        run: supabase db push --dry-run
+      - name: Apply migrations
+        run: supabase db push --yes
+      - name: Apply environment-specific asset configuration
+        run: |
+          node scripts/deployment/write-runtime-config.mjs "$APP_ENV"
+          supabase db query --linked --file .local/runtime-config.sql
+      - name: Deploy functions
+        run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF" --use-api
+      - name: Verify backend availability
+        run: node scripts/deployment/check-backend.mjs
+      - name: Synchronize Netlify build and function variables for this site
+        run: node scripts/deployment/configure-netlify.mjs "$APP_ENV"
+      - name: Publish frontend and Netlify function after backend success
+        run: npx --yes netlify-cli@23.15.1 deploy --no-build --prod --site "$NETLIFY_SITE_ID" --dir dist --functions netlify/functions --message "GitHub $GITHUB_SHA ($APP_ENV)" --timeout 600
+      - name: Verify public site
+        run: curl --fail --retry 3 --retry-delay 5 "$PUBLIC_BASE_URL" --output /dev/null

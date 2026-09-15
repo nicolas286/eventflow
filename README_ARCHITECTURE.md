@@ -1,5 +1,7 @@
 # 🧱 Frontend Architecture – Eventflow
 
+> Dépôt : [nicolas286/eventflow](https://github.com/nicolas286/eventflow). Voir le [guide de déploiement staging / production](docs/deploiements.md).
+
 ## 🎯 Objectif
 
 Mettre en place une architecture :

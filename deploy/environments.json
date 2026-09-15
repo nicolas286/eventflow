@@ -1,0 +1,16 @@
+{
+  "production": {
+    "branch": "main",
+    "supabaseProjectRef": "dixirvllhfkvqoahhfqh",
+    "publicOrigin": "https://app.useeventflow.eu",
+    "netlifySiteId": "279f8c97-669b-466e-905e-56f378aa34fa",
+    "deploymentEnabled": true
+  },
+  "staging": {
+    "branch": "dev",
+    "supabaseProjectRef": "cpcmcxerrsnnjncrhldr",
+    "publicOrigin": "https://eventflow-staging.netlify.app",
+    "netlifySiteId": "08f211b0-7847-48c5-96e0-7a4b0efd0e42",
+    "deploymentEnabled": true
+  }
+}

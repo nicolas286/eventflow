@@ -1,3 +1,4 @@
+import { assertBillitEnabled } from "../_shared/environment-safety.ts";
 import {
   json,
 } from "../_shared/http.ts";
@@ -842,6 +843,7 @@ try {
           },
         );
 
+      assertBillitEnabled();
       const billitApiKey =
         Deno.env.get(
           "BILLIT_API_KEY",

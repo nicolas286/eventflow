@@ -1,3 +1,4 @@
+import { assertMollieTestMode } from "../_shared/environment-safety.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 function redirect(url) {
   return new Response(null, {
@@ -124,6 +125,7 @@ Deno.serve(async (req)=>{
     }
     const orgId = String(st.org_id);
     const mode = st?.mode === "test" ? "test" : "live";
+    assertMollieTestMode(mode);
     // ✅ source de vérité pour les redirects UI
     const returnBaseUrl = toNonEmptyString(st.return_base_url) ?? appBaseUrlFallback;
     if (!returnBaseUrl) {

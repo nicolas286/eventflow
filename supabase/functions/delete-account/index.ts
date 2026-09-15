@@ -1,3 +1,4 @@
+import { assertMollieApiKey } from "../_shared/environment-safety.ts";
 // supabase/functions/delete-account/index.ts
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /* --------- 🌐 CORS + JSON helpers -------- */ const corsHeaders = {
@@ -151,6 +152,7 @@ async function cancelSubscriptionStrict(params) {
     const serviceKey = envTrim("SUPABASE_SERVICE_ROLE_KEY");
     const anonKey = envTrim("SUPABASE_ANON_KEY");
     const mollieKey = envTrim("MOLLIE_API_KEY");
+    assertMollieApiKey(mollieKey);
     if (!supabaseUrl || !serviceKey || !anonKey || !mollieKey) {
       return json({
         error: "Server misconfigured"

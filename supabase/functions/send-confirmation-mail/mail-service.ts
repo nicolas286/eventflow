@@ -1,3 +1,5 @@
+import { assertMailRecipients } from "../_shared/environment-safety.ts";
+import { captureMail, isMailCaptureEnabled } from "../_shared/mail/capture.ts";
 import { badGateway } from "../_shared/errors.ts";
 
 type SendMailPayload = {
@@ -16,6 +18,8 @@ export async function sendMail(
   config: MailServiceConfig,
   payload: SendMailPayload,
 ) {
+  if (isMailCaptureEnabled()) { await captureMail(payload); return; }
+  assertMailRecipients(payload.to);
   const ctrl = new AbortController();
   const timeout = setTimeout(() => ctrl.abort(), 10_000);
 

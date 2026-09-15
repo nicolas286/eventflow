@@ -1,3 +1,4 @@
+import { assertMollieApiKey } from "../_shared/environment-safety.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -149,7 +150,8 @@ Deno.serve(async (req)=>{
     const supabaseUrl = envTrim("SUPABASE_URL");
     const serviceKey = envTrim("SUPABASE_SERVICE_ROLE_KEY");
     const anonKey = envTrim("SUPABASE_ANON_KEY");
-    const mollieKey = envTrim("MOLLIE_API_KEY"); // ✅ clé plateforme
+    const mollieKey = envTrim("MOLLIE_API_KEY");
+    assertMollieApiKey(mollieKey); // ✅ clé plateforme
     if (!supabaseUrl || !serviceKey || !anonKey || !mollieKey) {
       return json({
         error: "Server misconfigured"

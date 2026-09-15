@@ -18,7 +18,7 @@ export type SendMailInput = {
 export type SendMailResult =
   | {
       ok: true;
-      provider: "resend";
+      provider: "resend" | "capture";
       id: string | null;
     }
   | {

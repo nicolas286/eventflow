@@ -1,6 +1,7 @@
 import "./WidgetPanel.desktop.css";
 
 import { useMemo, useState } from "react";
+import { getPublicOrigin } from "@shared/helpers/publicOrigin";
 
 import { Badge, Button, Input } from "@shared/ui/components";
 import { MessageBox } from "@shared/ui/components/message/MessageBox";
@@ -30,12 +31,13 @@ export default function WidgetPanel({
   const text = org.widgetText || "#FFDE59";
   const button = org.widgetButton || "#D9931A";
   const slug = org.slug || "";
+  const publicOrigin = getPublicOrigin();
 
   const widgetUrl = useMemo(() => {
     if (!slug) return "";
 
-    return `https://app.useeventflow.eu/widget/o/${slug}?bg=${enc(bg)}&card=${enc(card)}&text=${enc(text)}&button=${enc(button)}`;
-  }, [slug, bg, card, text, button]);
+    return `${publicOrigin}/widget/o/${enc(slug)}?bg=${enc(bg)}&card=${enc(card)}&text=${enc(text)}&button=${enc(button)}`;
+  }, [slug, bg, card, text, button, publicOrigin]);
 
 const iframeCode = useMemo(() => {
   if (!widgetUrl) return "";
@@ -67,11 +69,12 @@ const iframeCode = useMemo(() => {
 </div>
 <script>
   window.addEventListener("message", function (event) {
-    if (event.origin !== "https://app.useeventflow.eu") return;
+    if (event.origin !== ${JSON.stringify(publicOrigin)}) return;
     if (!event.data || event.data.type !== "eventflow:widget:resize") return;
 
     var iframe = document.getElementById("eventflowWidgetFrame");
     if (!iframe) return;
+    if (event.source !== iframe.contentWindow) return;
 
     var nextHeight = Number(event.data.height);
     if (!Number.isFinite(nextHeight) || nextHeight <= 0) return;
@@ -79,7 +82,7 @@ const iframeCode = useMemo(() => {
     iframe.style.height = nextHeight + "px";
   });
 </script>`;
-}, [widgetUrl, bg]);
+}, [widgetUrl, bg, publicOrigin]);
 
   async function copy(label: string, value: string) {
     try {

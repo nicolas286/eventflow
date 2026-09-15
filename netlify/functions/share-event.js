@@ -32,7 +32,8 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: "Missing params" };
     }
 
-    const baseUrl = (process.env.PUBLIC_BASE_URL || "https://eventflow-staging.netlify.app").replace(/\/+$/, "");
+    if (!process.env.PUBLIC_BASE_URL) return { statusCode: 500, body: "Missing public URL" };
+    const baseUrl = new URL(process.env.PUBLIC_BASE_URL).origin;
     const supabaseUrl = process.env.VITE_SUPABASE_URL;
     const supabaseAnon = process.env.VITE_SUPABASE_ANON_KEY;
 

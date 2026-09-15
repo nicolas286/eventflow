@@ -1,3 +1,4 @@
+import { assertMollieApiKey } from "../_shared/environment-safety.ts";
 function envTrim(name: string) {
   const v = Deno.env.get(name);
   const t = typeof v === "string" ? v.trim() : "";
@@ -9,6 +10,7 @@ export function loadEnv() {
   const serviceKey = envTrim("SUPABASE_SERVICE_ROLE_KEY");
   const anonKey = envTrim("SUPABASE_ANON_KEY");
   const mollieKey = envTrim("MOLLIE_API_KEY");
+  assertMollieApiKey(mollieKey);
 
   if (!supabaseUrl || !serviceKey || !anonKey || !mollieKey) {
     return null;
