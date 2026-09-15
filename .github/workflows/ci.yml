@@ -1,0 +1,38 @@
+name: CI
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main, infra/staging-isolation]
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_ANON_KEY: ci-placeholder-no-remote-access
+          VITE_PUBLIC_BASE_URL: http://127.0.0.1:5173
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.84.2
+      - name: Rebuild a disposable local database from migrations
+        run: supabase db start
+      - name: Check reference data and sensitive permissions
+        run: supabase db query --local --file tests/database/baseline.sql
+      - name: Stop the CI database
+        if: always()
+        run: supabase stop --no-backup

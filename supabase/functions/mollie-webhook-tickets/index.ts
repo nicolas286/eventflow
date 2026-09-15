@@ -1,3 +1,4 @@
+import { assertMollieTestMode } from "../_shared/environment-safety.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 async function sendConfirmationMailViaEdge(opts) {
   const ctrl = new AbortController();
@@ -329,6 +330,7 @@ Deno.serve(async (req)=>{
         }
       }
     }
+    assertMollieTestMode(mc.mode);
     const isTest = mc.mode === "test";
     // 4) fetch Mollie payment (truth source)
     const paymentRes = await fetchMolliePayment(paymentId, accessToken, isTest);

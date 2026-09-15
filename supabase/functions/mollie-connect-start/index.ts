@@ -1,3 +1,4 @@
+import { assertMollieTestMode } from "../_shared/environment-safety.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 function isValidUuid(v) {
   return typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
@@ -100,6 +101,7 @@ Deno.serve(async (req)=>{
         error: "VALIDATION_ERROR: invalid_payload"
       }, 400);
     }
+    assertMollieTestMode(bodyRaw.mode);
     const supabaseUrl = (Deno.env.get("SUPABASE_URL") ?? "").trim();
     const anonKey = (Deno.env.get("SUPABASE_ANON_KEY") ?? "").trim();
     const clientId = (Deno.env.get("MOLLIE_CONNECT_CLIENT_ID") ?? "").trim();

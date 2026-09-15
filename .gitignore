@@ -24,6 +24,10 @@ dist-ssr
 *.sw?
 .env
 .env.prod
+.env.*
+!.env.example
+!.env.*.example
+# Local deployment inventories and credentials (never commit)
+.local/
 # Local Netlify folder
 .netlify
-npx supabase projects list

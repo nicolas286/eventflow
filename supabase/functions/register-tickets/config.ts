@@ -1,3 +1,4 @@
+import { assertFunctionsUrl } from "../_shared/environment-safety.ts";
 import { internal } from "../_shared/errors.ts";
 import { envTrim, resolveSupabaseRuntimeConfig } from "../_shared/config.ts";
 import {
@@ -34,5 +35,6 @@ export function resolveRuntimeConfig(req: Request) {
     throw internal("CONFIG_MISSING");
   }
 
+  assertFunctionsUrl(config.functionsBase, config.supabaseUrl);
   return config;
 }

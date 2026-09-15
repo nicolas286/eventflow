@@ -1,0 +1,19 @@
+name: Deploy Eventflow
+on:
+  push:
+    branches: [dev, main]
+permissions:
+  contents: read
+jobs:
+  staging:
+    if: github.ref == 'refs/heads/dev' && vars.STAGING_DEPLOY_ENABLED == 'true'
+    uses: ./.github/workflows/deploy-environment.yml
+    with:
+      target: staging
+    secrets: inherit
+  production:
+    if: github.ref == 'refs/heads/main' && vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+    uses: ./.github/workflows/deploy-environment.yml
+    with:
+      target: production
+    secrets: inherit

@@ -1,3 +1,4 @@
+import { assertMollieTestMode } from "../_shared/environment-safety.ts";
 import { badGateway, conflict, internal } from "../_shared/errors.ts";
 import {
   decryptAesGcmString,
@@ -81,6 +82,8 @@ export async function getValidOrgMollieAccessOrThrow(admin, orgId) {
   if (!mc || mc.status !== "connected") {
     throw conflict("ORG_NOT_CONNECTED");
   }
+
+  assertMollieTestMode(mc.mode);
 
   if (!mc.access_token_enc || !mc.refresh_token_enc || !mc.enc_kid) {
     throw conflict("ORG_TOKEN_MISSING");

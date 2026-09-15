@@ -1,4 +1,5 @@
 import { internal } from "../_shared/errors.ts";
+import { isMailCaptureEnabled } from "../_shared/mail/capture.ts";
 import { envTrim, resolveSupabaseRuntimeConfig } from "../_shared/config.ts";
 
 export function resolveRuntimeConfig() {
@@ -7,8 +8,8 @@ export function resolveRuntimeConfig() {
   const config = {
     ...supabase,
     appBaseUrl: envTrim("APP_BASE_URL"),
-    mailServiceUrl: envTrim("MAIL_SERVICE_URL"),
-    mailServiceToken: envTrim("MAIL_SERVICE_TOKEN"),
+    mailServiceUrl: envTrim("MAIL_SERVICE_URL") ?? (isMailCaptureEnabled() ? "capture" : null),
+    mailServiceToken: envTrim("MAIL_SERVICE_TOKEN") ?? (isMailCaptureEnabled() ? "capture" : null),
     edgeServiceToken: envTrim("EDGE_SERVICE_TOKEN"),
   };
 

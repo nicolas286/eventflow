@@ -406,3 +406,46 @@ verify_jwt = false
 
 [functions.mollie-webhook-tickets]
 verify_jwt = false
+# Matches production inventory of 2026-09-15; handler enforces its own authentication.
+[functions.cancel-suscription]
+verify_jwt = false
+
+# Matches production inventory of 2026-09-15; handler enforces its own authentication.
+[functions.delete-account]
+verify_jwt = false
+
+# Matches production inventory of 2026-09-15; handler enforces its own authentication.
+[functions.expire-orders]
+verify_jwt = false
+
+# Matches production inventory of 2026-09-15; handler enforces its own authentication.
+[functions.generate-invoice-pdf]
+verify_jwt = false
+
+# Matches production inventory of 2026-09-15; handler enforces its own authentication.
+[functions.get-invoice-pdf-url]
+verify_jwt = false
+
+# Matches production inventory of 2026-09-15; handler enforces its own authentication.
+[functions.mollie-connect-callback]
+verify_jwt = false
+
+# Matches production inventory of 2026-09-15; handler enforces its own authentication.
+[functions.mollie-connect-start]
+verify_jwt = false
+
+# Matches production inventory of 2026-09-15; handler enforces its own authentication.
+[functions.mollie-subscription-webhook]
+verify_jwt = false
+
+# Matches production inventory of 2026-09-15; handler enforces its own authentication.
+[functions.mollie-webhook]
+verify_jwt = false
+
+# Matches production inventory of 2026-09-15; handler enforces its own authentication.
+[functions.order-public]
+verify_jwt = false
+
+# Matches production inventory of 2026-09-15; handler enforces its own authentication.
+[functions.payment-first]
+verify_jwt = false

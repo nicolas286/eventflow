@@ -4,7 +4,7 @@ import "./EventTable.desktop.css";
 import { Card, CardBody, CardHeader } from "@ui/components";
 import { useMemo } from "react";
 import { useToast } from "@ui/components/toast/useToast";
-import { normalizeWebsite } from "@shared/helpers/normalize";
+import { getPublicOrigin } from "@shared/helpers/publicOrigin";
 
 import EventCard from "./EventCard";
 
@@ -35,9 +35,7 @@ export default function EventTable({
   const { showToast } = useToast();
 
   function getShareEventUrl(orgSlug?: string, eventSlug?: string) {
-    const baseUrl = normalizeWebsite(
-      import.meta.env.VITE_PUBLIC_BASE_URL || "https://eventflow-staging.netlify.app"
-    );
+    const baseUrl = getPublicOrigin();
 
     if (!orgSlug || !eventSlug) return null;
 

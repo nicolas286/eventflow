@@ -1,3 +1,5 @@
+import { assertMailRecipients } from "../environment-safety.ts";
+import { captureMail, isMailCaptureEnabled } from "./capture.ts";
 import { resolveMailConfig } from "./mailConfig.ts";
 import type { SendMailInput, SendMailResult } from "./mailTypes.ts";
 
@@ -18,6 +20,8 @@ function normalizeRecipients(value: string | string[] | undefined) {
 }
 
 export async function sendMail(input: SendMailInput): Promise<SendMailResult> {
+  if (isMailCaptureEnabled()) return captureMail(input);
+  assertMailRecipients(input.to);
   const config = resolveMailConfig();
 
   if (!input.html && !input.text) {
