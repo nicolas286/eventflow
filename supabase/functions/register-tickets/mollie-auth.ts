@@ -20,8 +20,9 @@ function isExpired(expiresAtIso) {
 async function refreshMollieAccessToken(refreshToken) {
   const clientId = Deno.env.get("MOLLIE_CONNECT_CLIENT_ID")?.trim();
   const clientSecret = Deno.env.get("MOLLIE_CONNECT_CLIENT_SECRET")?.trim();
+  const redirectUri = Deno.env.get("MOLLIE_CONNECT_REDIRECT_URI")?.trim();
 
-  if (!clientId || !clientSecret) {
+  if (!clientId || !clientSecret || !redirectUri) {
     throw internal("CONNECT_CLIENT_MISSING");
   }
 
@@ -35,6 +36,7 @@ async function refreshMollieAccessToken(refreshToken) {
       refresh_token: refreshToken,
       client_id: clientId,
       client_secret: clientSecret,
+      redirect_uri: redirectUri,
     }).toString(),
   });
 

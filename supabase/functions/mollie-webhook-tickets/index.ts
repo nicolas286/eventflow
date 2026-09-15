@@ -163,7 +163,8 @@ async function encryptToken(plain, key) {
 /* ---------------- mollie helpers ---------------- */ async function refreshMollieAccessToken(refreshToken) {
   const clientId = envTrim("MOLLIE_CONNECT_CLIENT_ID");
   const clientSecret = envTrim("MOLLIE_CONNECT_CLIENT_SECRET");
-  if (!clientId || !clientSecret) return {
+  const redirectUri = envTrim("MOLLIE_CONNECT_REDIRECT_URI");
+  if (!clientId || !clientSecret || !redirectUri) return {
     ok: false,
     error: "connect_client_missing"
   };
@@ -176,7 +177,8 @@ async function encryptToken(plain, key) {
       grant_type: "refresh_token",
       refresh_token: refreshToken,
       client_id: clientId,
-      client_secret: clientSecret
+      client_secret: clientSecret,
+      redirect_uri: redirectUri
     }).toString()
   });
   const txt = await res.text().catch(()=>"");
