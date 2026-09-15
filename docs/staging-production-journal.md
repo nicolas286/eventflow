@@ -93,3 +93,13 @@ Inventorier les métadonnées SQL et les sources des fonctions déployées, iden
 - Certains champs Netlify sont masqués par l'API (`****************...`) : le contrôle initial ne devait pas les comparer à des URL en clair. Les valeurs staging connues du bootstrap ont été utilisées.
 - Le manifeste permet désormais les deux cibles ; les interrupteurs GitHub seront activés après validation. Le résultat demandé est bien un déploiement automatique production après fusion approuvée, sans étape de publication manuelle supplémentaire.
 - Guide d'exploitation ajouté : `docs/deploiements.md`.
+
+## Étape 8 — Premier déploiement GitHub Actions validé
+
+- Commit initial : `592a2d9`. CI sur la branche d'infrastructure réussie : https://github.com/nicolas286/eventflow/actions/runs/34986971316.
+- Push de ce commit sur `dev` ; déploiement staging intégral réussi : https://github.com/nicolas286/eventflow/actions/runs/34987276431.
+- Le runner GitHub a lié le projet staging avec le seul jeton CLI, sans mot de passe DB copié, puis vérifié les migrations, redéployé les fonctions et publié le front après succès du backend.
+- Contrôle HTTP des deux fronts publiés : chacun contient uniquement son URL Supabase attendue. Le partage Netlify de l'événement synthétique staging répond correctement.
+- Protection `dev` adaptée au push direct demandé (suppression de l'obligation historique de PR). `main` impose une approbation, invalide les approbations devenues obsolètes, exige les checks `frontend` et `database` à jour et la résolution des conversations. Ces règles s'appliquent aussi aux administrateurs.
+- Cron de rappels staging installé : trente secondes, secret de service propre au staging dans Vault ; quatre premières réponses HTTP : 200. Cron d'expiration : toutes les deux minutes. Le script de bootstrap vérifie la référence liée et efface le contenu SQL temporaire contenant le secret après exécution.
+- Contrôle du bundle publié ajouté au workflow pour rendre la vérification de séparation systématique après chaque publication.

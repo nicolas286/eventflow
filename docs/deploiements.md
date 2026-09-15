@@ -21,7 +21,7 @@ Le renommage du dépôt ne renomme pas les sites ni les projets Supabase. Le dos
 6. Configurer les assets du projet et déployer les Edge Functions.
 7. Vérifier la disponibilité du backend.
 8. Synchroniser les variables du site Netlify correspondant, puis publier le front et sa fonction de partage.
-9. Vérifier que le site répond.
+9. Vérifier que le site répond et que son bundle publié contient l'URL de son propre backend, sans celle de l'autre environnement.
 
 Un échec arrête les étapes suivantes. Il n'existe pas de transaction globale entre SQL, Edge Functions et front : les changements backend doivent rester compatibles avec le front encore publié. Une migration déjà appliquée reste appliquée si une étape suivante échoue.
 
@@ -58,6 +58,7 @@ Créer une nouvelle migration pour toute évolution SQL. Ne pas modifier une mig
 - E-mails métier capturés dans le bucket privé `mail-previews`.
 - Paiements live et transmissions Billit bloqués en staging. Des identifiants sandbox séparés sont nécessaires pour tester un paiement payant.
 - Clés Turnstile officielles de test en staging.
+- Expiration des commandes toutes les deux minutes ; rappels toutes les trente secondes, avec secret interne propre au staging dans Vault. Bootstrap : `scripts/deployment/configure-staging-reminders.mjs`, avec `STAGING_EDGE_SERVICE_TOKEN` fourni dans l'environnement.
 - Les e-mails Supabase Auth constituent un circuit distinct de la capture métier ; le reset de mot de passe reste à tester avec sa configuration SMTP.
 
 ## Incident et retour arrière
