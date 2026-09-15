@@ -1,140 +1,68 @@
-# Eventflow Front
+# Eventflow
 
-Interface d’administration et espace public d’Eventflow, plateforme de gestion d’événements, inscriptions et billetterie.
+Gestion d'événements et billetterie pour petits organisateurs : publication d'événements, formulaires d'inscription, commandes, participants, billets PDF, scan QR et paiements.
 
-Ce projet contient l’application front-end utilisée par :
-- les **organisateurs** pour gérer leurs événements
-- les **participants** pour consulter et s’inscrire aux événements
+Le [dépôt eventflow](https://github.com/nicolas286/eventflow) regroupe le front React, les migrations et Edge Functions Supabase, la fonction de partage Netlify et les workflows GitHub Actions.
 
----
+## Environnements
 
-# Stack technique
+| Branche | Front | Backend Supabase |
+| --- | --- | --- |
+| `dev` | [Staging](https://eventflow-staging.netlify.app) | `eventflow-staging` — `cpcmcxerrsnnjncrhldr` |
+| `main` | [Production](https://app.useeventflow.eu) | `eventflow-prod` — `dixirvllhfkvqoahhfqh` |
 
-- **React**
-- **TypeScript**
-- **Vite**
-- **React Router**
-- **Supabase**
-- **Zod**
+Un push sur `dev` déploie le backend puis le front staging. Une fusion dans `main` déclenche la même chaîne en production. Tests, build et reconstruction SQL jetable précèdent les mutations distantes. Les builds Git Netlify sont arrêtés pour laisser GitHub Actions orchestrer la publication.
 
----
+Voir le [guide de déploiement et de retour arrière](docs/deploiements.md). Un workflow vert ne remplace pas la recette métier, notamment pour les paiements et les e-mails.
 
-# Installation
+## Démarrage local
 
-npm install
+Prérequis : Node.js et npm ; Docker et Supabase CLI pour le backend local. Versions utilisées par la CI : Node `24.19.0`, Supabase CLI `2.84.2` ; vérifier `.github/workflows/` en cas d'évolution.
 
----
+```sh
+npm ci
+```
 
-# Lancer le projet en développement
+Copier `.env.example` vers `.env` si ce dernier n'existe pas déjà. Pour une stack locale :
 
+```sh
+supabase start
+supabase status
 npm run dev
+```
 
-L'application démarre généralement sur : http://localhost:5173
+Reporter dans `.env` l'URL et la clé publique locale fournies par le CLI. Le front démarre généralement sur `http://localhost:5173`. Les secrets serveur ne vont jamais dans `VITE_*`. Les fixtures du staging distant ne sont pas créées automatiquement en local.
 
----
+Le fichier `.env.prod` historique n'est pas chargé par un `vite build` standard, qui utilise le mode `production`. GitHub Actions fournit les variables de chaque cible. Le lien CLI historique à la racine du poste peut encore viser la production : vérifier la cible avant toute commande distante.
 
-# Build production
+## Vérifications
 
-npm run build
+```sh
+npm test        # Vitest et contrôles des destinations
+npm run build  # TypeScript frontend puis Vite
+npm run lint   # ESLint ; distinguer erreurs nouvelles et dette existante
+```
 
----
+Le build Vite ne vérifie pas à lui seul les Edge Functions Deno. Voir la [stratégie de test](docs/agents/TESTING.md) pour les contrôles SQL et backend.
 
-# Variables d'environnement
+## Stack
 
-Créer un fichier .env à la racine du projet. 
+React 19, TypeScript, Vite, React Router, Zod, Supabase Auth/PostgreSQL/RLS/RPC/Storage/Edge Functions Deno, Netlify et GitHub Actions. Mollie gère les paiements, Resend les e-mails métier et Billit l'intégration de facturation.
 
-Exemple : 
+L'architecture est historique et hétérogène. Les conventions décrivent comment la faire évoluer progressivement ; elles ne prétendent pas que tout le code les applique déjà.
 
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
+## Documentation
 
-Ces variables sont nécessaires pour connecter l’application au backend Supabase.
+| Sujet | Document |
+| --- | --- |
+| Produit et invariants métier | [PROJECT](docs/PROJECT.md) |
+| Architecture actuelle et direction du refactoring | [ARCHITECTURE](docs/ARCHITECTURE.md) |
+| Instructions agents | [AGENTS](AGENTS.md) |
+| Missions des sous-agents et revues | [Orchestration](docs/agents/ORCHESTRATION.md) |
+| Configuration Mollie staging à terminer | [TODO Mollie staging](docs/todo/mollie-staging.md) |
+| Travaux suivants | [Backlog](docs/todo/README.md) |
+| Exploitation | [Déploiements](docs/deploiements.md) |
+| Historique de la séparation | [Journal](docs/staging-production-journal.md) |
+| Incident OAuth résolu | [Renouvellement Mollie](docs/incident-mollie-refresh-2026-09-15.md) |
 
----
-
-# Structure du projet
-
-Voir README_ARCHITECTURE.md
-
----
-
-# Organisation générale
-
-Le projet est structuré en modules fonctionnels
-
-## Modules principaux
-
-### admin
-
-Dashboard organisateur :
-- gestion des événements
-- gestion des commandes
-- gestion des participants
-- gestion des tickets
-- scanner QR
-
-### public
-
-Interface publique :
-- pages événement
-- inscription
-- billetterie
-
-### shared
-
-Code partagé entre admin et public :
-- modèles
-- helpers
-- utilitaires
-
----
-
-# Architecture
-
-Le projet suit quelques principes simples : 
-
-- Validation des données avec Zod
-- Typage strict avec TypeScript
-- Séparation logique métier / UI
-- Repositories pour accès aux données
-- Hooks pour la logique métier React
-
-Les schémas Zod servent de source de vérité pour : 
-
-- Les données venant du backend
-- Les structures utilisées dans l'application
-- Les données envoyées au backend
-
----
-
-# Navigation
-
-Le routing est géré avec React Router. 
-
-Exemples : 
-
-/admin/events
-/admin/events/:eventSlug
-/admin/events/:eventSlug?tab=participants
-
-Certains paramètres d’URL permettent d’ouvrir directement des sous-vues.
-
-/admin/events/:slug?tab=participants&participantsTab=tickets&openScanner=1
-
-Ce lien ouvre directement :
-
-- l’onglet Participants
-- la sous-vue Tickets
-- le scanner QR
-
----
-
-# Conventions
-
-- utiliser Zod pour valider toutes les données externes et les données internes avant envoi au backend
-- garder les composants UI simples
-- déplacer la logique métier dans les hooks
-- éviter les effets React inutiles
-- préférer des états dérivés quand possible
-
-All rights reserved.
+En staging, les e-mails métier sont capturés dans `mail-previews`, les paiements live et Billit sont bloqués. La configuration Mollie sandbox et la recette des e-mails Supabase Auth restent à terminer.

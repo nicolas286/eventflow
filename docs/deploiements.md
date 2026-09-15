@@ -36,7 +36,7 @@ Le CLI Supabase utilise son jeton d'accès et un rôle de connexion temporaire ;
 
 Les variables de dépôt `STAGING_DEPLOY_ENABLED` et `PRODUCTION_DEPLOY_ENABLED` contrôlent les workflows. La propriété `deploymentEnabled` du manifeste est un second contrôle. Un déploiement demande les deux contrôles actifs. L'activation production ne publie rien à elle seule : un push dans `main`, normalement issu d'une PR approuvée, déclenche la publication.
 
-Les deux interrupteurs sont actifs depuis la validation staging du 15 septembre 2026. La [PR initiale #181](https://github.com/nicolas286/eventflow/pull/181) apporte les workflows à `main` ; sa fusion sera le premier déclenchement de cette chaîne en production.
+Les deux interrupteurs sont actifs depuis la validation staging du 15 septembre 2026. La [PR initiale #181](https://github.com/nicolas286/eventflow/pull/181) a été fusionnée et son déploiement production a réussi. Le correctif Mollie de la [PR #182](https://github.com/nicolas286/eventflow/pull/182) a ensuite suivi le même circuit avec succès.
 
 Les builds Git automatiques Netlify doivent être arrêtés ; les publications CLI/API de GitHub Actions restent possibles. Ne pas réactiver les builds Netlify en parallèle. Un nouveau rattachement de dépôt peut les réactiver : revérifier ce réglage après un renommage.
 
@@ -51,6 +51,8 @@ git push origin dev
 
 Attendre le workflow **Deploy Eventflow**, puis tester le staging. Ouvrir ensuite une PR `dev` vers `main`, faire approuver les changements et attendre les checks CI avant fusion. Le merge déclenche automatiquement la même chaîne sur la production.
 
+La revue avant fusion reste la convention de travail. Lors du dernier contrôle du 15 septembre 2026, GitHub exige les checks `frontend` et `database` à jour, y compris pour les administrateurs, mais le nombre d'approbations obligatoires est à **zéro**. La protection actuelle ne garantit donc pas une approbation humaine avant publication.
+
 Créer une nouvelle migration pour toute évolution SQL. Ne pas modifier une migration déjà appliquée. Le lien Supabase CLI historique à la racine du poste pointe encore vers la production : pour les opérations manuelles staging, utiliser le répertoire séparé `.local/staging` et vérifier sa référence.
 
 ## Données et intégrations staging
@@ -62,6 +64,8 @@ Créer une nouvelle migration pour toute évolution SQL. Ne pas modifier une mig
 - Clés Turnstile officielles de test en staging.
 - Expiration des commandes toutes les deux minutes ; rappels toutes les trente secondes, avec secret interne propre au staging dans Vault. Bootstrap : `scripts/deployment/configure-staging-reminders.mjs`, avec `STAGING_EDGE_SERVICE_TOKEN` fourni dans l'environnement.
 - Les e-mails Supabase Auth constituent un circuit distinct de la capture métier ; le reset de mot de passe reste à tester avec sa configuration SMTP.
+
+La configuration et la recette des paiements sont détaillées dans le [TODO Mollie staging](todo/mollie-staging.md).
 
 ## Incident et retour arrière
 
