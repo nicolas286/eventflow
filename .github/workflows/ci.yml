@@ -22,6 +22,20 @@ jobs:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
           VITE_SUPABASE_ANON_KEY: ci-placeholder-no-remote-access
           VITE_PUBLIC_BASE_URL: http://127.0.0.1:5173
+  edge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+          cache: true
+      - name: Check migrated Edge Functions
+        working-directory: supabase/functions
+        run: deno task check:edge
+      - name: Run Edge unit tests
+        working-directory: supabase/functions
+        run: deno task test:edge
   database:
     runs-on: ubuntu-latest
     steps:
