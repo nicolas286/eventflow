@@ -1,8 +1,8 @@
 import { json } from "../_shared/http.ts";
-import { badGateway, unauthorized } from "../_shared/errors.ts";
+import { unauthorized } from "../_shared/errors.ts";
 import { createEdgeHandler } from "../_shared/edge-handler.ts";
 import { createAdminClient } from "../_shared/supabase.ts";
-import { sendMail } from "../_shared/mail/mailService.ts";
+import { sendEmailOrThrow } from "../_shared/app/email.ts";
 
 import { resolveRuntimeConfig } from "./config.ts";
 import { parseSendReminderMailPayload } from "./sendReminderMail.contracts.ts";
@@ -80,33 +80,6 @@ function isInsideCronHorizon(startsAtIso: string, now: Date, max: Date) {
   return true;
 }
 
-async function sendMailOrThrow(input: {
-  to: string | string[];
-  subject: string;
-  content: string;
-  isHtml?: boolean;
-  tags?: Record<string, string | number | boolean | null | undefined>;
-}) {
-  const result = await sendMail({
-    to: input.to,
-    subject: input.subject,
-    html: input.isHtml ? input.content : undefined,
-    text: input.isHtml ? undefined : input.content,
-    tags: input.tags,
-  });
-
-  if (!result.ok) {
-    throw badGateway("MAIL_SERVICE_FAILED", {
-      provider: result.provider,
-      status: result.status,
-      message: result.message,
-      details: result.details,
-    });
-  }
-
-  return result;
-}
-
 async function buildAndMaybeSendReminder(input: {
   admin: any;
   appBaseUrl: string;
@@ -116,7 +89,9 @@ async function buildAndMaybeSendReminder(input: {
 }) {
   const { admin, appBaseUrl, order, logger, debug = false } = input;
 
-  if (!looksLikeEmail(order.buyerEmail) || !order.bookingToken || !order.startsAt) {
+  if (
+    !looksLikeEmail(order.buyerEmail) || !order.bookingToken || !order.startsAt
+  ) {
     return {
       status: "invalid" as const,
       detail: "missing_fields",
@@ -136,9 +111,11 @@ async function buildAndMaybeSendReminder(input: {
 
   const items = await loadOrderItemsForReminder(admin, order.orderId, logger);
 
-  const orderUrl = `${appBaseUrl}/order/${order.orderId}?token=${encodeURIComponent(
-    order.bookingToken,
-  )}`;
+  const orderUrl = `${appBaseUrl}/order/${order.orderId}?token=${
+    encodeURIComponent(
+      order.bookingToken,
+    )
+  }`;
 
   const subject = `Rappel – ${order.eventTitle}`;
 
@@ -176,11 +153,10 @@ async function buildAndMaybeSendReminder(input: {
     };
   }
 
-  await sendMailOrThrow({
+  await sendEmailOrThrow({
     to: order.buyerEmail,
     subject,
-    content: html,
-    isHtml: true,
+    html,
     tags: {
       kind: "reminder_v1",
       source: "send-reminder-mail",
@@ -235,7 +211,11 @@ async function runCron(input: {
   const max = new Date(now);
   max.setUTCDate(max.getUTCDate() + horizonDays);
 
-  const orders = await loadReminderCandidateOrders(input.admin, input.logger, limit);
+  const orders = await loadReminderCandidateOrders(
+    input.admin,
+    input.logger,
+    limit,
+  );
 
   const orgIds = Array.from(
     new Set(orders.map((order) => order.orgId).filter(Boolean)),

@@ -7,7 +7,7 @@
     "lib": ["deno.window"]
   },
   "tasks": {
-    "check:edge": "deno check _shared/app/edge-handler/mod.ts get-invoice-pdf-url/index.ts",
+    "check:edge": "deno check _shared/app/edge-handler/mod.ts _shared/app/email.ts get-invoice-pdf-url/index.ts",
     "test:edge": "deno test --allow-env=CORS_ALLOWED_ORIGINS,APP_ALLOWED_ORIGINS,APP_BASE_URL tests/*.ts"
   }
 }
