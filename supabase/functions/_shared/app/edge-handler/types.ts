@@ -1,4 +1,4 @@
-import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "npm:@supabase/supabase-js@2.75.0";
 import type { EdgeLogger } from "../../modules/logger/mod.ts";
 import type { HttpMethod } from "../../modules/http/mod.ts";
 import type { RequestSupabaseContextOptions } from "../request-context.ts";
