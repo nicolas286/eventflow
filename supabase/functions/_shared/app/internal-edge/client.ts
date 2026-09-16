@@ -11,6 +11,7 @@ type PostInternalEdgeJsonOptions = {
   serviceToken: string;
   body: unknown;
   timeoutMs?: number;
+  fetch?: typeof fetch;
 };
 
 export async function postInternalEdgeJson<T = unknown>(
@@ -18,13 +19,16 @@ export async function postInternalEdgeJson<T = unknown>(
 ): Promise<InternalEdgeJsonResult<T>> {
   const ctrl = new AbortController();
   const timeout = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 10_000);
+  const fetcher = opts.fetch ?? fetch;
 
   try {
-    const res = await fetch(`${opts.functionsBase}${opts.path}`, {
+    const res = await fetcher(`${opts.functionsBase}${opts.path}`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         accept: "application/json",
+        authorization: `Bearer ${opts.serviceToken}`,
+        // Transitional compatibility while every internal consumer migrates.
         "x-service-token": opts.serviceToken,
       },
       body: JSON.stringify(opts.body),

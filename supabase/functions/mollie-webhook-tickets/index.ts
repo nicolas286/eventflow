@@ -1,36 +1,27 @@
 import { assertMollieTestMode } from "../_shared/environment-safety.ts";
+import { postInternalEdgeJson } from "../_shared/app/internal-edge/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-async function sendConfirmationMailViaEdge(opts) {
-  const ctrl = new AbortController();
-  const t = setTimeout(()=>ctrl.abort(), 10_000);
-  const res = await fetch(`${opts.functionsBase}/send-confirmation-mail-tickets`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      accept: "application/json",
-      "x-service-token": opts.edgeServiceToken
-    },
-    body: JSON.stringify({
+type ConfirmationMailEdgeOptions = {
+  functionsBase: string;
+  edgeServiceToken: string;
+  orderId: string;
+};
+async function sendConfirmationMailViaEdge(opts: ConfirmationMailEdgeOptions) {
+  const result = await postInternalEdgeJson<{ ok?: boolean }>({
+    functionsBase: opts.functionsBase,
+    path: "/send-confirmation-mail-tickets",
+    serviceToken: opts.edgeServiceToken,
+    timeoutMs: 10_000,
+    body: {
       templateId: "order_confirmation_v1",
       templateData: {
         orderId: opts.orderId
       }
-    }),
-    signal: ctrl.signal
-  }).finally(()=>clearTimeout(t));
-  const txt = await res.text().catch(()=>"");
-  let j = {};
-  try {
-    j = txt ? JSON.parse(txt) : {};
-  } catch  {
-    j = {
-      raw: txt.slice(0, 300)
-    };
-  }
-  if (!res.ok || !j?.ok) {
+    }
+  });
+  if (!result.ok || !result.data?.ok) {
     console.error("[webhook] send-confirmation-mail failed", {
-      status: res.status,
-      j
+      status: result.status
     });
     throw new Error("SEND_FAILED");
   }

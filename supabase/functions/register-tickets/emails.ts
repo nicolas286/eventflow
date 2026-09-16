@@ -1,4 +1,4 @@
-import { postInternalEdgeJson } from "../_shared/internal-edge.ts";
+import { postInternalEdgeJson } from "../_shared/app/internal-edge/mod.ts";
 
 export async function sendConfirmationEmailForOrderSafe(opts) {
   if (!opts.edgeServiceToken) {

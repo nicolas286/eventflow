@@ -1,40 +1,48 @@
-import { createEdgeHandler } from "../_shared/edge-handler.ts";
-import { json } from "../_shared/http.ts";
-import { unauthorized } from "../_shared/errors.ts";
+import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
+import { json } from "../_shared/app/http.ts";
+import { assertInternalEdgeAuthentication } from "../_shared/app/internal-edge/mod.ts";
+import { ResponseError } from "../_shared/errors.ts";
+import { serializeError } from "../_shared/modules/logger/mod.ts";
 import {
   claimEmailOnceOrThrow,
   loadEventForConfirmation,
   loadOrderForConfirmationOrThrow,
   loadOrderItemsForConfirmation,
 } from "./db.ts";
-import { createAdminClient } from "../_shared/supabase.ts";
 import { sendEmailOrThrow } from "../_shared/app/email.ts";
 
 import { parseSendConfirmationMailPayload } from "./sendConfirmationMail.contracts.ts";
 import { buildOrderConfirmationHtml } from "./templates/order-confirmation.ts";
 import { resolveRuntimeConfig } from "./config.ts";
 
-function trimHeader(req: Request, name: string) {
-  const v = req.headers.get(name) ?? "";
-  const t = v.trim();
-  return t || null;
-}
+export const handleSendConfirmationMailRequest = createEdgeHandler(
+  {
+    name: "send-confirmation-mail",
+    method: "POST",
+    auth: "none",
+    serviceClient: true,
+    onError: ({ req, logger, error }) => {
+      if (error instanceof ResponseError) {
+        logger.warn("response_error", {
+          code: error.code,
+          status: error.status,
+        });
+        return json(req, { error: error.code }, error.status);
+      }
 
-function assertServiceTokenOrThrow(req: Request, expected: string) {
-  const received = trimHeader(req, "x-service-token");
-
-  if (!received || received !== expected) {
-    throw unauthorized("UNAUTHORIZED");
-  }
-}
-
-Deno.serve(
-  createEdgeHandler("send-confirmation-mail", async (req, { logger }) => {
+      logger.error("unexpected_error", { error: serializeError(error) });
+      return json(req, { error: "UNEXPECTED_ERROR" }, 500);
+    },
+  },
+  async ({ req, logger, serviceClient: admin }) => {
     const config = resolveRuntimeConfig();
+    const authenticationSource = await assertInternalEdgeAuthentication(
+      req,
+      config.edgeServiceToken,
+      { allowLegacyServiceToken: true },
+    );
+    logger.info("worker_authenticated", { source: authenticationSource });
 
-    assertServiceTokenOrThrow(req, config.edgeServiceToken);
-
-    const admin = createAdminClient(config);
     const payload = await parseSendConfirmationMailPayload(req);
 
     if (payload.kind === "order_confirmation") {
@@ -82,7 +90,7 @@ Deno.serve(
       });
 
       if (!canSend) {
-        return json({
+        return json(req, {
           ok: true,
           skipped: "already_sent",
         });
@@ -94,7 +102,7 @@ Deno.serve(
         html,
       });
 
-      return json({
+      return json(req, {
         ok: true,
         sent: true,
       });
@@ -109,8 +117,10 @@ Deno.serve(
       text: body.isHtml ? undefined : body.content,
     });
 
-    return json({
+    return json(req, {
       ok: true,
     });
-  }),
+  },
 );
+
+Deno.serve(handleSendConfirmationMailRequest);
