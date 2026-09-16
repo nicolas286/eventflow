@@ -3,7 +3,8 @@
   "specifiers": {
     "jsr:@std/assert@^1.0.14": "1.0.19",
     "jsr:@std/internal@^1.0.12": "1.0.14",
-    "npm:@supabase/supabase-js@2.75.0": "2.75.0"
+    "npm:@supabase/supabase-js@2.75.0": "2.75.0",
+    "npm:zod@*": "4.4.3"
   },
   "jsr": {
     "@std/assert@1.0.19": {
@@ -100,6 +101,9 @@
     },
     "ws@8.21.3": {
       "integrity": "sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw=="
+    },
+    "zod@4.4.3": {
+      "integrity": "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="
     }
   },
   "workspace": {

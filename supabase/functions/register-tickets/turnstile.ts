@@ -1,11 +1,5 @@
 import { forbidden, internal } from "../_shared/errors.ts";
 
-export function getClientIp(req) {
-  const xff = req.headers.get("x-forwarded-for") || "";
-  const ip = xff.split(",")[0]?.trim();
-  return ip || "unknown";
-}
-
 export async function verifyTurnstile(opts) {
   const form = new URLSearchParams();
   form.set("secret", opts.secret);
@@ -13,23 +7,26 @@ export async function verifyTurnstile(opts) {
   if (opts.ip && opts.ip !== "unknown") {
     form.set("remoteip", opts.ip);
   }
-  const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-    method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded"
+  const res = await fetch(
+    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: form.toString(),
     },
-    body: form.toString()
-  });
+  );
   if (!res.ok) {
     return {
       ok: false,
-      error: "turnstile_verify_failed"
+      error: "turnstile_verify_failed",
     };
   }
   const data = await res.json();
   return {
     ok: Boolean(data?.success),
-    data
+    data,
   };
 }
 export async function verifyCaptchaOrThrow(opts) {
@@ -42,7 +39,7 @@ export async function verifyCaptchaOrThrow(opts) {
   const result = await verifyTurnstile({
     token: opts.token,
     ip: opts.ip,
-    secret: opts.turnstileSecret
+    secret: opts.turnstileSecret,
   });
   if (!result.ok) {
     throw forbidden("CAPTCHA_FAILED");
