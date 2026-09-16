@@ -2,21 +2,33 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
-// Bootstrap only: the service token is supplied from staging's secret store.
+// Bootstrap: the token is required only when Vault has not been initialized.
 const ref = 'cpcmcxerrsnnjncrhldr';
 const workdir = process.env.STAGING_SUPABASE_WORKDIR ?? '.local/staging';
 const linked = readFileSync(`${workdir}/supabase/.temp/project-ref`, 'utf8').trim();
 if (linked !== ref) throw new Error('Refusing to configure reminders outside staging');
-const token = process.env.STAGING_EDGE_SERVICE_TOKEN;
-if (!token || token.length < 32) throw new Error('Missing staging service token');
+const token = process.env.STAGING_EDGE_SERVICE_TOKEN?.trim() || null;
+if (token && token.length < 32) throw new Error('Invalid staging service token');
 const literal = value => `'${value.replaceAll("'", "''")}'`;
 const command = `SELECT net.http_post(
   url := 'https://${ref}.supabase.co/functions/v1/send-reminder-mail',
-  headers := jsonb_build_object('Content-Type','application/json','x-service-token',
-    (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'eventflow_staging_edge_service_token')),
+  headers := jsonb_build_object('Content-Type','application/json','Authorization',
+    'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'eventflow_staging_edge_service_token')),
   body := '{"mode":"cron"}'::jsonb,
   timeout_milliseconds := 10000
 );`;
+const configureSecret = token
+  ? `SELECT id INTO secret_id FROM vault.secrets WHERE name = 'eventflow_staging_edge_service_token';
+  IF secret_id IS NULL THEN
+    PERFORM vault.create_secret(${literal(token)}, 'eventflow_staging_edge_service_token');
+  ELSE
+    PERFORM vault.update_secret(secret_id, ${literal(token)});
+  END IF;`
+  : `IF NOT EXISTS (
+    SELECT 1 FROM vault.secrets WHERE name = 'eventflow_staging_edge_service_token'
+  ) THEN
+    RAISE EXCEPTION 'Missing staging service token in Vault';
+  END IF;`;
 const sql = `DO $bootstrap$
 DECLARE secret_id uuid;
 BEGIN
@@ -25,12 +37,7 @@ BEGIN
     RAISE EXCEPTION 'Staging environment configuration mismatch';
   END IF;
   CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
-  SELECT id INTO secret_id FROM vault.secrets WHERE name = 'eventflow_staging_edge_service_token';
-  IF secret_id IS NULL THEN
-    PERFORM vault.create_secret(${literal(token)}, 'eventflow_staging_edge_service_token');
-  ELSE
-    PERFORM vault.update_secret(secret_id, ${literal(token)});
-  END IF;
+  ${configureSecret}
   PERFORM cron.schedule('send-reminder-mail', '30 seconds', ${literal(command)});
 END $bootstrap$;`;
 mkdirSync('.local', { recursive: true });
@@ -38,9 +45,11 @@ const file = resolve('.local/staging-reminder-bootstrap.sql');
 writeFileSync(file, sql, { mode: 0o600 });
 try {
   execFileSync(process.env.SUPABASE_CLI ?? 'supabase', ['db', 'query', '--linked', '--workdir', workdir, '--file', file], { stdio: 'pipe', windowsHide: true });
-  console.log('Staging reminder cron configured; token kept in Vault');
+  console.log('Staging reminder cron configured with bearer auth; token kept in Vault');
 } catch (error) {
-  const detail = String(error.stderr ?? error.message).replaceAll(token, '<redacted>');
+  const detail = token
+    ? String(error.stderr ?? error.message).replaceAll(token, '<redacted>')
+    : String(error.stderr ?? error.message);
   console.error(detail);
   throw new Error('Staging reminder bootstrap failed; secret SQL was not printed');
 } finally {

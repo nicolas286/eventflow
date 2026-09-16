@@ -28,8 +28,6 @@ export async function postInternalEdgeJson<T = unknown>(
         "content-type": "application/json",
         accept: "application/json",
         authorization: `Bearer ${opts.serviceToken}`,
-        // Transitional compatibility while every internal consumer migrates.
-        "x-service-token": opts.serviceToken,
       },
       body: JSON.stringify(opts.body),
       signal: ctrl.signal,

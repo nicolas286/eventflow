@@ -1,7 +1,7 @@
 import { assertEquals } from "@std/assert";
 import { postInternalEdgeJson } from "../_shared/app/internal-edge/mod.ts";
 
-Deno.test("internal Edge client sends canonical and transitional authentication", async () => {
+Deno.test("internal Edge client sends canonical bearer authentication", async () => {
   let capturedAuthorization: string | null = null;
   let capturedLegacyToken: string | null = null;
   let capturedBody: unknown = null;
@@ -23,7 +23,7 @@ Deno.test("internal Edge client sends canonical and transitional authentication"
   assertEquals(result.ok, true);
   assertEquals(result.data, { ok: true });
   assertEquals(capturedAuthorization, "Bearer service-secret");
-  assertEquals(capturedLegacyToken, "service-secret");
+  assertEquals(capturedLegacyToken, null);
   assertEquals(capturedBody, {
     templateId: "order_confirmation_v1",
   });

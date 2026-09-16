@@ -1,8 +1,14 @@
-import { json } from "../_shared/http.ts";
-import { unauthorized } from "../_shared/errors.ts";
-import { createEdgeHandler } from "../_shared/edge-handler.ts";
-import { createAdminClient } from "../_shared/supabase.ts";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.75.0";
+
+import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
+import { json } from "../_shared/app/http.ts";
+import { assertInternalEdgeAuthentication } from "../_shared/app/internal-edge/mod.ts";
+import { ResponseError } from "../_shared/errors.ts";
 import { sendEmailOrThrow } from "../_shared/app/email.ts";
+import {
+  type EdgeLogger,
+  serializeError,
+} from "../_shared/modules/logger/mod.ts";
 
 import { resolveRuntimeConfig } from "./config.ts";
 import { parseSendReminderMailPayload } from "./sendReminderMail.contracts.ts";
@@ -19,20 +25,6 @@ import {
   type ReminderCandidateOrder,
   type ReminderOrderContext,
 } from "./db.ts";
-
-function trimHeader(req: Request, name: string) {
-  const value = req.headers.get(name) ?? "";
-  const trimmed = value.trim();
-  return trimmed || null;
-}
-
-function assertServiceTokenOrThrow(req: Request, expected: string) {
-  const received = trimHeader(req, "x-service-token");
-
-  if (!received || received !== expected) {
-    throw unauthorized("UNAUTHORIZED");
-  }
-}
 
 function toInt(value: unknown, fallback: number) {
   const n = Number(value);
@@ -81,10 +73,10 @@ function isInsideCronHorizon(startsAtIso: string, now: Date, max: Date) {
 }
 
 async function buildAndMaybeSendReminder(input: {
-  admin: any;
+  admin: SupabaseClient;
   appBaseUrl: string;
   order: ReminderOrderContext;
-  logger: any;
+  logger: EdgeLogger;
   debug?: boolean;
 }) {
   const { admin, appBaseUrl, order, logger, debug = false } = input;
@@ -171,11 +163,11 @@ async function buildAndMaybeSendReminder(input: {
 }
 
 async function runManual(input: {
-  admin: any;
+  admin: SupabaseClient;
   appBaseUrl: string;
   orderId: string;
   debug: boolean;
-  logger: any;
+  logger: EdgeLogger;
 }) {
   const order = await loadOrderForReminderOrNull(
     input.admin,
@@ -200,9 +192,9 @@ async function runManual(input: {
 }
 
 async function runCron(input: {
-  admin: any;
+  admin: SupabaseClient;
   appBaseUrl: string;
-  logger: any;
+  logger: EdgeLogger;
 }) {
   const limit = 250;
   const horizonDays = 60;
@@ -211,7 +203,7 @@ async function runCron(input: {
   const max = new Date(now);
   max.setUTCDate(max.getUTCDate() + horizonDays);
 
-  const orders = await loadReminderCandidateOrders(
+  const orders: ReminderCandidateOrder[] = await loadReminderCandidateOrders(
     input.admin,
     input.logger,
     limit,
@@ -292,13 +284,34 @@ async function runCron(input: {
   };
 }
 
-Deno.serve(
-  createEdgeHandler("send-reminder-mail", async (req, { logger }) => {
+export const handleSendReminderMailRequest = createEdgeHandler(
+  {
+    name: "send-reminder-mail",
+    method: "POST",
+    auth: "none",
+    serviceClient: true,
+    onError: ({ req, logger, error }) => {
+      if (error instanceof ResponseError) {
+        logger.warn("response_error", {
+          code: error.code,
+          status: error.status,
+        });
+        return json(req, { error: error.code }, error.status);
+      }
+
+      logger.error("unexpected_error", { error: serializeError(error) });
+      return json(req, { error: "UNEXPECTED_ERROR" }, 500);
+    },
+  },
+  async ({ req, logger, serviceClient: admin }) => {
     const config = resolveRuntimeConfig();
+    const authenticationSource = await assertInternalEdgeAuthentication(
+      req,
+      config.edgeServiceToken,
+      { allowLegacyServiceToken: true },
+    );
+    logger.info("worker_authenticated", { source: authenticationSource });
 
-    assertServiceTokenOrThrow(req, config.edgeServiceToken);
-
-    const admin = createAdminClient(config);
     const payload = await parseSendReminderMailPayload(req);
 
     if (payload.kind === "manual") {
@@ -310,7 +323,7 @@ Deno.serve(
         logger,
       });
 
-      return json({
+      return json(req, {
         ok: true,
         mode: "manual",
         ...result,
@@ -323,10 +336,12 @@ Deno.serve(
       logger,
     });
 
-    return json({
+    return json(req, {
       ok: true,
       mode: "cron",
       ...result,
     });
-  }),
+  },
 );
+
+Deno.serve(handleSendReminderMailRequest);
