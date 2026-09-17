@@ -289,16 +289,26 @@ function isFinalBadStatus(st) {
       }
       const invoiceId = invoice?.id ?? null;
       if (invoiceId) {
-        admin.functions.invoke("generate-invoice-pdf", {
-          body: {
-            invoice_id: invoiceId
-          }
-        }).catch(console.error);
-        admin.functions.invoke("send-invoice-to-billit", {
-          body: {
-            invoice_id: invoiceId
-          }
-        }).catch(console.error);
+        try {
+          const { error: pdfError } = await admin.functions.invoke("generate-invoice-pdf", {
+            body: {
+              invoice_id: invoiceId
+            }
+          });
+          if (pdfError) console.error("[sub-webhook] pdf invoke failed", pdfError);
+        } catch (e) {
+          console.error("[sub-webhook] pdf invoke crashed", e);
+        }
+        try {
+          const { error: billitError } = await admin.functions.invoke("send-invoice-to-billit", {
+            body: {
+              invoice_id: invoiceId
+            }
+          });
+          if (billitError) console.error("[sub-webhook] billit invoke failed", billitError);
+        } catch (e) {
+          console.error("[sub-webhook] billit invoke crashed", e);
+        }
       }
       return json({
         ok: true,
@@ -382,16 +392,26 @@ function isFinalBadStatus(st) {
     }
     const invoiceId = invoice?.id ?? null;
     if (invoiceId) {
-      admin.functions.invoke("generate-invoice-pdf", {
-        body: {
-          invoice_id: invoiceId
-        }
-      }).catch(console.error);
-      admin.functions.invoke("send-invoice-to-billit", {
-        body: {
-          invoice_id: invoiceId
-        }
-      }).catch(console.error);
+      try {
+        const { error: pdfError } = await admin.functions.invoke("generate-invoice-pdf", {
+          body: {
+            invoice_id: invoiceId
+          }
+        });
+        if (pdfError) console.error("[sub-webhook] pdf invoke failed", pdfError);
+      } catch (e) {
+        console.error("[sub-webhook] pdf invoke crashed", e);
+      }
+      try {
+        const { error: billitError } = await admin.functions.invoke("send-invoice-to-billit", {
+          body: {
+            invoice_id: invoiceId
+          }
+        });
+        if (billitError) console.error("[sub-webhook] billit invoke failed", billitError);
+      } catch (e) {
+        console.error("[sub-webhook] billit invoke crashed", e);
+      }
     }
     return json({
       ok: true,
