@@ -169,16 +169,26 @@ Deno.serve(async (req)=>{
     if (!invoiceId) {
       console.error("[sub-pay-webhook] invoice created but no id returned", invoice);
     } else {
-      admin.functions.invoke("generate-invoice-pdf", {
-        body: {
-          invoice_id: invoiceId
-        }
-      }).catch((e)=>console.error("[sub-pay-webhook] pdf invoke failed", e));
-      admin.functions.invoke("send-invoice-to-billit", {
-        body: {
-          invoice_id: invoiceId
-        }
-      }).catch((e)=>console.error("[sub-pay-webhook] billit invoke failed", e));
+      try {
+        const { error: pdfError } = await admin.functions.invoke("generate-invoice-pdf", {
+          body: {
+            invoice_id: invoiceId
+          }
+        });
+        if (pdfError) console.error("[sub-pay-webhook] pdf invoke failed", pdfError);
+      } catch (e) {
+        console.error("[sub-pay-webhook] pdf invoke crashed", e);
+      }
+      try {
+        const { error: billitError } = await admin.functions.invoke("send-invoice-to-billit", {
+          body: {
+            invoice_id: invoiceId
+          }
+        });
+        if (billitError) console.error("[sub-pay-webhook] billit invoke failed", billitError);
+      } catch (e) {
+        console.error("[sub-pay-webhook] billit invoke crashed", e);
+      }
     }
     const subWebhookUrl = `${functionsBase}/mollie-subscription-webhook`;
     const { data: srow, error: sErr } = await admin.from("subscriptions").select("mollie_subscription_id, status").eq("org_id", orgId).maybeSingle();
