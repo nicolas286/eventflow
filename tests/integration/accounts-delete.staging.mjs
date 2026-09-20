@@ -3,6 +3,17 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 
+let testPhase = "configuration";
+
+function emitGitHubError() {
+  console.error(
+    `::error title=Accounts integration failed::Phase: ${testPhase}`,
+  );
+}
+
+process.on("uncaughtException", emitGitHubError);
+process.on("unhandledRejection", emitGitHubError);
+
 const targets = JSON.parse(
   readFileSync(new URL("../../deploy/environments.json", import.meta.url)),
 );
@@ -40,6 +51,7 @@ function dataOrThrow(result, operation) {
 }
 
 try {
+  testPhase = "create-account";
   const createdUser = dataOrThrow(
     await admin.auth.admin.createUser({
       email,
@@ -50,6 +62,7 @@ try {
   );
   userId = createdUser.user.id;
 
+  testPhase = "sign-in";
   const session = dataOrThrow(
     await client.auth.signInWithPassword({ email, password }),
     "Sign in account",
@@ -59,6 +72,7 @@ try {
     "Sign-in must return an access token",
   );
 
+  testPhase = "create-organization";
   orgId = dataOrThrow(
     await client.rpc("create_organization", {
       p_input: { name: organizationName, type: "association" },
@@ -67,6 +81,7 @@ try {
   );
   assert.match(orgId, /^[0-9a-f-]{36}$/i);
 
+  testPhase = "create-subscription";
   dataOrThrow(
     await admin.from("subscriptions").insert({
       org_id: orgId,
@@ -77,6 +92,7 @@ try {
     "Create subscription",
   );
 
+  testPhase = "delete-account";
   const response = await fetch(`${supabaseUrl}/functions/v1/accounts/me`, {
     method: "DELETE",
     headers: {
@@ -105,6 +121,7 @@ try {
     },
   );
 
+  testPhase = "verify-organization";
   const organization = dataOrThrow(
     await admin
       .from("organizations")
@@ -115,6 +132,7 @@ try {
   );
   assert.deepEqual(organization, { status: "suspended", plan: "free" });
 
+  testPhase = "verify-subscription";
   const subscription = dataOrThrow(
     await admin
       .from("subscriptions")
@@ -125,6 +143,7 @@ try {
   );
   assert.equal(subscription, null);
 
+  testPhase = "verify-account";
   const deletedAccount = await admin.auth.admin.getUserById(userId);
   assert.ok(
     deletedAccount.error || !deletedAccount.data.user,
@@ -133,6 +152,7 @@ try {
 
   console.log(JSON.stringify({ ok: true, orgId, userId }));
 } finally {
+  testPhase = "cleanup";
   if (orgId) {
     const cleanupOrganization = await admin
       .from("organizations")
