@@ -27,20 +27,20 @@ Voir [l'architecture](../ARCHITECTURE.md) pour les routes. Les consommateurs RPC
 
 ## Bascule staging et recette à confirmer
 
-- [ ] Publier les nouvelles fonctions et le frontend staging ; vérifier les nouvelles routes.
-- [ ] Appliquer le cron rappels `workers/reminders` (script adapté). L'expiration staging SQL directe ne change pas ; inventorier les crons HTTP supplémentaires.
-- [ ] Migrer les URL des abonnements Mollie test existants et traiter les premiers paiements en attente ; modifier les nouvelles créations ne migre pas les objets déjà enregistrés chez Mollie.
-- [ ] Vérifier les consommateurs externes avant suppression distante des anciennes fonctions. `supabase functions deploy` ne démontre pas leur suppression.
+- [x] Publier les nouvelles fonctions et le frontend staging ; vérifier les nouvelles routes (20 septembre, `d99a21c`, Actions réussie).
+- [x] Appliquer le cron rappels `workers/reminders`. L'inventaire staging contient ce cron et l'expiration SQL directe, inchangée.
+- [x] Inventorier les callbacks Mollie : aucun candidat et aucune ligne `subscriptions` en staging au moment de la bascule ; aucun PATCH nécessaire. Les futurs abonnements utilisent les nouvelles URLs.
+- [x] Supprimer les quinze anciennes fonctions après publication du front et contrôles : neuf fonctions actives restent en staging.
 - [ ] Rejouer inscription gratuite/payante/admin, lecture avec booking token, mail capturé et PDF.
 - [ ] Rejouer souscription, renouvellement/retry, facture et annulation en test ; Billit reste bloqué en staging.
 - [ ] Tester suppression sur fixtures jetables : autre organisation, session absente, rôle autorisé, ordre des effets.
 - [ ] Compléter le [TODO Mollie](mollie-staging.md), dont renouvellement OAuth et répétition des webhooks.
-- [ ] Consigner publication et recette. **Cette tranche n'autorise pas la promotion dans main.**
+- [x] Consigner publication et premiers contrôles dans le [journal API](../api-migration-journal.md). **Cette tranche n'autorise pas la promotion dans main.**
 
 ## Ensuite
 
 - Migrer les accès RPC frontend vers les domaines HTTP concernés.
 - Réduire les handlers volumineux ; mutualiser OAuth après caractérisation de concurrence/rotation.
 - Renforcer idempotence/reprises en distinguant les défauts historiques.
-- Retirer progressivement `zod-legacy` interne ; les contrats partagés utilisent déjà Zod 4.
+- Les dépendances Zod backend et les contrats partagés utilisent désormais Zod 4 ; conserver leur version alignée avec le frontend.
 - Reprendre le [frontend](refactoring.md) après recette de cette bascule.
