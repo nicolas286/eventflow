@@ -353,8 +353,8 @@ allow_dynamic_registration = false
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
-# `per_worker` (default) Ã¢â‚¬â€ enables hot reload during local development.
-# `oneshot` Ã¢â‚¬â€ fallback mode if hot reload causes issues (e.g. in large repos or with symlinks).
+# `per_worker` (default) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â enables hot reload during local development.
+# `oneshot` ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â fallback mode if hot reload causes issues (e.g. in large repos or with symlinks).
 policy = "per_worker"
 # Port to attach the Chrome inspector for debugging edge functions.
 inspector_port = 8083
@@ -385,27 +385,36 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.accounts]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
 [functions.invoices]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
 [functions.orders]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
 [functions.subscriptions]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
 [functions.workers]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
 [functions.mollie-connect-start]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
 [functions.mollie-connect-callback]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
 [functions.mollie-webhook]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
 [functions.mollie-webhook-tickets]
 verify_jwt = false
+import_map = "./functions/import_map.json"

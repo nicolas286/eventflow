@@ -1,0 +1,9 @@
+{
+    "imports":  {
+                    "@std/assert":  "jsr:@std/assert@^1.0.14",
+                    "zod":  "npm:zod@4.3.6",
+                    "@supabase/supabase-js":  "npm:@supabase/supabase-js@2.75.0",
+                    "pdf-lib":  "https://esm.sh/pdf-lib@1.17.1",
+                    "qrcode":  "https://esm.sh/qrcode@1.5.4"
+                }
+}

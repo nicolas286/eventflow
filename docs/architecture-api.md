@@ -19,7 +19,9 @@ Cette tranche réorganise le transport et les contrats sans modifier volontairem
 
 Les schémas SQL internes et les formats des prestataires restent près de leurs services lorsqu'ils ne constituent pas un contrat frontend/API. Les RPC frontend non concernées par cette tranche ne sont pas annoncées comme migrées.
 
-Les erreurs HTTP et les variantes de réponses historiques restent compatibles avec leurs consommateurs. Cette migration n'impose pas une nouvelle enveloppe unique à tous les endpoints : les réponses de webhook d'acquittement/retry, en particulier, déterminent les tentatives du prestataire.
+Les variantes de réponses métier restent compatibles avec leurs consommateurs. Les changements de protocole et la correction d'autorisation de suppression de compte sont détaillés dans [ARCHITECTURE](ARCHITECTURE.md). Cette migration n'impose pas une nouvelle enveloppe unique à tous les endpoints : les réponses de webhook d'acquittement/retry, en particulier, déterminent les tentatives du prestataire.
+
+`supabase/functions/import_map.json` est la source des dépendances Deno. Le fichier `deno.json` la référence pour les contrôles locaux et chaque fonction la référence explicitement dans `supabase/config.toml` pour le déploiement. Cela permet de résoudre `zod` depuis les contrats à la racine : la découverte implicite de la configuration sous `functions` ne suffit pas au bundler distant.
 
 ## Routes
 
