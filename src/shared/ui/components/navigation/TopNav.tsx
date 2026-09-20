@@ -5,7 +5,7 @@ import "./topNav.desktop.css";
 import "./topNav.mobile.css";
 
 import HamburgerMenu, { MenuDivider, MenuHeader, MenuItem } from "../menus/HamburgerMenu";
-import { supabase } from "../../../gateways/supabase/supabaseClient";
+import { authRepo } from "@app/modules/admin/auth/data/authRepo";
 import { useToast } from "../toast/useToast"; // ✅ add
 
 export type OrgInfo = {
@@ -130,10 +130,18 @@ export default function TopNav({ org, mode }: TopNavProps) {
     setLoggingOut(true);
     close();
 
-    await new Promise((r) => setTimeout(r, 200));
-    await supabase.auth.signOut();
-
-    navigate("/");
+    try {
+      await authRepo.signOut();
+    } catch {
+      showToast({
+        title: "Déconnexion impossible",
+        description: "Réessayez de vous déconnecter.",
+        variant: "error",
+        duration: 6000,
+      });
+    } finally {
+      setLoggingOut(false);
+    }
   }
 
     const onLogoClick = () => {

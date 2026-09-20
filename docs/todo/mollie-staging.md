@@ -44,6 +44,18 @@ Ne pas utiliser directement le fichier d'exemple rempli de placeholders et ne pa
 
 ## Connexion et recette
 
+- [x] Autoriser `https://eventflow-staging.netlify.app` dans `public.allowed_return_origins` avec `is_enabled=true`, en complément des secrets `APP_ALLOWED_ORIGINS` et `CORS_ALLOWED_ORIGINS`. Correction effectuée sur staging le 20 septembre 2026 : la table était vide et la RPC refusait `return_base_url`. Vérification avec le compte synthétique : `mollie-connect-start` retourne HTTP 200, une URL Mollie en mode test, le callback staging et les quatre scopes attendus. L'autorisation chez Mollie et le paiement restent à tester par l'utilisateur.
+
+Pour reconstruire le staging, exécuter ce seed de configuration **uniquement dans le projet staging** (`cpcmcxerrsnnjncrhldr`) :
+
+```sql
+insert into public.allowed_return_origins (origin, is_enabled)
+values ('https://eventflow-staging.netlify.app', true)
+on conflict (origin) do update set is_enabled = excluded.is_enabled;
+```
+
+Cette origine dépend de l'environnement : ne pas ajouter ce seed staging à une migration commune qui serait appliquée en production.
+
 - [ ] Ouvrir [le front staging](https://eventflow-staging.netlify.app), sélectionner l'organisation de démonstration et lancer la connexion Mollie en **mode test**.
 - [ ] Autoriser l'application et vérifier le retour sur staging, le profil sélectionné et l'état connecté.
 - [ ] Créer un billet payant synthétique et passer une commande via l'interface publique.
@@ -63,6 +75,14 @@ Les restrictions staging restent actives. Ne pas modifier `APP_ENV` ou supprimer
 La clé de test couvre ce circuit d'API, mais ne remplace ni la configuration des URL ni la recette complète.
 
 ## Preuves à conserver
+
+### Déconnexion après session QA révoquée — 20 septembre 2026
+
+Le script de vérification Connect utilisait une déconnexion globale du compte QA, susceptible de révoquer la session du testeur. Le script local utilise désormais `scope: 'local'`.
+
+Le bouton applicatif attendait l'appel Supabase sans limite, ne traitait pas son erreur et laissait le second stockage de session en place. Le correctif centralise la déconnexion : tentative de révocation distante comme auparavant, attente maximale de cinq secondes, suppression des seules clés Auth du projet dans `localStorage` et `sessionStorage`, puis rechargement de `/admin/login` pour éliminer l'état en mémoire. Si le serveur ne répond pas, la révocation distante n'est pas garantie, mais le navigateur quitte sa session. Un échec du nettoyage local affiche une erreur et permet de réessayer.
+
+Tests automatisés : succès, erreur de session révoquée, rejet réseau et appel bloqué ; les préférences et clés d'autres projets sont conservées. Recette navigateur restante après publication staging : session expirée → déconnexion → connexion dans la même fenêtre → nouvelle tentative Mollie Connect.
 
 Date, projet cible, identifiants de commandes de test, statut des webhooks, résultat du renouvellement et PR éventuelle. Aucun secret, jeton OAuth ou booking token dans la documentation.
 

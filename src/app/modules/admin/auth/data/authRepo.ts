@@ -1,6 +1,7 @@
 import type { Session } from "@supabase/supabase-js";
 import { supabase, supabaseSession } from "@gateways/supabase/supabaseClient";
 import { normalizeError } from "@errors/errors";
+import { signOutFromBrowser } from "@gateways/supabase/signOutFromBrowser";
 import { loginSchema, signupSchema } from "../schemas/admin.auth.schema";
 import type { LoginInput, SignupInput } from "../schemas/admin.auth.schema";
 
@@ -65,8 +66,7 @@ async signIn(
 
   async signOut(): Promise<void> {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      await signOutFromBrowser();
     } catch (e) {
       throw normalizeError(e, "Déconnexion impossible.");
     }
