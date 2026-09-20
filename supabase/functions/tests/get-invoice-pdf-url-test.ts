@@ -1,10 +1,10 @@
 import { assertEquals } from "@std/assert";
-import { handleGetInvoicePdfUrl } from "../get-invoice-pdf-url/handler.ts";
+import { handleGetInvoicePdfUrl } from "../invoices/handler.ts";
 import type {
   InvoicePdfRecord,
   InvoicePdfUrlRepository,
   RepositoryResult,
-} from "../get-invoice-pdf-url/repository.ts";
+} from "../invoices/repository.ts";
 
 function result<T>(data: T): RepositoryResult<T> {
   return { data, errorMessage: null };
@@ -20,9 +20,9 @@ function repository(
   };
 
   return {
-    loadInvoice: async () => result(invoice),
-    isOrganizationMember: async () => result(true),
-    createSignedUrl: async () => result("https://storage.example/signed"),
+    loadInvoice: () => Promise.resolve(result(invoice)),
+    isOrganizationMember: () => Promise.resolve(result(true)),
+    createSignedUrl: () => Promise.resolve(result("https://storage.example/signed")),
     ...overrides,
   };
 }
@@ -31,14 +31,18 @@ async function invoke(
   body: unknown,
   currentRepository = repository(),
 ): Promise<{ response: Response; body: Record<string, unknown> }> {
-  const req = new Request("https://edge.test/get-invoice-pdf-url", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      origin: "http://localhost:5173",
+  const req = new Request(
+    `https://edge.test/invoices/${
+      (body as { invoice_id: string }).invoice_id
+    }/pdf`,
+    {
+      method: "GET",
+      headers: {
+        "content-type": "application/json",
+        origin: "http://localhost:5173",
+      },
     },
-    body: JSON.stringify(body),
-  });
+  );
   const response = await handleGetInvoicePdfUrl({
     req,
     repository: currentRepository,
@@ -71,7 +75,7 @@ Deno.test("invoice PDF handler rejects invalid identifiers", async () => {
 Deno.test("invoice PDF handler refuses another organization", async () => {
   const { response, body } = await invoke(
     { invoice_id: "11111111-1111-4111-8111-111111111111" },
-    repository({ isOrganizationMember: async () => result(false) }),
+    repository({ isOrganizationMember: () => Promise.resolve(result(false)) }),
   );
 
   assertEquals(response.status, 403);
@@ -82,17 +86,16 @@ Deno.test("invoice PDF handler preserves not-ready and signing failures", async 
   const notReady = await invoke(
     { invoice_id: "11111111-1111-4111-8111-111111111111" },
     repository({
-      loadInvoice: async () =>
-        result({
+      loadInvoice: () => Promise.resolve(result({
           id: "11111111-1111-4111-8111-111111111111",
           orgId: "22222222-2222-4222-8222-222222222222",
           pdfPath: null,
-        }),
+        })),
     }),
   );
   const signFailure = await invoke(
     { invoice_id: "11111111-1111-4111-8111-111111111111" },
-    repository({ createSignedUrl: async () => result(null) }),
+    repository({ createSignedUrl: () => Promise.resolve(result(null)) }),
   );
 
   assertEquals(notReady.response.status, 409);

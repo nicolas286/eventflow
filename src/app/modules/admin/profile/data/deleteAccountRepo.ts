@@ -14,7 +14,8 @@ export function deleteAccountRepo(supabase: SupabaseClient) {
 
       const raw = await edgeSafe(
         () =>
-          supabase.functions.invoke("delete-account", {
+          supabase.functions.invoke("accounts/me", {
+            method: "DELETE",
             body: payload,
           }),
         "DELETE_ACCOUNT_EMPTY_RESPONSE"

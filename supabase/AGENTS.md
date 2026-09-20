@@ -7,12 +7,15 @@ Hérite de [../AGENTS.md](../AGENTS.md). Lire les fiches [sécurité](../docs/ag
 - PostgreSQL : contraintes, relations, RLS, grants, opérations atomiques et invariants persistants.
 - Edge Functions Deno : transport HTTP, validation, autorisation, orchestration et prestataires.
 - `functions/_shared` : briques réellement partagées ; le code propre à un endpoint reste à proximité.
+- `shared/schemas` à la racine : contrats front/API Zod 4.3.6, indépendants de React/Deno/Supabase ; taille HTTP bornée avant parsing puis validation serveur.
+- Endpoints par domaine : `orders`, `subscriptions`, `accounts`, `invoices`, `workers`. E-mails, PDF et Billit dans `_shared/services` ; ne pas recréer leurs anciennes Edge Functions.
 
 Viser des handlers minces lors des extractions, sans imposer l'arborescence backend de Nexora. Le code historique n'est pas uniformément typé ou découpé.
 
 ## Authentification et contrats
 
 - `createEdgeHandler` centralise HTTP/CORS, logs et erreurs ; il **n'authentifie pas automatiquement tous les handlers**.
+- Utiliser l'implémentation unique `_shared/app/edge-handler` ; les anciens `_shared/edge-handler.ts` et `_shared/http.ts` sont retirés.
 - Les `verify_jwt=false` existants ne dispensent pas des contrôles utilisateur, service token ou webhook appropriés.
 - Vérifier appartenance à l'organisation et droits sur la ressource avant une opération privilégiée ; un `orgId` client n'est pas une preuve.
 - Préserver grants minimaux et `search_path` maîtrisé des RPC `SECURITY DEFINER`. Tester les rôles réels, pas seulement `service_role`.

@@ -11,7 +11,7 @@ const token = process.env.STAGING_EDGE_SERVICE_TOKEN?.trim() || null;
 if (token && token.length < 32) throw new Error('Invalid staging service token');
 const literal = value => `'${value.replaceAll("'", "''")}'`;
 const command = `SELECT net.http_post(
-  url := 'https://${ref}.supabase.co/functions/v1/send-reminder-mail',
+  url := 'https://${ref}.supabase.co/functions/v1/workers/reminders',
   headers := jsonb_build_object('Content-Type','application/json','Authorization',
     'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'eventflow_staging_edge_service_token')),
   body := '{"mode":"cron"}'::jsonb,

@@ -9,7 +9,10 @@
     "test": "vitest run && node --test tests/deployment/*.checks.mjs",
     "check:target": "node scripts/deployment/check-target.mjs",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:backend": "deno task --config supabase/functions/deno.json check:edge",
+    "lint:backend": "deno task --config supabase/functions/deno.json lint:edge",
+    "test:backend": "deno task --config supabase/functions/deno.json test:edge"
   },
   "dependencies": {
     "@mdxeditor/editor": "^4.0.1",
@@ -27,7 +30,7 @@
     "remark-gfm": "^4.0.1",
     "vitest": "^4.1.9",
     "xlsx": "^0.18.5",
-    "zod": "^4.3.6"
+    "zod": "4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

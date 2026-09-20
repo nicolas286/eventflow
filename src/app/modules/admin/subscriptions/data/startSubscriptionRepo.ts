@@ -8,7 +8,7 @@ import {
   type StartSubscriptionResponse,
 } from "../schemas/admin.startSubscription.schema";
 
-export function createStartSubscriptionRepo(supabase: SupabaseClient) {
+export function createStartSubscriptionRepo(supabase: { functions: Pick<SupabaseClient["functions"], "invoke"> }) {
   return {
     async startSubscription(
       input: StartSubscriptionPayload,
@@ -17,7 +17,7 @@ export function createStartSubscriptionRepo(supabase: SupabaseClient) {
 
       const raw = await edgeSafe(
         () =>
-          supabase.functions.invoke("start-subscription", {
+          supabase.functions.invoke("subscriptions", {
             body: payload,
           }),
         "START_SUBSCRIPTION_EMPTY_RESPONSE"

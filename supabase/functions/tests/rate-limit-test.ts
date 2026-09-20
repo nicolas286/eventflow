@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertRejects } from "@std/assert";
-import type { SupabaseClient } from "npm:@supabase/supabase-js@2.75.0";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { consumeRequestRateLimit } from "../_shared/app/rate-limit/mod.ts";
 import {
   consumeRateLimit,

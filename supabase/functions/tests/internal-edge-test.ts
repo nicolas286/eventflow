@@ -8,7 +8,7 @@ Deno.test("internal Edge client sends canonical bearer authentication", async ()
 
   const result = await postInternalEdgeJson<{ ok: boolean }>({
     functionsBase: "https://project.example.supabase.co/functions/v1",
-    path: "/send-confirmation-mail",
+    path: "/fixture-worker",
     serviceToken: "service-secret",
     body: { templateId: "order_confirmation_v1" },
     fetch: async (input, init) => {
@@ -32,10 +32,10 @@ Deno.test("internal Edge client sends canonical bearer authentication", async ()
 Deno.test("internal Edge client bounds a non-JSON response", async () => {
   const result = await postInternalEdgeJson<{ raw: string }>({
     functionsBase: "https://project.example.supabase.co/functions/v1",
-    path: "/send-confirmation-mail",
+    path: "/fixture-worker",
     serviceToken: "service-secret",
     body: {},
-    fetch: async () => new Response("x".repeat(400), { status: 502 }),
+    fetch: () => Promise.resolve(new Response("x".repeat(400), { status: 502 })),
   });
 
   assertEquals(result.ok, false);

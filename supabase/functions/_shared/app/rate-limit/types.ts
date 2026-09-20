@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "npm:@supabase/supabase-js@2.75.0";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EdgeLogger } from "../../modules/logger/mod.ts";
 
 export type ConsumeRequestRateLimitInput = {

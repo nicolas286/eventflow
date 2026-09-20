@@ -1,8 +1,8 @@
 import { assertEquals, assertInstanceOf, assertRejects } from "@std/assert";
-import type { SupabaseClient } from "npm:@supabase/supabase-js@2.75.0";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { ResponseError } from "../_shared/errors.ts";
-import { createOrderIntentOrThrow } from "../register-tickets/order-intent-repository.ts";
-import type { CreateOrderIntentArgs } from "../register-tickets/registerTickets.contracts.ts";
+import { createOrderIntentOrThrow } from "../orders/public/order-intent-repository.ts";
+import type { CreateOrderIntentArgs } from "../orders/public/registerTickets.contracts.ts";
 
 const args: CreateOrderIntentArgs = {
   p_event_id: "11111111-1111-4111-8111-111111111111",

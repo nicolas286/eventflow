@@ -1,7 +1,7 @@
 import {
   createClient,
   type SupabaseClient,
-} from "npm:@supabase/supabase-js@2.75.0";
+} from "@supabase/supabase-js";
 
 export interface SupabaseRuntimeConfig {
   supabaseUrl: string;

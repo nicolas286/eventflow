@@ -1,3 +1,4 @@
+import { orderPublicSchema } from "@contracts/orders-read";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useParams, useSearchParams } from "react-router-dom";
 
@@ -20,6 +21,7 @@ export type OrderStatus =
   | "pending"
   | "paid"
   | "failed"
+  | "cancelled"
   | "canceled"
   | "expired"
   | "awaiting_payment"
@@ -68,9 +70,9 @@ async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> 
   if (!orderId) throw new Error("order_fetch_failed");
 
   const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/order-public?orderId=${encodeURIComponent(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/orders/${encodeURIComponent(
       orderId,
-    )}&token=${encodeURIComponent(token)}`,
+    )}?token=${encodeURIComponent(token)}`,
     {
       headers: {
         apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
@@ -80,7 +82,8 @@ async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> 
   );
 
   if (!res.ok) throw new Error("order_fetch_failed");
-  const j = await res.json();
+  const parsed = orderPublicSchema.parse(await res.json());
+  const j = { ...parsed, totalCents: parsed.totalCents ?? undefined, currency: parsed.currency ?? undefined };
 
   return {
     id: j.id,
@@ -89,20 +92,8 @@ async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> 
     totalCents: j.totalCents,
     currency: j.currency,
 
-    orgSlug: j.orgSlug,
-    eventSlug: j.eventSlug,
 
-    buyerEmail: j.buyerEmail,
 
-    items: Array.isArray(j.items)
-      ? j.items.map((it: OrderItemPublic) => ({
-          name: it.name,
-          quantity: it.quantity,
-          unitPriceCents: it.unitPriceCents,
-          totalCents: it.totalCents,
-          currency: it.currency,
-        }))
-      : undefined,
   };
 }
 

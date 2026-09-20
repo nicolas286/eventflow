@@ -21,7 +21,7 @@ export function createRegisterRepo(supabase: SupabaseClient) {
 
       const raw = await edgeSafe<unknown>(
         () =>
-          supabase.functions.invoke("register-tickets", {
+          supabase.functions.invoke("orders", {
             body: payload,
           }),
         "REGISTER_EMPTY_RESPONSE",

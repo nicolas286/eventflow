@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 // Execute each actual refresh helper in isolation: webhook modules otherwise
 // start Deno.serve and import remote modules at module evaluation time.
 const paths = [
-  "supabase/functions/register-tickets/mollie-auth.ts",
+  "supabase/functions/orders/public/mollie-auth.ts",
   "supabase/functions/mollie-webhook-tickets/index.ts",
   "supabase/functions/mollie-webhook/index.ts",
 ];
@@ -51,7 +51,7 @@ describe.each(paths)("Mollie refresh request: %s", path => {
 
   it.each([undefined, "   "])("does not contact Mollie without a callback (%s)", async callback => {
     const { refresh, fetch } = loadRefresh(path, callback);
-    if (path.includes("register-tickets/")) await expect(refresh("old-refresh")).rejects.toThrow("CONNECT_CLIENT_MISSING");
+    if (path.includes("orders/public/")) await expect(refresh("old-refresh")).rejects.toThrow("CONNECT_CLIENT_MISSING");
     else expect(await refresh("old-refresh")).toEqual({ ok: false, error: "connect_client_missing" });
     expect(fetch).not.toHaveBeenCalled();
   });

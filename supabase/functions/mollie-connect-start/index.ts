@@ -1,9 +1,10 @@
+import { startMollieConnectInputSchema, startMollieConnectResultSchema } from "../../../shared/schemas/mollie-connect.ts";
+import { readLimitedJson, BodyTooLargeError } from "../_shared/app/request-body.ts";
+import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
 import { assertMollieTestMode } from "../_shared/environment-safety.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-function isValidUuid(v) {
-  return typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-}
-function corsHeaders(origin) {
+import { createClient } from "@supabase/supabase-js";
+
+function corsHeaders(origin: string | null) {
   const allowed = (Deno.env.get("CORS_ALLOWED_ORIGINS") ?? "").split(",").map((s)=>s.trim()).filter(Boolean);
   // ✅ si pas d’allowlist, on refuse en prod (ou on fallback sur "*" si tu préfères)
   const allowOrigin = origin && allowed.includes(origin) ? origin : allowed[0] ?? "*";
@@ -15,7 +16,7 @@ function corsHeaders(origin) {
     Vary: "Origin"
   };
 }
-function json(req, data, status = 200) {
+function json(req: Request, data: unknown, status = 200) {
   const origin = req.headers.get("origin");
   return new Response(JSON.stringify(data), {
     status,
@@ -26,31 +27,27 @@ function json(req, data, status = 200) {
     }
   });
 }
-function getBearer(req) {
+function getBearer(req: Request) {
   const h = req.headers.get("authorization") || "";
   const m = h.match(/^Bearer\s+(.+)$/i);
   return m?.[1] ?? null;
 }
-function isPayload(v) {
-  if (typeof v !== "object" || v === null) return false;
-  const o = v;
-  return isValidUuid(o.orgId) && (o.mode === "test" || o.mode === "live");
-}
-function extractState(st) {
+
+function extractState(st: unknown) {
   // si ta RPC renvoie { state: "..." }
   if (typeof st === "object" && st !== null) {
-    const o = st;
+    const o = Object.fromEntries(Object.entries(st));
     if (typeof o.state === "string" && o.state.trim()) return o.state;
   }
   // si ta RPC renvoie directement "state" (text)
   if (typeof st === "string" && st.trim()) return st;
   return null;
 }
-function normalizeOrigin(u) {
+function normalizeOrigin(u: string) {
   const url = new URL(u);
   return `${url.protocol}//${url.host}`;
 }
-function resolveReturnBaseUrl(req) {
+function resolveReturnBaseUrl(req: Request) {
   const allowed = (Deno.env.get("APP_ALLOWED_ORIGINS") ?? "").split(",").map((s)=>s.trim()).filter(Boolean).map((s)=>{
     try {
       return normalizeOrigin(s);
@@ -63,18 +60,18 @@ function resolveReturnBaseUrl(req) {
     try {
       const o = normalizeOrigin(origin);
       if (allowed.includes(o)) return o;
-    } catch  {}
+    } catch { /* Invalid input or best-effort operation: handled by the following fallback. */ }
   }
   const ref = req.headers.get("referer");
   if (ref) {
     try {
       const o = normalizeOrigin(ref);
       if (allowed.includes(o)) return o;
-    } catch  {}
+    } catch { /* Invalid input or best-effort operation: handled by the following fallback. */ }
   }
   return null;
 }
-Deno.serve(async (req)=>{
+export const handler = createEdgeHandler({name: "mollie-connect-start", method: "POST", auth: "none"}, async ({req})=>{
   if (req.method === "OPTIONS") {
     const origin = req.headers.get("origin");
     return new Response(null, {
@@ -95,12 +92,13 @@ Deno.serve(async (req)=>{
     if (!token) return json(req, {
       error: "NOT_AUTHENTICATED"
     }, 401);
-    const bodyRaw = await req.json().catch(()=>null);
-    if (!isPayload(bodyRaw)) {
+    const parsed = startMollieConnectInputSchema.safeParse(await readLimitedJson(req, 16384));
+    if (!parsed.success) {
       return json(req, {
         error: "VALIDATION_ERROR: invalid_payload"
       }, 400);
     }
+    const bodyRaw = parsed.data;
     assertMollieTestMode(bodyRaw.mode);
     const supabaseUrl = (Deno.env.get("SUPABASE_URL") ?? "").trim();
     const anonKey = (Deno.env.get("SUPABASE_ANON_KEY") ?? "").trim();
@@ -153,14 +151,18 @@ Deno.serve(async (req)=>{
     url.searchParams.set("approval_prompt", "auto");
     url.searchParams.set("lang", "fr");
     if (bodyRaw.mode === "test") url.searchParams.set("testmode", "true");
-    return json(req, {
+    return json(req, startMollieConnectResultSchema.parse({
       ok: true,
       url: url.toString()
-    });
+    }));
   } catch (e) {
+    if (e instanceof BodyTooLargeError) return json(req, {error: "PAYLOAD_TOO_LARGE"}, 413);
+    if (e instanceof SyntaxError) return json(req, {error: "VALIDATION_ERROR: invalid_payload"}, 400);
     console.error("[mollie-connect-start] unexpected", e);
     return json(req, {
       error: "UNKNOWN: unexpected"
     }, 500);
   }
 });
+
+if (import.meta.main) Deno.serve(handler);

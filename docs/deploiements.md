@@ -25,6 +25,16 @@ Le renommage du dépôt ne renomme pas les sites ni les projets Supabase. Le dos
 
 Un échec arrête les étapes suivantes. Il n'existe pas de transaction globale entre SQL, Edge Functions et front : les changements backend doivent rester compatibles avec le front encore publié. Une migration déjà appliquée reste appliquée si une étape suivante échoue.
 
+### Migration directe des API — dev uniquement
+
+La tranche du 20 septembre 2026 remplace les anciennes routes sans adaptateur. Le tableau des nouvelles routes est dans [l'architecture](ARCHITECTURE.md). Cette bascule constitue une exception explicite à la compatibilité transitoire ci-dessus : l'ancien bundle ouvert peut appeler des routes retirées jusqu'à son rechargement. Préparer la publication du frontend et surveiller la fenêtre entre les étapes backend/front ; ne pas présenter ce déploiement comme atomique.
+
+Avant suppression distante des anciennes fonctions, mettre à jour le cron rappels vers `workers/reminders` et les URL de webhook enregistrées sur les abonnements Mollie **test** existants. Les paiements initiaux encore en attente doivent également être inventoriés. Les appels SQL directs à `expire_orders` ne sont pas concernés par le changement d'URL. Le worker de maintenance `workers/migrate-subscription-webhooks` est réservé au staging avec authentification interne et clé test.
+
+Le déploiement des nouvelles sources ne supprime pas à lui seul les anciennes fonctions distantes. Consigner séparément publication, migration des consommateurs externes, retrait des anciennes routes et recette métier. Une restauration du seul front précédent peut être incompatible avec les nouvelles API et les webhooks déjà migrés.
+
+Les contrôles CI utilisent Deno `2.9.6` pour tous les modules backend et contrats racine : `npm run check:backend`, `npm run lint:backend`, `npm run test:backend`. La validation locale n'atteste pas la publication. **Aucune promotion production n'est autorisée dans cette tranche.**
+
 ## Configuration
 
 Les environnements GitHub `staging` et `production` limitent l'accès aux secrets à leur branche respective. Ils contiennent :

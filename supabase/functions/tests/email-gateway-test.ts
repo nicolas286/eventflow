@@ -8,13 +8,13 @@ Deno.test("Resend gateway preserves Eventflow attachments, tags and idempotency"
   let requestUrl = "";
   let requestInit: RequestInit | undefined;
 
-  const fetchMock = async (
+  const fetchMock = (
     input: string | URL | Request,
     init?: RequestInit,
   ): Promise<Response> => {
     requestUrl = String(input);
     requestInit = init;
-    return Response.json({ id: "email_123" });
+    return Promise.resolve(Response.json({ id: "email_123" }));
   };
   const gateway = new ResendEmailGateway({
     apiKey: "test-api-key",
@@ -68,11 +68,11 @@ Deno.test("Resend gateway preserves Eventflow attachments, tags and idempotency"
 Deno.test("Resend gateway exposes retryable provider errors", async () => {
   const gateway = new ResendEmailGateway({
     apiKey: "test-api-key",
-    fetch: async () =>
-      Response.json(
+    fetch: () =>
+      Promise.resolve(Response.json(
         { name: "rate_limit_exceeded", message: "Try later" },
         { status: 429 },
-      ),
+      )),
   });
 
   const error = await assertRejects(() =>
@@ -94,9 +94,9 @@ Deno.test("Resend gateway rejects invalid input before calling the provider", as
   let providerCalled = false;
   const gateway = new ResendEmailGateway({
     apiKey: "test-api-key",
-    fetch: async () => {
+    fetch: () => {
       providerCalled = true;
-      return Response.json({ id: "should-not-be-used" });
+      return Promise.resolve(Response.json({ id: "should-not-be-used" }));
     },
   });
 

@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { verifyProtectedFrontend } from './verify-protected-frontend.mjs';
 const targets = JSON.parse(readFileSync(new URL('../../deploy/environments.json', import.meta.url)));
 const target = targets[process.argv[2]];
 if (!target) throw new Error('Unknown frontend environment');
@@ -6,6 +7,11 @@ const other = targets[process.argv[2] === 'staging' ? 'production' : 'staging'];
 
 async function verify() {
   const response = await fetch(target.publicOrigin, { signal: AbortSignal.timeout(30000), cache: 'no-store' });
+  if (response.status === 401 && process.argv[2] === 'staging') {
+    const protectionPage = await response.text();
+    if (!protectionPage.includes('<title>Password Protection</title>')) throw new Error('Unexpected frontend authorization error');
+    return verifyProtectedFrontend(target, other);
+  }
   if (!response.ok) throw new Error(`Frontend HTTP ${response.status}`);
   const html = await response.text();
   const script = html.match(/<script\b[^>]*\bsrc="([^"]+\.js)"/i)?.[1];

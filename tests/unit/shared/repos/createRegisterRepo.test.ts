@@ -78,7 +78,7 @@ describe("createRegisterRepo", () => {
       checkoutUrl: "https://example.com/checkout",
     });
 
-    expect(supabase.functions.invoke).toHaveBeenCalledWith("register-tickets", {
+    expect(supabase.functions.invoke).toHaveBeenCalledWith("orders", {
       body: validPayload,
     });
   });

@@ -1,13 +1,21 @@
 {
   "imports": {
-    "@std/assert": "jsr:@std/assert@^1.0.14"
+    "@std/assert": "jsr:@std/assert@^1.0.14",
+    "zod": "npm:zod@4.3.6",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.75.0",
+    "pdf-lib": "https://esm.sh/pdf-lib@1.17.1",
+    "qrcode": "https://esm.sh/qrcode@1.5.4"
   },
   "compilerOptions": {
     "strict": true,
-    "lib": ["deno.window"]
+    "lib": [
+      "deno.window"
+    ]
   },
   "tasks": {
-    "check:edge": "deno check _shared/app/edge-handler/mod.ts _shared/app/email.ts _shared/app/client-ip.ts _shared/app/internal-edge/mod.ts _shared/app/rate-limit/mod.ts _shared/modules/worker-auth/mod.ts get-invoice-pdf-url/index.ts register-tickets/order-intent-repository.ts send-reminder-mail/config.ts",
-    "test:edge": "deno test --allow-env=CORS_ALLOWED_ORIGINS,APP_ALLOWED_ORIGINS,APP_BASE_URL tests/*.ts"
-  }
+    "check:edge": "deno check **/*.ts ../../shared/schemas/*.ts",
+    "lint:edge": "deno lint . ../../shared/schemas",
+    "test:edge": "deno test --allow-read --allow-env=CORS_ALLOWED_ORIGINS,APP_ALLOWED_ORIGINS,APP_BASE_URL,SUPABASE_URL,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,MOLLIE_API_KEY,FUNCTIONS_URL,APP_ENV,EDGE_SERVICE_TOKEN,CRON_SECRET,EARLY_ADOPTER_ACTIVE,EARLY_ADOPTER_CODE,EARLY_ADOPTER_PERCENT,EARLY_ADOPTER_ALLOWED_PLANS tests/*.ts"
+  },
+  "nodeModulesDir": "none"
 }

@@ -1,6 +1,79 @@
+import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
+async function getMollieOrgId(accessToken: string) {
+      const r = await fetch("https://api.mollie.com/v2/organizations/me", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      const j = await fetchJson(r);
+      if (!j.ok) return {
+        ok: false as const,
+        error: "mollie_org_fetch_failed",
+        reason: j.txt?.slice(0, 160) ?? `http_${j.status}`
+      };
+      const id = j.json?.id ? String(j.json.id) : null;
+      if (!id) return {
+        ok: false as const,
+        error: "mollie_org_missing",
+        reason: "no_org_id"
+      };
+      return {
+        ok: true as const,
+        id
+      };
+    }
+
+async function getMollieProfileId(accessToken: string) {
+      // 1) try /profiles/me
+      const r1 = await fetch("https://api.mollie.com/v2/profiles/me", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      const j1 = await fetchJson(r1);
+      if (j1.ok && j1.json?.id) {
+        return {
+          ok: true as const,
+          id: String(j1.json.id)
+        };
+      }
+      // 2) fallback /profiles (liste)
+      const r2 = await fetch("https://api.mollie.com/v2/profiles", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+      const j2 = await fetchJson(r2);
+      if (!j2.ok) {
+        return {
+          ok: false as const,
+          error: "mollie_profiles_fetch_failed",
+          reason: (j1.txt?.slice(0, 120) ?? "") + " | " + (j2.txt?.slice(0, 160) ?? `http_${j2.status}`)
+        };
+      }
+      const arr = j2.json?._embedded?.profiles ?? [];
+      const picked = arr.find((p)=>String(p?.status ?? "").toLowerCase() === "verified" || String(p?.status ?? "").toLowerCase() === "enabled") ?? arr.find((p)=>Boolean(p?.id)) ?? null;
+      const id = picked?.id ? String(picked.id) : null;
+      if (!id) return {
+        ok: false as const,
+        error: "mollie_profile_missing",
+        reason: "no_profile_in_list"
+      };
+      return {
+        ok: true as const,
+        id
+      };
+    }
+import { z } from "zod";
+const oauthProfileSchema = z.object({ id: z.string().optional(), status: z.string().optional() });
+const oauthResponseSchema = oauthProfileSchema.extend({
+  access_token: z.string().optional(), refresh_token: z.string().optional(),
+  expires_in: z.union([z.number(), z.string()]).optional(), scope: z.string().optional(),
+  _embedded: z.object({ profiles: z.array(oauthProfileSchema).optional() }).optional(),
+});
 import { assertMollieTestMode } from "../_shared/environment-safety.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-function redirect(url) {
+import { createClient } from "@supabase/supabase-js";
+function redirect(url: string) {
   return new Response(null, {
     status: 302,
     headers: {
@@ -10,12 +83,12 @@ function redirect(url) {
     }
   });
 }
-async function fetchJson(res) {
+async function fetchJson(res: Response) {
   const txt = await res.text();
   try {
     return {
       ok: res.ok,
-      json: JSON.parse(txt),
+      json: oauthResponseSchema.parse(JSON.parse(txt)),
       txt,
       status: res.status
     };
@@ -28,24 +101,24 @@ async function fetchJson(res) {
     };
   }
 }
-function withQuery(base, params) {
+function withQuery(base: string, params: Record<string, string>) {
   const u = new URL(base);
   for (const [k, v] of Object.entries(params))u.searchParams.set(k, v);
   return u.toString();
 }
-/* ---------------- 🔐 Encryption helpers (AES-256-GCM, iv.ct) ---------------- */ function ub64(s) {
+/* ---------------- ðŸ” Encryption helpers (AES-256-GCM, iv.ct) ---------------- */ function ub64(s: string) {
   return Uint8Array.from(atob(s), (c)=>c.charCodeAt(0));
 }
-function b64(bytes) {
+function b64(bytes: ArrayBuffer) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)));
 }
 function loadEncConfig() {
   const json = (Deno.env.get("MOLLIE_TOKEN_ENC_KEYS_JSON") ?? "").trim();
   const activeKid = (Deno.env.get("MOLLIE_TOKEN_ENC_KID_ACTIVE") ?? "").trim();
   if (!json || !activeKid) throw new Error("MISSING_ENC_CONFIG");
-  let keys;
+  let keys: Record<string, string>;
   try {
-    keys = JSON.parse(json);
+    keys = z.record(z.string(), z.string()).parse(JSON.parse(json));
   } catch  {
     throw new Error("BAD_ENC_KEYS_JSON");
   }
@@ -55,7 +128,7 @@ function loadEncConfig() {
     activeKid
   };
 }
-async function importAesKey(base64Key) {
+function importAesKey(base64Key: string) {
   const raw = ub64(base64Key);
   if (raw.byteLength !== 32) throw new Error("BAD_KEY_LENGTH");
   return crypto.subtle.importKey("raw", raw, "AES-GCM", false, [
@@ -63,7 +136,7 @@ async function importAesKey(base64Key) {
     "decrypt"
   ]);
 }
-async function encryptToken(plain, key) {
+async function encryptToken(plain: string, key: CryptoKey) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt({
     name: "AES-GCM",
@@ -71,13 +144,13 @@ async function encryptToken(plain, key) {
   }, key, new TextEncoder().encode(plain));
   return `${b64(iv.buffer)}.${b64(ct)}`;
 }
-function toNonEmptyString(v) {
+function toNonEmptyString(v: unknown) {
   const s = typeof v === "string" ? v.trim() : "";
   return s ? s : null;
 }
-Deno.serve(async (req)=>{
+export const handler = createEdgeHandler({name: "mollie-connect-callback", method: "GET", auth: "none"}, async ({req})=>{
   const returnPath = "/admin/structure";
-  // Fallback uniquement (ne doit plus être la source de vérité)
+  // Fallback uniquement (ne doit plus Ãªtre la source de vÃ©ritÃ©)
   const appBaseUrlFallback = (Deno.env.get("APP_BASE_URL") ?? "").trim();
   try {
     const supabaseUrl = (Deno.env.get("SUPABASE_URL") ?? "").trim();
@@ -126,7 +199,7 @@ Deno.serve(async (req)=>{
     const orgId = String(st.org_id);
     const mode = st?.mode === "test" ? "test" : "live";
     assertMollieTestMode(mode);
-    // ✅ source de vérité pour les redirects UI
+    // âœ… source de vÃ©ritÃ© pour les redirects UI
     const returnBaseUrl = toNonEmptyString(st.return_base_url) ?? appBaseUrlFallback;
     if (!returnBaseUrl) {
       // On ne sait nulle part rediriger => hard fail
@@ -173,70 +246,8 @@ Deno.serve(async (req)=>{
       }));
     }
     const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
-    async function getMollieOrgId(accessToken) {
-      const r = await fetch("https://api.mollie.com/v2/organizations/me", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      });
-      const j = await fetchJson(r);
-      if (!j.ok) return {
-        ok: false,
-        error: "mollie_org_fetch_failed",
-        reason: j.txt?.slice(0, 160) ?? `http_${j.status}`
-      };
-      const id = j.json?.id ? String(j.json.id) : null;
-      if (!id) return {
-        ok: false,
-        error: "mollie_org_missing",
-        reason: "no_org_id"
-      };
-      return {
-        ok: true,
-        id
-      };
-    }
-    async function getMollieProfileId(accessToken) {
-      // 1) try /profiles/me
-      const r1 = await fetch("https://api.mollie.com/v2/profiles/me", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      });
-      const j1 = await fetchJson(r1);
-      if (j1.ok && j1.json?.id) {
-        return {
-          ok: true,
-          id: String(j1.json.id)
-        };
-      }
-      // 2) fallback /profiles (liste)
-      const r2 = await fetch("https://api.mollie.com/v2/profiles", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
-        }
-      });
-      const j2 = await fetchJson(r2);
-      if (!j2.ok) {
-        return {
-          ok: false,
-          error: "mollie_profiles_fetch_failed",
-          reason: (j1.txt?.slice(0, 120) ?? "") + " | " + (j2.txt?.slice(0, 160) ?? `http_${j2.status}`)
-        };
-      }
-      const arr = j2.json?._embedded?.profiles ?? [];
-      const picked = arr.find((p)=>String(p?.status ?? "").toLowerCase() === "verified" || String(p?.status ?? "").toLowerCase() === "enabled") ?? arr.find((p)=>Boolean(p?.id)) ?? null;
-      const id = picked?.id ? String(picked.id) : null;
-      if (!id) return {
-        ok: false,
-        error: "mollie_profile_missing",
-        reason: "no_profile_in_list"
-      };
-      return {
-        ok: true,
-        id
-      };
-    }
+
+
     // --- usage ---
     const orgInfo = await getMollieOrgId(accessToken);
     if (!orgInfo.ok) {
@@ -256,7 +267,7 @@ Deno.serve(async (req)=>{
     }
     const mollieOrgId = orgInfo.id;
     const mollieProfileId = profInfo.id;
-    // 4) 🔐 encrypt tokens (EDGE)
+    // 4) ðŸ” encrypt tokens (EDGE)
     let accessTokenEnc;
     let refreshTokenEnc;
     let encKid;
@@ -320,3 +331,5 @@ Deno.serve(async (req)=>{
     }));
   }
 });
+
+if (import.meta.main) Deno.serve(handler);

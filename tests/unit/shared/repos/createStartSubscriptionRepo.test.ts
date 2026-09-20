@@ -6,7 +6,7 @@ function makeSupabaseInvokeMock(response: unknown) {
     functions: {
       invoke: vi.fn().mockResolvedValue(response),
     },
-  } as any;
+  };
 }
 
 function makeEdgeError(code: string) {
@@ -49,7 +49,7 @@ describe("createStartSubscriptionRepo", () => {
       action: "checkout",
     });
 
-    expect(supabase.functions.invoke).toHaveBeenCalledWith("start-subscription", {
+    expect(supabase.functions.invoke).toHaveBeenCalledWith("subscriptions", {
       body: {
         orgId: "11111111-1111-8111-8111-111111111111",
         plan: "starter",

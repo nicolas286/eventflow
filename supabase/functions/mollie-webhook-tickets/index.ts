@@ -1,32 +1,15 @@
+import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
+import { z } from "zod";
 import { assertMollieTestMode } from "../_shared/environment-safety.ts";
-import { postInternalEdgeJson } from "../_shared/app/internal-edge/mod.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-type ConfirmationMailEdgeOptions = {
-  functionsBase: string;
-  edgeServiceToken: string;
-  orderId: string;
-};
+import { sendTicketConfirmation } from "../_shared/services/ticket-confirmation/index.ts";
+import { createConsoleLogger } from "../_shared/modules/logger/mod.ts";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
+type ConfirmationMailEdgeOptions = { admin: SupabaseClient; functionsBase: string; edgeServiceToken: string; orderId: string; };
 async function sendConfirmationMailViaEdge(opts: ConfirmationMailEdgeOptions) {
-  const result = await postInternalEdgeJson<{ ok?: boolean }>({
-    functionsBase: opts.functionsBase,
-    path: "/send-confirmation-mail-tickets",
-    serviceToken: opts.edgeServiceToken,
-    timeoutMs: 10_000,
-    body: {
-      templateId: "order_confirmation_v1",
-      templateData: {
-        orderId: opts.orderId
-      }
-    }
-  });
-  if (!result.ok || !result.data?.ok) {
-    console.error("[webhook] send-confirmation-mail failed", {
-      status: result.status
-    });
-    throw new Error("SEND_FAILED");
-  }
+ await sendTicketConfirmation(opts.admin, createConsoleLogger("order-confirmation"), opts.orderId);
 }
-async function trySendOrderConfirmationEmail(opts) {
+async function trySendOrderConfirmationEmail(opts: ConfirmationMailEdgeOptions) {
   // 1) claim (idempotence)
   const { data: claimRows, error: claimErr } = await opts.admin.rpc("claim_order_confirmation_email", {
     p_order_id: opts.orderId
@@ -38,7 +21,7 @@ async function trySendOrderConfirmationEmail(opts) {
         p_order_id: opts.orderId,
         p_error: "CLAIM_FAILED"
       });
-    } catch  {}
+    } catch { /* Invalid input or best-effort operation: handled by the following fallback. */ }
     return;
   }
   const claim = Array.isArray(claimRows) ? claimRows[0] : claimRows;
@@ -46,6 +29,7 @@ async function trySendOrderConfirmationEmail(opts) {
   // 2) call central template
   try {
     await sendConfirmationMailViaEdge({
+      admin: opts.admin,
       functionsBase: opts.functionsBase,
       edgeServiceToken: opts.edgeServiceToken,
       orderId: opts.orderId
@@ -60,15 +44,15 @@ async function trySendOrderConfirmationEmail(opts) {
         p_order_id: opts.orderId,
         p_error: "SEND_FAILED"
       });
-    } catch  {}
+    } catch { /* Invalid input or best-effort operation: handled by the following fallback. */ }
   }
 }
-function envTrim(name) {
+function envTrim(name: string) {
   const v = Deno.env.get(name);
   const t = typeof v === "string" ? v.trim() : "";
   return t ? t : null;
 }
-function json(data, status = 200) {
+function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
@@ -77,7 +61,7 @@ function json(data, status = 200) {
     }
   });
 }
-async function parseWebhookPaymentId(req) {
+async function parseWebhookPaymentId(req: Request) {
   const raw = await req.text().catch(()=>"");
   if (!raw) return null;
   // try json
@@ -85,36 +69,36 @@ async function parseWebhookPaymentId(req) {
     const j = JSON.parse(raw);
     const id = j?.id;
     return typeof id === "string" ? id : null;
-  } catch  {}
+  } catch { /* Invalid input or best-effort operation: handled by the following fallback. */ }
   // fallback urlencoded
   const params = new URLSearchParams(raw);
   const id = params.get("id");
   return typeof id === "string" ? id : null;
 }
-function toCents(value) {
+function toCents(value: unknown) {
   const n = Number.parseFloat(String(value));
   if (!Number.isFinite(n) || n <= 0) return null;
   return Math.round(n * 100);
 }
-function isExpired(expiresAtIso) {
+function isExpired(expiresAtIso: string | null) {
   if (!expiresAtIso) return true;
   const t = Date.parse(expiresAtIso);
   if (!Number.isFinite(t)) return true;
   return t - Date.now() < 60_000;
 }
-/* ---------------- 🔐 Encryption helpers (AES-256-GCM, iv.ct) ---------------- */ function ub64(s) {
+/* ---------------- 🔐 Encryption helpers (AES-256-GCM, iv.ct) ---------------- */ function ub64(s: string) {
   return Uint8Array.from(atob(s), (c)=>c.charCodeAt(0));
 }
-function b64(bytes) {
+function b64(bytes: ArrayBuffer) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)));
 }
 function loadEncConfig() {
   const json = (Deno.env.get("MOLLIE_TOKEN_ENC_KEYS_JSON") ?? "").trim();
   const activeKid = (Deno.env.get("MOLLIE_TOKEN_ENC_KID_ACTIVE") ?? "").trim();
   if (!json || !activeKid) throw new Error("MISSING_ENC_CONFIG");
-  let keys;
+  let keys: Record<string, string>;
   try {
-    keys = JSON.parse(json);
+    keys = z.record(z.string(), z.string()).parse(JSON.parse(json));
   } catch  {
     throw new Error("BAD_ENC_KEYS_JSON");
   }
@@ -124,7 +108,7 @@ function loadEncConfig() {
     activeKid
   };
 }
-async function importAesKey(base64Key) {
+function importAesKey(base64Key: string) {
   const raw = ub64(base64Key);
   if (raw.byteLength !== 32) throw new Error("BAD_KEY_LENGTH");
   return crypto.subtle.importKey("raw", raw, "AES-GCM", false, [
@@ -132,7 +116,7 @@ async function importAesKey(base64Key) {
     "decrypt"
   ]);
 }
-async function decryptToken(enc, key) {
+async function decryptToken(enc: string, key: CryptoKey) {
   const parts = String(enc ?? "").split(".");
   if (parts.length !== 2) throw new Error("BAD_CIPHERTEXT_FORMAT");
   const iv = ub64(parts[0]);
@@ -143,7 +127,7 @@ async function decryptToken(enc, key) {
   }, key, ct);
   return new TextDecoder().decode(pt);
 }
-async function encryptToken(plain, key) {
+async function encryptToken(plain: string, key: CryptoKey) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt({
     name: "AES-GCM",
@@ -151,12 +135,12 @@ async function encryptToken(plain, key) {
   }, key, new TextEncoder().encode(plain));
   return `${b64(iv.buffer)}.${b64(ct)}`;
 }
-/* ---------------- mollie helpers ---------------- */ async function refreshMollieAccessToken(refreshToken) {
+/* ---------------- mollie helpers ---------------- */ async function refreshMollieAccessToken(refreshToken: string) {
   const clientId = envTrim("MOLLIE_CONNECT_CLIENT_ID");
   const clientSecret = envTrim("MOLLIE_CONNECT_CLIENT_SECRET");
   const redirectUri = envTrim("MOLLIE_CONNECT_REDIRECT_URI");
   if (!clientId || !clientSecret || !redirectUri) return {
-    ok: false,
+    ok: false as const,
     error: "connect_client_missing"
   };
   const res = await fetch("https://api.mollie.com/oauth2/tokens", {
@@ -173,34 +157,35 @@ async function encryptToken(plain, key) {
     }).toString()
   });
   const txt = await res.text().catch(()=>"");
-  let j = null;
+  let j: Record<string, unknown> | null = null;
   try {
-    j = JSON.parse(txt);
-  } catch  {}
+    const parsed: unknown = JSON.parse(txt);
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) j = Object.fromEntries(Object.entries(parsed));
+  } catch { /* Invalid input or best-effort operation: handled by the following fallback. */ }
   if (!res.ok) return {
-    ok: false,
+    ok: false as const,
     error: "refresh_failed",
     details: txt
   };
-  const accessToken = j?.access_token;
-  const newRefresh = j?.refresh_token ?? refreshToken;
+  const accessToken = typeof j?.access_token === "string" ? j.access_token : null;
+  const newRefresh = typeof j?.refresh_token === "string" ? j.refresh_token : refreshToken;
   const expiresIn = Number(j?.expires_in ?? 0);
-  const scope = j?.scope;
+  const scope = typeof j?.scope === "string" ? j.scope : null;
   if (!accessToken || !expiresIn) return {
-    ok: false,
+    ok: false as const,
     error: "refresh_bad_payload",
     details: j
   };
   const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
   return {
-    ok: true,
+    ok: true as const,
     accessToken,
     refreshToken: newRefresh,
     expiresAt,
     scope
   };
 }
-function mapMollieStatusToDb(status) {
+function mapMollieStatusToDb(status: string | null) {
   const s = (status || "").toLowerCase();
   if (s === "paid") return "paid";
   if (s === "failed") return "failed";
@@ -209,7 +194,7 @@ function mapMollieStatusToDb(status) {
   if (s === "pending") return "pending";
   return "pending";
 }
-async function fetchMolliePayment(paymentId, accessToken, isTest) {
+function fetchMolliePayment(paymentId: string, accessToken: string, isTest: boolean) {
   const url = `https://api.mollie.com/v2/payments/${paymentId}${isTest ? "?testmode=true" : ""}`;
   return fetch(url, {
     headers: {
@@ -217,7 +202,7 @@ async function fetchMolliePayment(paymentId, accessToken, isTest) {
     }
   });
 }
-Deno.serve(async (req)=>{
+export const handler = createEdgeHandler({name: "mollie-webhook-tickets", method: "POST", auth: "none", methodNotAllowedResponse: () => json({ok:true},200)}, async ({req})=>{
   // Toujours 200 pour Mollie
   try {
     if (req.method === "OPTIONS") return json({
@@ -416,3 +401,5 @@ Deno.serve(async (req)=>{
     }, 200);
   }
 });
+
+if (import.meta.main) Deno.serve(handler);
