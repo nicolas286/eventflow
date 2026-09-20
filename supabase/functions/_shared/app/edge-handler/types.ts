@@ -25,6 +25,14 @@ export type EdgeHandlerContext<
   & AuthenticatedContext<TAuth>
   & ServiceContext<TServiceClient>;
 
+export type EdgeRateLimitOptions = {
+  scope: string;
+  limit: number;
+  windowSeconds: number;
+  salt?: string;
+  key: "user";
+};
+
 export type EdgeHandlerOptions<
   TAuth extends EdgeAuthMode,
   TServiceClient extends boolean,
@@ -35,6 +43,9 @@ export type EdgeHandlerOptions<
   serviceClient?: TServiceClient;
   requireVerifiedEmail?: boolean;
   requestContextOptions?: RequestSupabaseContextOptions;
+  rateLimit?: TServiceClient extends true
+    ? TAuth extends "required" ? EdgeRateLimitOptions : never
+    : never;
   authenticationRequiredResponse?: (req: Request) => Response;
   emailNotVerifiedResponse?: (req: Request) => Response;
   methodNotAllowedResponse?: (req: Request) => Response;

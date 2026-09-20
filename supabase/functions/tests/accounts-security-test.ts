@@ -11,6 +11,7 @@ async function runDeniedRequest(withSession: boolean) {
     SUPABASE_SERVICE_ROLE_KEY: "synthetic-service-key",
     APP_ENV: "staging",
     MOLLIE_API_KEY: "test_synthetic",
+    RATE_LIMIT_SALT: "test-rate-limit-salt",
   };
   const previous = new Map(
     Object.keys(env).map((key) => [key, Deno.env.get(key)]),
@@ -22,16 +23,25 @@ async function runDeniedRequest(withSession: boolean) {
     const req = new Request(input, init);
     const url = new URL(req.url);
     requests.push(url);
-    assertEquals(
-      req.method,
-      "GET",
-      "A denied account deletion must make no mutation",
-    );
     if (url.pathname === "/auth/v1/user") {
+      assertEquals(req.method, "GET");
       return Promise.resolve(
         Response.json({ id: userId, email: "synthetic@example.test" }),
       );
     }
+    if (url.pathname === "/rest/v1/rpc/consume_rate_limit") {
+      assertEquals(req.method, "POST");
+      return Promise.resolve(Response.json([{
+        allowed: true,
+        request_count: 1,
+        retry_after_seconds: 0,
+      }]));
+    }
+    assertEquals(
+      req.method,
+      "GET",
+      "A denied account deletion must not mutate account data",
+    );
     assertEquals(
       url.pathname,
       "/rest/v1/organization_members",
@@ -66,7 +76,7 @@ Deno.test("account deletion denies another organization before provider or datab
   const { response, requests } = await runDeniedRequest(true);
   assertEquals(response.status, 403);
   assertEquals(await response.json(), { error: "FORBIDDEN" });
-  assertEquals(requests.length, 2);
+  assertEquals(requests.length, 3);
 });
 
 Deno.test("account deletion requires a session before looking up an organization", async () => {

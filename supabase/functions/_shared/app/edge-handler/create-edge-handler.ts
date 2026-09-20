@@ -6,6 +6,7 @@ import { createEdgeLogger, serializeError } from "../../modules/logger/mod.ts";
 import { createServiceClient } from "../../modules/supabase-runtime/mod.ts";
 import { handleCorsAndMethod, json } from "../http.ts";
 import { createRequestSupabaseContext } from "../request-context.ts";
+import { consumeRequestRateLimit } from "../rate-limit/mod.ts";
 import type {
   EdgeAuthMode,
   EdgeHandler,
@@ -60,14 +61,30 @@ export function createEdgeHandler<
           json(req, { error: "EMAIL_NOT_VERIFIED" }, 403);
       }
 
+      const serviceClient = options.serviceClient
+        ? createServiceClient(requestContext.runtime)
+        : null;
+      if (options.rateLimit && serviceClient) {
+        if (!user) throw new Error("User rate limit requires authentication");
+        const rateLimit = await consumeRequestRateLimit({
+          req,
+          supabase: serviceClient,
+          logger,
+          key: `user:${user.id}`,
+          scope: options.rateLimit.scope,
+          limit: options.rateLimit.limit,
+          windowSeconds: options.rateLimit.windowSeconds,
+          salt: options.rateLimit.salt,
+        });
+        if (!rateLimit.allowed) return rateLimit.response;
+      }
+
       const context = {
         req,
         logger,
         supabase: requestContext.supabase,
         user,
-        ...(options.serviceClient
-          ? { serviceClient: createServiceClient(requestContext.runtime) }
-          : {}),
+        ...(options.serviceClient ? { serviceClient } : {}),
       } as EdgeHandlerContext<TAuth, TServiceClient>;
 
       return await handler(context);

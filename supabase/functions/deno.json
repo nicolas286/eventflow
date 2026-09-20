@@ -8,7 +8,7 @@
     "tasks":  {
                   "check:edge":  "deno check **/*.ts ../../shared/schemas/*.ts",
                   "lint:edge":  "deno lint . ../../shared/schemas",
-                  "test:edge":  "deno test --allow-read --allow-env=CORS_ALLOWED_ORIGINS,APP_ALLOWED_ORIGINS,APP_BASE_URL,SUPABASE_URL,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,MOLLIE_API_KEY,FUNCTIONS_URL,APP_ENV,EDGE_SERVICE_TOKEN,CRON_SECRET,EARLY_ADOPTER_ACTIVE,EARLY_ADOPTER_CODE,EARLY_ADOPTER_PERCENT,EARLY_ADOPTER_ALLOWED_PLANS tests/*.ts"
+                  "test:edge":  "deno test --allow-read --allow-env=CORS_ALLOWED_ORIGINS,APP_ALLOWED_ORIGINS,APP_BASE_URL,SUPABASE_URL,SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,MOLLIE_API_KEY,FUNCTIONS_URL,APP_ENV,EDGE_SERVICE_TOKEN,CRON_SECRET,RATE_LIMIT_SALT,EARLY_ADOPTER_ACTIVE,EARLY_ADOPTER_CODE,EARLY_ADOPTER_PERCENT,EARLY_ADOPTER_ALLOWED_PLANS tests/*.ts"
               },
     "nodeModulesDir":  "none",
     "importMap":  "./import_map.json"

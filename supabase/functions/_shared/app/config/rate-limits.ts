@@ -9,3 +9,11 @@ export const registerTicketsRateLimits = {
     windowSeconds: 600,
   },
 } as const;
+
+export const accountRateLimits = {
+  deletion: {
+    scope: "accounts:delete:1h",
+    limit: 5,
+    windowSeconds: 3_600,
+  },
+} as const;

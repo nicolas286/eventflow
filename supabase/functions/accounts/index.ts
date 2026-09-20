@@ -1,4 +1,5 @@
 import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
+import { accountRateLimits } from "../_shared/app/config/rate-limits.ts";
 import { json } from "../_shared/app/http.ts";
 import {
   BodyTooLargeError,
@@ -15,6 +16,10 @@ export const handler = createEdgeHandler(
     method: "DELETE",
     auth: "required",
     serviceClient: true,
+    rateLimit: {
+      ...accountRateLimits.deletion,
+      key: "user",
+    },
     authenticationRequiredResponse: (req) =>
       json(
         req,
