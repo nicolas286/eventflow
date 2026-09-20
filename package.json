@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest run && node --test tests/deployment/*.checks.mjs",
+    "test:integration:accounts": "node tests/integration/accounts-delete.staging.mjs",
     "check:target": "node scripts/deployment/check-target.mjs",
     "lint": "eslint .",
     "preview": "vite preview",

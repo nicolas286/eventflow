@@ -27,9 +27,22 @@ jobs:
       VITE_TURNSTILE_SITEKEY: ${{ vars.VITE_TURNSTILE_SITEKEY }}
     steps:
       - uses: actions/checkout@v4
+      - name: Select account API integration tests
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            accounts:
+              - 'supabase/functions/accounts/**'
+              - 'supabase/functions/_shared/app/edge-handler/**'
+              - 'supabase/functions/_shared/app/http.ts'
+              - 'shared/schemas/accounts.ts'
+              - 'supabase/functions/tests/accounts-mollie-test.ts'
+              - 'supabase/functions/tests/accounts-security-test.ts'
+              - 'tests/integration/accounts-delete.staging.mjs'
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.19.0'
+          node-version: "24.19.0"
           cache: npm
       - uses: denoland/setup-deno@v2
         with:
@@ -78,6 +91,13 @@ jobs:
           supabase db query --linked --file .local/runtime-config.sql
       - name: Deploy functions
         run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF" --use-api
+      - name: Test account deletion on staging
+        if: inputs.target == 'staging' && steps.changes.outputs.accounts == 'true'
+        env:
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run test:integration:accounts
       - name: Verify backend availability
         run: node scripts/deployment/check-backend.mjs
       - name: Synchronize Netlify build and function variables for this site

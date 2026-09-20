@@ -39,12 +39,14 @@ Les contrôles CI utilisent Deno `2.9.6` pour tous les modules backend et contra
 
 Les environnements GitHub `staging` et `production` limitent l'accès aux secrets à leur branche respective. Ils contiennent :
 
-- Secrets : `SUPABASE_ACCESS_TOKEN`, `NETLIFY_AUTH_TOKEN`, `VITE_SUPABASE_ANON_KEY` (clé publique).
+- Secrets : `SUPABASE_ACCESS_TOKEN`, `NETLIFY_AUTH_TOKEN`, `VITE_SUPABASE_ANON_KEY` (clé publique). L'environnement `staging` contient aussi `SUPABASE_SERVICE_ROLE_KEY`, limitée au test d'intégration de suppression de compte.
 - Variables : `SUPABASE_PROJECT_REF`, `NETLIFY_SITE_ID`, `VITE_SUPABASE_URL`, `PUBLIC_BASE_URL`, `VITE_TURNSTILE_SITEKEY`.
 
 Le CLI Supabase utilise son jeton d'accès et un rôle de connexion temporaire ; le pipeline ne réinitialise pas le mot de passe de production. Les secrets serveur Mollie, messagerie et Billit restent dans chaque projet Supabase. Ils ne sont pas publiés dans le front ni synchronisés automatiquement entre projets.
 
 Les variables de dépôt `STAGING_DEPLOY_ENABLED` et `PRODUCTION_DEPLOY_ENABLED` contrôlent les workflows. La propriété `deploymentEnabled` du manifeste est un second contrôle. Un déploiement demande les deux contrôles actifs. L'activation production ne publie rien à elle seule : un push dans `main`, normalement issu d'une PR approuvée, déclenche la publication.
+
+Après le déploiement des fonctions staging, le test d'intégration `accounts` s'exécute uniquement si son API, son transport partagé, son contrat ou ses tests ont changé. Il crée des données synthétiques, vérifie la suppression du compte et nettoie l'organisation restante même en cas d'échec.
 
 Les deux interrupteurs sont actifs depuis la validation staging du 15 septembre 2026. La [PR initiale #181](https://github.com/nicolas286/eventflow/pull/181) a été fusionnée et son déploiement production a réussi. Le correctif Mollie de la [PR #182](https://github.com/nicolas286/eventflow/pull/182) a ensuite suivi le même circuit avec succès.
 
