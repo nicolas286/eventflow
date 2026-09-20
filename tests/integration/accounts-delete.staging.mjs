@@ -13,7 +13,10 @@ const expectedUrl = `https://${targets.staging.supabaseProjectRef}.supabase.co`;
 
 assert.equal(supabaseUrl, expectedUrl, "Integration test requires staging");
 assert.ok(anonKey, "SUPABASE_ANON_KEY is required");
-assert.ok(serviceRoleKey, "SUPABASE_SERVICE_ROLE_KEY is required");
+assert.ok(
+  serviceRoleKey,
+  "SUPABASE_SERVICE_ROLE_KEY is required in the GitHub staging environment",
+);
 
 const runId = `${Date.now()}-${randomUUID()}`;
 const email = `accounts-delete-${runId}@eventflow.example`;
