@@ -85,6 +85,11 @@ Deno.serve(async (req)=>{
       }
     });
   }
+  return json(req, {
+    error: "MOLLIE_HISTORY_READ_ONLY"
+  }, 410);
+
+  /* Legacy implementation intentionally retained below for historical audit. */
   try {
     if (req.method !== "POST") {
       return json(req, {

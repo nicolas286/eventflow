@@ -449,3 +449,14 @@ verify_jwt = false
 # Matches production inventory of 2026-09-15; handler enforces its own authentication.
 [functions.payment-first]
 verify_jwt = false
+
+# Stripe authenticated handlers validate the bearer token themselves; webhook
+# handlers validate Stripe signatures against the raw request body.
+[functions.stripe-connect-start]
+verify_jwt = false
+
+[functions.stripe-connect-status]
+verify_jwt = false
+
+[functions.stripe-webhook-connect]
+verify_jwt = false

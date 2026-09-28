@@ -12,8 +12,6 @@ export const deleteAccountResultSchema = z.object({
   orgId: z.string().uuid(),
   userId: z.string().uuid(),
 
-  mollieAction: z.enum(["skipped", "already_canceled", "canceled"]).optional(),
-
   previous: z
     .object({
       status: z.any().nullable().optional(),

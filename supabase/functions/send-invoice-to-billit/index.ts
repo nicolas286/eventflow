@@ -1,43 +1,17 @@
 import { assertBillitEnabled } from "../_shared/environment-safety.ts";
-import {
-  json,
-} from "../_shared/http.ts";
+import { json } from "../_shared/http.ts";
 
-import {
-  createEdgeHandler,
-} from "../_shared/edge-handler.ts";
+import { createEdgeHandler } from "../_shared/edge-handler.ts";
 
-import {
-  createAdminClient,
-} from "../_shared/supabase.ts";
-
+import { createAdminClient } from "../_shared/supabase.ts";
 
 type Logger = {
-  info: (
-    event: string,
-    metadata?: Record<
-      string,
-      unknown
-    >,
-  ) => void;
+  info: (event: string, metadata?: Record<string, unknown>) => void;
 
-  warn: (
-    event: string,
-    metadata?: Record<
-      string,
-      unknown
-    >,
-  ) => void;
+  warn: (event: string, metadata?: Record<string, unknown>) => void;
 
-  error: (
-    event: string,
-    metadata?: Record<
-      string,
-      unknown
-    >,
-  ) => void;
+  error: (event: string, metadata?: Record<string, unknown>) => void;
 };
-
 
 type SellerConfig = {
   name: string;
@@ -55,392 +29,146 @@ type SellerConfig = {
   postalCode: string;
 };
 
+function getBearer(req: Request): string | null {
+  const authorization = req.headers.get("authorization") ?? "";
 
-function getBearer(
-  req: Request,
-): string | null {
-  const authorization =
-    req.headers.get(
-      "authorization",
-    ) ?? "";
-
-  const match =
-    authorization.match(
-      /^Bearer\s+(.+)$/i,
-    );
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
 
   return match?.[1] ?? null;
 }
 
+function assertInternalRequest(req: Request, secretKey: string): void {
+  const apiKey = req.headers.get("apikey")?.trim() ?? "";
 
-function assertInternalRequest(
-  req: Request,
-  secretKey: string,
-): void {
-  const apiKey =
-    req.headers
-      .get("apikey")
-      ?.trim() ??
-    "";
-
-  if (
-    !apiKey ||
-    apiKey !== secretKey
-  ) {
-    throw new Error(
-      "FORBIDDEN",
-    );
+  if (!apiKey || apiKey !== secretKey) {
+    throw new Error("FORBIDDEN");
   }
 }
 
-
-function escapeXml(
-  value: unknown,
-): string {
-  if (
-    value === null ||
-    value === undefined
-  ) {
+function escapeXml(value: unknown): string {
+  if (value === null || value === undefined) {
     return "";
   }
 
-  return String(
-    value,
-  )
-    .replace(
-      /&/g,
-      "&amp;",
-    )
-    .replace(
-      /</g,
-      "&lt;",
-    )
-    .replace(
-      />/g,
-      "&gt;",
-    )
-    .replace(
-      /"/g,
-      "&quot;",
-    )
-    .replace(
-      /'/g,
-      "&apos;",
-    );
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
-
-function money(
-  cents: number,
-): string {
-  return (
-    cents /
-    100
-  ).toFixed(
-    2,
-  );
+function money(cents: number): string {
+  return (cents / 100).toFixed(2);
 }
 
-
-function isoDate(
-  value:
-    | string
-    | Date
-    | null
-    | undefined,
-): string {
-  if (
-    !value
-  ) {
-    return new Date()
-      .toISOString()
-      .slice(
-        0,
-        10,
-      );
+function isoDate(value: string | Date | null | undefined): string {
+  if (!value) {
+    return new Date().toISOString().slice(0, 10);
   }
 
-  const date =
-    typeof value ===
-        "string"
-      ? new Date(
-        value,
-      )
-      : value;
+  const date = typeof value === "string" ? new Date(value) : value;
 
-  return date
-    .toISOString()
-    .slice(
-      0,
-      10,
-    );
+  return date.toISOString().slice(0, 10);
 }
 
+function safeStr(value: unknown, max = 500): string {
+  const stringValue = String(value ?? "");
 
-function safeStr(
-  value: unknown,
-  max = 500,
-): string {
-  const stringValue =
-    String(
-      value ??
-      "",
-    );
-
-  if (
-    stringValue.length <=
-    max
-  ) {
+  if (stringValue.length <= max) {
     return stringValue;
   }
 
-  return stringValue.slice(
-    0,
-    max,
-  );
+  return stringValue.slice(0, max);
 }
 
+function clean(value: unknown, fallback = ""): string {
+  const stringValue = String(value ?? "").trim();
 
-function clean(
-  value: unknown,
-  fallback = "",
-): string {
-  const stringValue =
-    String(
-      value ??
-      "",
-    ).trim();
-
-  return (
-    stringValue ||
-    fallback
-  );
+  return stringValue || fallback;
 }
 
+function formatVatPercent(value: unknown): string {
+  const rate = Number(value ?? 0);
 
-function formatVatPercent(
-  value: unknown,
-): string {
-  const rate =
-    Number(
-      value ??
-      0,
-    );
-
-  if (
-    !Number.isFinite(
-      rate,
-    )
-  ) {
+  if (!Number.isFinite(rate)) {
     return "0";
   }
 
-  return rate
-    .toFixed(
-      2,
-    )
-    .replace(
-      /\.00$/,
-      "",
-    );
+  return rate.toFixed(2).replace(/\.00$/, "");
 }
 
+function hasBuyerPeppolData(billing: Record<string, unknown>): boolean {
+  const legalName = clean(billing.legalName);
 
-function hasBuyerPeppolData(
-  billing:
-    Record<
-      string,
-      unknown
-    >,
-): boolean {
-  const legalName =
-    clean(
-      billing.legalName,
-    );
+  const countryCode = clean(billing.countryCode);
 
-  const countryCode =
-    clean(
-      billing.countryCode,
-    );
+  const vatCountryCode = clean(billing.vatCountryCode);
 
-  const vatCountryCode =
-    clean(
-      billing.vatCountryCode,
-    );
+  const vatNumber = clean(billing.vatNumber);
 
-  const vatNumber =
-    clean(
-      billing.vatNumber,
-    );
-
-  return Boolean(
-    legalName &&
-    countryCode &&
-    vatCountryCode &&
-    vatNumber
-  );
+  return Boolean(legalName && countryCode && vatCountryCode && vatNumber);
 }
 
+function normalizeVatNumber(countryCode: string, vatNumber: string): string {
+  const normalizedCountry = countryCode.replace(/\s+/g, "").toUpperCase();
 
-function normalizeVatNumber(
-  countryCode: string,
-  vatNumber: string,
-): string {
-  const normalizedCountry =
-    countryCode
-      .replace(
-        /\s+/g,
-        "",
-      )
-      .toUpperCase();
+  const normalizedNumber = vatNumber
+    .replace(/\s+/g, "")
+    .replace(new RegExp(`^${normalizedCountry}`, "i"), "");
 
-  const normalizedNumber =
-    vatNumber
-      .replace(
-        /\s+/g,
-        "",
-      )
-      .replace(
-        new RegExp(
-          `^${normalizedCountry}`,
-          "i",
-        ),
-        "",
-      );
-
-  if (
-    !normalizedCountry ||
-    !normalizedNumber
-  ) {
+  if (!normalizedCountry || !normalizedNumber) {
     return "";
   }
 
   return `${normalizedCountry}${normalizedNumber}`;
 }
 
-
-function normalizeEndpointId(
-  value: string,
-): string {
-  return value
-    .replace(
-      /^0208:/,
-      "",
-    )
-    .replace(
-      /\s+/g,
-      "",
-    );
+function normalizeEndpointId(value: string): string {
+  return value.replace(/^0208:/, "").replace(/\s+/g, "");
 }
 
-
 function buildUblInvoice(
-  invoice: Record<
-    string,
-    unknown
-  >,
+  invoice: Record<string, unknown>,
   seller: SellerConfig,
 ): string {
-  const snapshot =
-    invoice.billing_snapshot as {
-      billing?: Record<
-        string,
-        unknown
-      >;
-    } | null;
+  const snapshot = invoice.billing_snapshot as {
+    billing?: Record<string, unknown>;
+  } | null;
 
-  const billing =
-    snapshot?.billing ??
-    {};
+  const billing = snapshot?.billing ?? {};
 
-  const sellerVat =
-    clean(
-      seller.vat,
-    );
+  const sellerVat = clean(seller.vat);
 
-  const sellerEndpointId =
-    normalizeEndpointId(
-      clean(
-        seller.endpointId,
-      ),
-    );
+  const sellerEndpointId = normalizeEndpointId(clean(seller.endpointId));
 
-  const buyerName =
-    clean(
-      billing.legalName,
-    );
+  const buyerName = clean(billing.legalName);
 
-  const buyerCountry =
-    clean(
-      billing.countryCode,
-    );
+  const buyerCountry = clean(billing.countryCode);
 
-  const buyerStreet =
-    clean(
-      billing.addressLine1,
-    );
+  const buyerStreet = clean(billing.addressLine1);
 
-  const buyerStreet2 =
-    clean(
-      billing.addressLine2,
-    );
+  const buyerStreet2 = clean(billing.addressLine2);
 
-  const buyerCity =
-    clean(
-      billing.city,
-    );
+  const buyerCity = clean(billing.city);
 
-  const buyerPostalCode =
-    clean(
-      billing.postalCode,
-    );
+  const buyerPostalCode = clean(billing.postalCode);
 
-  const buyerVatCountry =
-    clean(
-      billing.vatCountryCode,
-    );
+  const buyerVatCountry = clean(billing.vatCountryCode);
 
-  const buyerVatNumber =
-    clean(
-      billing.vatNumber,
-    );
+  const buyerVatNumber = clean(billing.vatNumber);
 
-  const buyerVat =
-    normalizeVatNumber(
-      buyerVatCountry,
-      buyerVatNumber,
-    );
+  const buyerVat = normalizeVatNumber(buyerVatCountry, buyerVatNumber);
 
-  const buyerEndpointId =
-    buyerVat
-      ? normalizeEndpointId(
-        buyerVat,
-      )
-      : "";
+  const buyerEndpointId = buyerVat ? normalizeEndpointId(buyerVat) : "";
 
-  const currency =
-    clean(
-      invoice.currency,
-      "EUR",
-    );
+  const currency = clean(invoice.currency, "EUR");
 
-  const subtotalCents =
-    Number(
-      invoice.subtotal_cents ??
-      0,
-    );
+  const subtotalCents = Number(invoice.subtotal_cents ?? 0);
 
-  const vatCents =
-    Number(
-      invoice.vat_cents ??
-      0,
-    );
+  const vatCents = Number(invoice.vat_cents ?? 0);
 
-  const totalCents =
-    Number(
-      invoice.total_cents ??
-      0,
-    );
+  const totalCents = Number(invoice.total_cents ?? 0);
 
   /*
    * Ne pas recalculer le taux avec vat/subtotal.
@@ -448,44 +176,22 @@ function buildUblInvoice(
    * Les montants sont arrondis au centime, ce qui pourrait
    * produire un faux taux comme 21,04 %.
    */
-  const vatPercent =
-    formatVatPercent(
-      invoice.vat_rate,
-    );
+  const vatPercent = formatVatPercent(invoice.vat_rate);
 
-  const subtotal =
-    money(
-      subtotalCents,
-    );
+  const subtotal = money(subtotalCents);
 
-  const vat =
-    money(
-      vatCents,
-    );
+  const vat = money(vatCents);
 
-  const total =
-    money(
-      totalCents,
-    );
+  const total = money(totalCents);
 
-  const issueDate =
-    isoDate(
-      invoice.issued_at as
-        | string
-        | null
-        | undefined,
-    );
+  const issueDate = isoDate(invoice.issued_at as string | null | undefined);
 
-  const dueDate =
-    isoDate(
-      (
-        invoice.paid_at ??
-        invoice.issued_at
-      ) as
-        | string
-        | null
-        | undefined,
-    );
+  const dueDate = isoDate(
+    (invoice.due_at ?? invoice.paid_at ?? invoice.issued_at) as
+      | string
+      | null
+      | undefined,
+  );
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Invoice
@@ -546,9 +252,11 @@ function buildUblInvoice(
 
       <cac:PostalAddress>
         <cbc:StreetName>${escapeXml(buyerStreet)}</cbc:StreetName>
-        ${buyerStreet2
-          ? `<cbc:AdditionalStreetName>${escapeXml(buyerStreet2)}</cbc:AdditionalStreetName>`
-          : ""}
+        ${
+          buyerStreet2
+            ? `<cbc:AdditionalStreetName>${escapeXml(buyerStreet2)}</cbc:AdditionalStreetName>`
+            : ""
+        }
         <cbc:CityName>${escapeXml(buyerCity)}</cbc:CityName>
         <cbc:PostalZone>${escapeXml(buyerPostalCode)}</cbc:PostalZone>
 
@@ -571,6 +279,19 @@ function buildUblInvoice(
       </cac:PartyLegalEntity>
     </cac:Party>
   </cac:AccountingCustomerParty>
+
+  <cac:PaymentMeans>
+    <cbc:PaymentMeansCode name="Credit transfer">30</cbc:PaymentMeansCode>
+    <cbc:PaymentID>${escapeXml(invoice.payment_reference ?? `E-${invoice.number}`)}</cbc:PaymentID>
+    <cac:PayeeFinancialAccount>
+      <cbc:ID>BE51732081025262</cbc:ID>
+      <cbc:Name>Eventflow - Nicolas Manns</cbc:Name>
+    </cac:PayeeFinancialAccount>
+  </cac:PaymentMeans>
+
+  <cac:PaymentTerms>
+    <cbc:Note>Paiement par virement dans les 14 jours.</cbc:Note>
+  </cac:PaymentTerms>
 
   <cac:TaxTotal>
     <cbc:TaxAmount currencyID="${escapeXml(currency)}">${vat}</cbc:TaxAmount>
@@ -623,11 +344,8 @@ function buildUblInvoice(
 </Invoice>`;
 }
 
-
 async function updatePeppolStatus(
-  admin: ReturnType<
-    typeof createAdminClient
-  >,
+  admin: ReturnType<typeof createAdminClient>,
 
   invoiceId: string,
 
@@ -641,323 +359,161 @@ async function updatePeppolStatus(
 
   logger: Logger,
 ): Promise<void> {
-  const {
-    error,
-  } =
-    await admin.rpc(
-      "rpc_update_invoice_peppol_status",
-      {
-        p_input: {
-          invoice_id:
-            invoiceId,
+  const { error } = await admin.rpc("rpc_update_invoice_peppol_status", {
+    p_input: {
+      invoice_id: invoiceId,
 
-          status:
-            input.status,
+      status: input.status,
 
-          provider_message_id:
-            input.providerMessageId ??
-            null,
+      provider_message_id: input.providerMessageId ?? null,
 
-          error_message:
-            input.errorMessage ??
-            null,
-        },
-      },
-    );
+      error_message: input.errorMessage ?? null,
+    },
+  });
 
-  if (
-    error
-  ) {
-    logger.error(
-      "peppol_status_update_failed",
-      {
-        invoiceId,
-
-        status:
-          input.status,
-
-        message:
-          error.message,
-      },
-    );
-
-    throw new Error(
-      "PEPPOL_STATUS_UPDATE_FAILED",
-    );
-  }
-
-  logger.info(
-    "peppol_status_updated",
-    {
+  if (error) {
+    logger.error("peppol_status_update_failed", {
       invoiceId,
 
-      status:
-        input.status,
-    },
-  );
-}
+      status: input.status,
 
+      message: error.message,
+    });
+
+    throw new Error("PEPPOL_STATUS_UPDATE_FAILED");
+  }
+
+  logger.info("peppol_status_updated", {
+    invoiceId,
+
+    status: input.status,
+  });
+}
 
 Deno.serve(
   createEdgeHandler(
     "send-invoice-to-billit",
 
-    async (
-      req,
-      {
-        logger,
-      },
-    ) => {
-      const supabaseUrl =
-        Deno.env.get(
-          "SUPABASE_URL",
-        );
+    async (req, { logger }) => {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
 
-      const serviceRoleKey =
-        Deno.env.get(
-          "SUPABASE_SERVICE_ROLE_KEY",
-        );
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-      if (
-        !supabaseUrl ||
-        !serviceRoleKey
-      ) {
-        logger.error(
-          "runtime_config_missing",
-          {
-            hasSupabaseUrl:
-              Boolean(
-                supabaseUrl,
-              ),
+      if (!supabaseUrl || !serviceRoleKey) {
+        logger.error("runtime_config_missing", {
+          hasSupabaseUrl: Boolean(supabaseUrl),
 
-            hasServiceRoleKey:
-              Boolean(
-                serviceRoleKey,
-              ),
-          },
-        );
+          hasServiceRoleKey: Boolean(serviceRoleKey),
+        });
 
         return json(
           {
-            ok:
-              false,
+            ok: false,
 
-            error:
-              "SERVER_MISCONFIGURED",
+            error: "SERVER_MISCONFIGURED",
           },
           500,
         );
       }
 
-
-
-try {
-  assertInternalRequest(
-    req,
-    serviceRoleKey,
-  );
-} catch {
-  logger.warn(
-    "internal_auth_rejected",
-    {},
-  );
-
-  return json(
-    {
-      ok:
-        false,
-
-      error:
-        "FORBIDDEN",
-    },
-    403,
-  );
-}
-
-      const body =
-        await req
-          .json()
-          .catch(
-            () =>
-              ({}),
-          );
-
-      const invoiceId =
-        String(
-          body?.invoice_id ??
-          "",
-        ).trim();
-
-      const debug =
-        Boolean(
-          body?.debug ??
-          false,
-        );
-
-      const dryRun =
-        Boolean(
-          body?.dryRun ??
-          false,
-        );
-
-      logger.info(
-        "payload_parsed",
-        {
-          invoiceId:
-            invoiceId ||
-            null,
-
-          debug,
-
-          dryRun,
-        },
-      );
-
-      if (
-        !invoiceId
-      ) {
-        logger.warn(
-          "invoice_id_missing",
-          {},
-        );
+      try {
+        assertInternalRequest(req, serviceRoleKey);
+      } catch {
+        logger.warn("internal_auth_rejected", {});
 
         return json(
           {
-            ok:
-              false,
+            ok: false,
 
-            error:
-              "invoice_id_required",
+            error: "FORBIDDEN",
+          },
+          403,
+        );
+      }
+
+      const body = await req.json().catch(() => ({}));
+
+      const invoiceId = String(body?.invoice_id ?? "").trim();
+
+      const debug = Boolean(body?.debug ?? false);
+
+      const dryRun = Boolean(body?.dryRun ?? false);
+
+      logger.info("payload_parsed", {
+        invoiceId: invoiceId || null,
+
+        debug,
+
+        dryRun,
+      });
+
+      if (!invoiceId) {
+        logger.warn("invoice_id_missing", {});
+
+        return json(
+          {
+            ok: false,
+
+            error: "invoice_id_required",
           },
           400,
         );
       }
 
-      const admin =
-        createAdminClient(
-          {
-            supabaseUrl,
+      const admin = createAdminClient({
+        supabaseUrl,
 
-            serviceKey:
-              serviceRoleKey,
-          },
-        );
+        serviceKey: serviceRoleKey,
+      });
 
       assertBillitEnabled();
-      const billitApiKey =
-        Deno.env.get(
-          "BILLIT_API_KEY",
-        );
+      const billitApiKey = Deno.env.get("BILLIT_API_KEY");
 
-      const billitPartyId =
-        Deno.env.get(
-          "BILLIT_PARTY_ID",
-        );
+      const billitPartyId = Deno.env.get("BILLIT_PARTY_ID");
 
       const billitBaseUrl =
-        Deno.env.get(
-          "BILLIT_BASE_URL",
-        ) ??
-        "https://api.billit.be";
+        Deno.env.get("BILLIT_BASE_URL") ?? "https://api.billit.be";
 
-      const billitEndpoint =
-        `${billitBaseUrl}/v1/peppol/sendxml`;
+      const billitEndpoint = `${billitBaseUrl}/v1/peppol/sendxml`;
 
       const seller: SellerConfig = {
-        name:
-          clean(
-            Deno.env.get(
-              "BILLIT_SELLER_NAME",
-            ),
-            "Eventflow",
-          ),
+        name: clean(Deno.env.get("BILLIT_SELLER_NAME"), "Eventflow"),
 
-        vat:
-          clean(
-            Deno.env.get(
-              "BILLIT_SELLER_VAT",
-            ),
-          ),
+        vat: clean(Deno.env.get("BILLIT_SELLER_VAT")),
 
-        country:
-          clean(
-            Deno.env.get(
-              "BILLIT_SELLER_COUNTRY",
-            ),
-            "BE",
-          ),
+        country: clean(Deno.env.get("BILLIT_SELLER_COUNTRY"), "BE"),
 
-        endpointId:
-          clean(
-            Deno.env.get(
-              "BILLIT_SELLER_ENDPOINT_ID",
-            ),
-          ),
+        endpointId: clean(Deno.env.get("BILLIT_SELLER_ENDPOINT_ID")),
 
-        street:
-          clean(
-            Deno.env.get(
-              "BILLIT_SELLER_STREET",
-            ),
-          ),
+        street: clean(Deno.env.get("BILLIT_SELLER_STREET")),
 
-        city:
-          clean(
-            Deno.env.get(
-              "BILLIT_SELLER_CITY",
-            ),
-          ),
+        city: clean(Deno.env.get("BILLIT_SELLER_CITY")),
 
-        postalCode:
-          clean(
-            Deno.env.get(
-              "BILLIT_SELLER_POSTAL_CODE",
-            ),
-          ),
+        postalCode: clean(Deno.env.get("BILLIT_SELLER_POSTAL_CODE")),
       };
 
-      logger.info(
-        "runtime_config_resolved",
-        {
-          invoiceId,
+      logger.info("runtime_config_resolved", {
+        invoiceId,
 
-          billitBaseUrl,
+        billitBaseUrl,
 
-          hasBillitApiKey:
-            Boolean(
-              billitApiKey,
-            ),
+        hasBillitApiKey: Boolean(billitApiKey),
 
-          hasBillitPartyId:
-            Boolean(
-              billitPartyId,
-            ),
+        hasBillitPartyId: Boolean(billitPartyId),
 
-          hasSellerVat:
-            Boolean(
-              seller.vat,
-            ),
+        hasSellerVat: Boolean(seller.vat),
 
-          hasSellerEndpointId:
-            Boolean(
-              seller.endpointId,
-            ),
-        },
-      );
+        hasSellerEndpointId: Boolean(seller.endpointId),
+      });
 
       const {
-        data:
-          invoice,
+        data: invoice,
 
-        error:
-          invoiceError,
-      } =
-        await admin
-          .from(
-            "invoices",
-          )
-          .select(
-            `
+        error: invoiceError,
+      } = await admin
+        .from("invoices")
+        .select(
+          `
               id,
               number,
               currency,
@@ -967,344 +523,216 @@ try {
               vat_rate,
               issued_at,
               paid_at,
+              due_at,
+              payment_reference,
               billing_snapshot,
               pdf_path
             `,
-          )
-          .eq(
-            "id",
-            invoiceId,
-          )
-          .maybeSingle();
+        )
+        .eq("id", invoiceId)
+        .maybeSingle();
 
-      if (
-        invoiceError
-      ) {
-        logger.error(
-          "invoice_load_failed",
-          {
-            invoiceId,
+      if (invoiceError) {
+        logger.error("invoice_load_failed", {
+          invoiceId,
 
-            message:
-              invoiceError.message,
+          message: invoiceError.message,
 
-            code:
-              invoiceError.code ??
-              null,
-          },
-        );
+          code: invoiceError.code ?? null,
+        });
 
         return json(
           {
-            ok:
-              false,
+            ok: false,
 
-            error:
-              "invoice_query_error",
+            error: "invoice_query_error",
           },
           500,
         );
       }
 
-      if (
-        !invoice
-      ) {
-        logger.warn(
-          "invoice_not_found",
-          {
-            invoiceId,
-          },
-        );
+      if (!invoice) {
+        logger.warn("invoice_not_found", {
+          invoiceId,
+        });
 
         return json(
           {
-            ok:
-              false,
+            ok: false,
 
-            error:
-              "invoice_not_found",
+            error: "invoice_not_found",
 
-            invoice_id:
-              invoiceId,
+            invoice_id: invoiceId,
           },
           404,
         );
       }
 
-      logger.info(
-        "invoice_loaded",
-        {
-          invoiceId:
-            invoice.id,
+      logger.info("invoice_loaded", {
+        invoiceId: invoice.id,
 
-          invoiceNumber:
-            invoice.number,
+        invoiceNumber: invoice.number,
 
-          subtotalCents:
-            invoice.subtotal_cents,
+        subtotalCents: invoice.subtotal_cents,
 
-          vatCents:
-            invoice.vat_cents,
+        vatCents: invoice.vat_cents,
 
-          totalCents:
-            invoice.total_cents,
+        totalCents: invoice.total_cents,
 
-          vatRate:
-            invoice.vat_rate,
+        vatRate: invoice.vat_rate,
 
-          hasPdf:
-            Boolean(
-              invoice.pdf_path,
-            ),
-        },
-      );
+        hasPdf: Boolean(invoice.pdf_path),
+      });
 
       const {
-        data:
-          peppolRow,
+        data: peppolRow,
 
-        error:
-          peppolError,
-      } =
-        await admin
-          .from(
-            "invoice_peppol",
-          )
-          .select(
-            `
+        error: peppolError,
+      } = await admin
+        .from("invoice_peppol")
+        .select(
+          `
               status,
               attempt_count,
               error_message,
               provider_message_id,
               sent_at
             `,
-          )
-          .eq(
-            "invoice_id",
-            invoiceId,
-          )
-          .eq(
-            "provider",
-            "billit",
-          )
-          .maybeSingle();
+        )
+        .eq("invoice_id", invoiceId)
+        .eq("provider", "billit")
+        .maybeSingle();
 
-      if (
-        peppolError
-      ) {
-        logger.error(
-          "peppol_row_load_failed",
-          {
-            invoiceId,
+      if (peppolError) {
+        logger.error("peppol_row_load_failed", {
+          invoiceId,
 
-            message:
-              peppolError.message,
-          },
-        );
+          message: peppolError.message,
+        });
 
         return json(
           {
-            ok:
-              false,
+            ok: false,
 
-            error:
-              "peppol_query_error",
+            error: "peppol_query_error",
           },
           500,
         );
       }
 
-      logger.info(
-        "peppol_state_loaded",
-        {
+      logger.info("peppol_state_loaded", {
+        invoiceId,
+
+        status: peppolRow?.status ?? null,
+
+        attemptCount: peppolRow?.attempt_count ?? 0,
+
+        hasProviderMessageId: Boolean(peppolRow?.provider_message_id),
+      });
+
+      if (peppolRow?.status === "sent" && !debug && !dryRun) {
+        logger.info("already_sent_reused", {
           invoiceId,
 
-          status:
-            peppolRow?.status ??
-            null,
-
-          attemptCount:
-            peppolRow?.attempt_count ??
-            0,
-
-          hasProviderMessageId:
-            Boolean(
-              peppolRow?.provider_message_id,
-            ),
-        },
-      );
-
-      if (
-        peppolRow?.status ===
-          "sent" &&
-        !debug &&
-        !dryRun
-      ) {
-        logger.info(
-          "already_sent_reused",
-          {
-            invoiceId,
-
-            providerMessageId:
-              peppolRow.provider_message_id ??
-              null,
-          },
-        );
+          providerMessageId: peppolRow.provider_message_id ?? null,
+        });
 
         return json(
           {
-            ok:
-              true,
+            ok: true,
 
-            reused:
-              true,
+            reused: true,
 
-            reason:
-              "already_sent",
+            reason: "already_sent",
 
-            providerMessageId:
-              peppolRow.provider_message_id,
+            providerMessageId: peppolRow.provider_message_id,
 
-            sentAt:
-              peppolRow.sent_at,
+            sentAt: peppolRow.sent_at,
           },
           200,
         );
       }
 
-      const snapshot =
-        invoice.billing_snapshot as {
-          billing?: Record<
-            string,
-            unknown
-          >;
-        } | null;
+      const snapshot = invoice.billing_snapshot as {
+        billing?: Record<string, unknown>;
+      } | null;
 
-      const billing =
-        snapshot?.billing ??
-        {};
+      const billing = snapshot?.billing ?? {};
 
-      const buyerPeppolDataOk =
-        hasBuyerPeppolData(
-          billing,
-        );
+      const buyerPeppolDataOk = hasBuyerPeppolData(billing);
 
-      const ublXml =
-        buildUblInvoice(
-          invoice,
-          seller,
-        );
+      const ublXml = buildUblInvoice(invoice, seller);
 
-      logger.info(
-        "ubl_built",
-        {
+      logger.info("ubl_built", {
+        invoiceId,
+
+        invoiceNumber: invoice.number,
+
+        buyerPeppolDataOk,
+
+        xmlLength: ublXml.length,
+      });
+
+      if (debug || dryRun) {
+        logger.info("dry_run_completed", {
           invoiceId,
 
-          invoiceNumber:
-            invoice.number,
+          debug,
 
-          buyerPeppolDataOk,
-
-          xmlLength:
-            ublXml.length,
-        },
-      );
-
-      if (
-        debug ||
-        dryRun
-      ) {
-        logger.info(
-          "dry_run_completed",
-          {
-            invoiceId,
-
-            debug,
-
-            dryRun,
-          },
-        );
+          dryRun,
+        });
 
         return json(
           {
-            ok:
-              true,
+            ok: true,
 
-            debug:
-              true,
+            debug: true,
 
-            dryRun:
-              true,
+            dryRun: true,
 
             invoice: {
-              id:
-                invoice.id,
+              id: invoice.id,
 
-              number:
-                invoice.number,
+              number: invoice.number,
 
-              currency:
-                invoice.currency,
+              currency: invoice.currency,
 
-              subtotal_cents:
-                invoice.subtotal_cents,
+              subtotal_cents: invoice.subtotal_cents,
 
-              vat_cents:
-                invoice.vat_cents,
+              vat_cents: invoice.vat_cents,
 
-              total_cents:
-                invoice.total_cents,
+              total_cents: invoice.total_cents,
 
-              vat_rate:
-                invoice.vat_rate,
+              vat_rate: invoice.vat_rate,
 
-              issued_at:
-                invoice.issued_at,
+              issued_at: invoice.issued_at,
 
-              paid_at:
-                invoice.paid_at,
+              paid_at: invoice.paid_at,
 
-              pdf_path:
-                invoice.pdf_path,
+              pdf_path: invoice.pdf_path,
             },
 
-            peppol:
-              peppolRow,
+            peppol: peppolRow,
 
             billit: {
-              endpoint:
-                billitEndpoint,
+              endpoint: billitEndpoint,
 
-              baseUrl:
-                billitBaseUrl,
+              baseUrl: billitBaseUrl,
 
-              hasApiKey:
-                Boolean(
-                  billitApiKey,
-                ),
+              hasApiKey: Boolean(billitApiKey),
 
-              hasPartyId:
-                Boolean(
-                  billitPartyId,
-                ),
+              hasPartyId: Boolean(billitPartyId),
 
-              partyId:
-                billitPartyId ??
-                null,
+              partyId: billitPartyId ?? null,
             },
 
             seller,
 
-            buyer:
-              billing,
+            buyer: billing,
 
             buyerPeppolDataOk,
 
-            ublPreview:
-              safeStr(
-                ublXml,
-                4000,
-              ),
+            ublPreview: safeStr(ublXml, 4000),
           },
           200,
         );
@@ -1314,42 +742,27 @@ try {
         admin,
         invoiceId,
         {
-          status:
-            "sending",
+          status: "sending",
 
-          errorMessage:
-            null,
+          errorMessage: null,
         },
         logger,
       );
 
-      if (
-        !billitApiKey ||
-        !billitPartyId
-      ) {
-        logger.warn(
-          "billit_not_configured",
-          {
-            invoiceId,
+      if (!billitApiKey || !billitPartyId) {
+        logger.warn("billit_not_configured", {
+          invoiceId,
 
-            hasApiKey:
-              Boolean(
-                billitApiKey,
-              ),
+          hasApiKey: Boolean(billitApiKey),
 
-            hasPartyId:
-              Boolean(
-                billitPartyId,
-              ),
-          },
-        );
+          hasPartyId: Boolean(billitPartyId),
+        });
 
         await updatePeppolStatus(
           admin,
           invoiceId,
           {
-            status:
-              "skipped",
+            status: "skipped",
 
             errorMessage:
               "Billit not configured (missing BILLIT_API_KEY or BILLIT_PARTY_ID)",
@@ -1359,63 +772,34 @@ try {
 
         return json(
           {
-            ok:
-              true,
+            ok: true,
 
-            skipped:
-              true,
+            skipped: true,
 
-            reason:
-              "billit_not_configured",
+            reason: "billit_not_configured",
           },
           200,
         );
       }
 
-      if (
-        !buyerPeppolDataOk
-      ) {
-        logger.info(
-          "buyer_peppol_data_missing",
-          {
-            invoiceId,
+      if (!buyerPeppolDataOk) {
+        logger.info("buyer_peppol_data_missing", {
+          invoiceId,
 
-            hasLegalName:
-              Boolean(
-                clean(
-                  billing.legalName,
-                ),
-              ),
+          hasLegalName: Boolean(clean(billing.legalName)),
 
-            hasCountryCode:
-              Boolean(
-                clean(
-                  billing.countryCode,
-                ),
-              ),
+          hasCountryCode: Boolean(clean(billing.countryCode)),
 
-            hasVatCountryCode:
-              Boolean(
-                clean(
-                  billing.vatCountryCode,
-                ),
-              ),
+          hasVatCountryCode: Boolean(clean(billing.vatCountryCode)),
 
-            hasVatNumber:
-              Boolean(
-                clean(
-                  billing.vatNumber,
-                ),
-              ),
-          },
-        );
+          hasVatNumber: Boolean(clean(billing.vatNumber)),
+        });
 
         await updatePeppolStatus(
           admin,
           invoiceId,
           {
-            status:
-              "skipped",
+            status: "skipped",
 
             errorMessage:
               "Peppol not applicable (missing buyer legal/VAT/address data)",
@@ -1425,346 +809,209 @@ try {
 
         return json(
           {
-            ok:
-              true,
+            ok: true,
 
-            skipped:
-              true,
+            skipped: true,
 
-            reason:
-              "missing_buyer_peppol_data",
+            reason: "missing_buyer_peppol_data",
           },
           200,
         );
       }
 
-      if (
-        !invoice.pdf_path
-      ) {
-        logger.info(
-          "pdf_generation_requested",
-          {
-            invoiceId,
-          },
-        );
+      if (!invoice.pdf_path) {
+        logger.info("pdf_generation_requested", {
+          invoiceId,
+        });
 
         admin.functions
-          .invoke(
-            "generate-invoice-pdf",
-            {
-              body: {
-                invoice_id:
-                  invoiceId,
-              },
+          .invoke("generate-invoice-pdf", {
+            body: {
+              invoice_id: invoiceId,
             },
-          )
-          .then(
-            (
-              result,
-            ) => {
-              if (
-                result.error
-              ) {
-                logger.error(
-                  "pdf_generation_invoke_failed",
-                  {
-                    invoiceId,
+          })
+          .then((result) => {
+            if (result.error) {
+              logger.error("pdf_generation_invoke_failed", {
+                invoiceId,
 
-                    message:
-                      result.error.message,
-                  },
-                );
+                message: result.error.message,
+              });
 
-                return;
-              }
+              return;
+            }
 
-              logger.info(
-                "pdf_generation_invoked",
-                {
-                  invoiceId,
-                },
-              );
-            },
-          )
-          .catch(
-            (
-              error,
-            ) => {
-              logger.error(
-                "pdf_generation_invoke_crashed",
-                {
-                  invoiceId,
-
-                  message:
-                    error instanceof
-                        Error
-                      ? error.message
-                      : String(
-                        error,
-                      ),
-                },
-              );
-            },
-          );
-      }
-
-      logger.info(
-        "billit_send_start",
-        {
-          invoiceId,
-
-          invoiceNumber:
-            invoice.number,
-
-          endpoint:
-            billitEndpoint,
-
-          partyId:
-            billitPartyId,
-        },
-      );
-
-      const response =
-        await fetch(
-          billitEndpoint,
-          {
-            method:
-              "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-
-              Accept:
-                "application/json",
-
-              ApiKey:
-                billitApiKey,
-
-              PartyID:
-                billitPartyId,
-            },
-
-            body:
-              JSON.stringify(
-                {
-                  XML:
-                    ublXml,
-                },
-              ),
-          },
-        );
-
-      const responseText =
-        await response
-          .text()
-          .catch(
-            () =>
-              "",
-          );
-
-      logger.info(
-        "billit_response_received",
-        {
-          invoiceId,
-
-          status:
-            response.status,
-
-          statusText:
-            response.statusText,
-
-          responseBody:
-            safeStr(
-              responseText,
-              1000,
-            ),
-        },
-      );
-
-      if (
-        !response.ok
-      ) {
-        const customerDoesNotSupportPeppol =
-          responseText.includes(
-            "TheCustomerDoesNotSupportPeppolForType",
-          );
-
-        if (
-          customerDoesNotSupportPeppol
-        ) {
-          logger.info(
-            "customer_not_on_peppol",
-            {
+            logger.info("pdf_generation_invoked", {
+              invoiceId,
+            });
+          })
+          .catch((error) => {
+            logger.error("pdf_generation_invoke_crashed", {
               invoiceId,
 
-              billitStatus:
-                response.status,
-            },
-          );
+              message: error instanceof Error ? error.message : String(error),
+            });
+          });
+      }
+
+      logger.info("billit_send_start", {
+        invoiceId,
+
+        invoiceNumber: invoice.number,
+
+        endpoint: billitEndpoint,
+
+        partyId: billitPartyId,
+      });
+
+      const response = await fetch(billitEndpoint, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+
+          Accept: "application/json",
+
+          ApiKey: billitApiKey,
+
+          PartyID: billitPartyId,
+        },
+
+        body: JSON.stringify({
+          XML: ublXml,
+        }),
+      });
+
+      const responseText = await response.text().catch(() => "");
+
+      logger.info("billit_response_received", {
+        invoiceId,
+
+        status: response.status,
+
+        statusText: response.statusText,
+
+        responseBody: safeStr(responseText, 1000),
+      });
+
+      if (!response.ok) {
+        const customerDoesNotSupportPeppol = responseText.includes(
+          "TheCustomerDoesNotSupportPeppolForType",
+        );
+
+        if (customerDoesNotSupportPeppol) {
+          logger.info("customer_not_on_peppol", {
+            invoiceId,
+
+            billitStatus: response.status,
+          });
 
           await updatePeppolStatus(
             admin,
             invoiceId,
             {
-              status:
-                "skipped",
+              status: "skipped",
 
-              errorMessage:
-                safeStr(
-                  responseText,
-                  500,
-                ),
+              errorMessage: safeStr(responseText, 500),
             },
             logger,
           );
 
           return json(
             {
-              ok:
-                true,
+              ok: true,
 
-              skipped:
-                true,
+              skipped: true,
 
-              reason:
-                "customer_does_not_support_peppol_invoice",
+              reason: "customer_does_not_support_peppol_invoice",
 
-              billitStatus:
-                response.status,
+              billitStatus: response.status,
 
-              body:
-                safeStr(
-                  responseText,
-                  1000,
-                ),
+              body: safeStr(responseText, 1000),
             },
             200,
           );
         }
 
-        logger.error(
-          "billit_send_failed",
-          {
-            invoiceId,
+        logger.error("billit_send_failed", {
+          invoiceId,
 
-            status:
-              response.status,
+          status: response.status,
 
-            statusText:
-              response.statusText,
+          statusText: response.statusText,
 
-            body:
-              safeStr(
-                responseText,
-                1000,
-              ),
-          },
-        );
+          body: safeStr(responseText, 1000),
+        });
 
         await updatePeppolStatus(
           admin,
           invoiceId,
           {
-            status:
-              "failed",
+            status: "failed",
 
-            errorMessage:
-              safeStr(
-                responseText ||
-                `HTTP ${response.status}`,
-                500,
-              ),
+            errorMessage: safeStr(
+              responseText || `HTTP ${response.status}`,
+              500,
+            ),
           },
           logger,
         );
 
         return json(
           {
-            ok:
-              false,
+            ok: false,
 
-            error:
-              "billit_send_failed",
+            error: "billit_send_failed",
 
-            status:
-              response.status,
+            status: response.status,
 
-            statusText:
-              response.statusText,
+            statusText: response.statusText,
 
-            body:
-              safeStr(
-                responseText,
-                1000,
-              ),
+            body: safeStr(responseText, 1000),
           },
           502,
         );
       }
 
-      let payload:
-        Record<
-          string,
-          unknown
-        > = {};
+      let payload: Record<string, unknown> = {};
 
       try {
-        payload =
-          responseText
-            ? JSON.parse(
-              responseText,
-            )
-            : {};
+        payload = responseText ? JSON.parse(responseText) : {};
       } catch {
         payload = {
-          raw:
-            responseText,
+          raw: responseText,
         };
       }
 
       const providerMessageId =
-        clean(
-          payload.message_id ??
-          payload.messageId ??
-          payload.id,
-        ) ||
-        null;
+        clean(payload.message_id ?? payload.messageId ?? payload.id) || null;
 
       await updatePeppolStatus(
         admin,
         invoiceId,
         {
-          status:
-            "sent",
+          status: "sent",
 
           providerMessageId,
 
-          errorMessage:
-            null,
+          errorMessage: null,
         },
         logger,
       );
 
-      logger.info(
-        "completed",
-        {
-          invoiceId,
+      logger.info("completed", {
+        invoiceId,
 
-          invoiceNumber:
-            invoice.number,
+        invoiceNumber: invoice.number,
 
-          providerMessageId,
-        },
-      );
+        providerMessageId,
+      });
 
       return json(
         {
-          ok:
-            true,
+          ok: true,
 
-          messageId:
-            providerMessageId,
+          messageId: providerMessageId,
 
           payload,
         },

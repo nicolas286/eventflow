@@ -11,7 +11,8 @@ export function resolveRuntimeConfig(req: Request) {
 
   const allowedOrigins = parseAllowedOrigins(envTrim("APP_ALLOWED_ORIGINS"));
   const appBaseUrl =
-    resolveAppBaseUrlFromRequest(req, allowedOrigins) ?? envTrim("APP_BASE_URL");
+    resolveAppBaseUrlFromRequest(req, allowedOrigins) ??
+    envTrim("APP_BASE_URL");
 
   const config = {
     ...supabase,
@@ -19,6 +20,8 @@ export function resolveRuntimeConfig(req: Request) {
     functionsBase: envTrim("FUNCTIONS_URL") ?? "",
     appBaseUrl: appBaseUrl ?? "",
     edgeServiceToken: envTrim("EDGE_SERVICE_TOKEN"),
+    stripeSecretKey: envTrim("STRIPE_SECRET_KEY"),
+    eventPaymentProvider: envTrim("EVENT_PAYMENT_PROVIDER") ?? "stripe",
 
     registerRateLimitPer10Min: Number(
       envTrim("REGISTER_RATE_LIMIT_PER_10MIN") ?? "50",

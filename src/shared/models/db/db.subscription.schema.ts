@@ -18,6 +18,7 @@ export const subscriptionSchema = z.object({
     .nullable(),
 
   currentPeriodEnd: z.string().nullable(),
+  currentPeriodStart: z.string().nullable().optional(),
 
   plan: z.enum(["free", "starter", "pro"]).nullable(),
 
@@ -27,13 +28,7 @@ export const subscriptionSchema = z.object({
     .nullable()
     .optional(),
 
-  discountPercent: z
-    .number()
-    .int()
-    .min(0)
-    .max(100)
-    .nullable()
-    .optional(),
+  discountPercent: z.number().int().min(0).max(100).nullable().optional(),
 
   billingPriceValue: z
     .string()

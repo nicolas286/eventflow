@@ -1,6 +1,14 @@
 import { postInternalEdgeJson } from "../_shared/internal-edge.ts";
+import type { createEdgeLogger } from "../_shared/logger.ts";
+import type { AdminClient } from "../_shared/supabase.ts";
 
-export async function sendConfirmationEmailForOrderSafe(opts) {
+export async function sendConfirmationEmailForOrderSafe(opts: {
+  admin: AdminClient;
+  orderId: string;
+  functionsBase: string;
+  edgeServiceToken: string | null;
+  logger: ReturnType<typeof createEdgeLogger>;
+}) {
   if (!opts.edgeServiceToken) {
     opts.logger.error("confirmation_email_skipped_missing_service_token", {
       orderId: opts.orderId,

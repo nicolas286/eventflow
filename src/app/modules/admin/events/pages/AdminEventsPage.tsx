@@ -23,11 +23,14 @@ import { useUpdateEvent } from "../../singleEvent/hooks/useUpdateEvent";
 import { useDeleteEvent } from "../../singleEvent/hooks/useDeleteEvent";
 import { useDuplicateEvent } from "../../singleEvent/hooks/useDuplicateEvent";
 import { PlusIcon } from "@ui/components/icon/Icons";
-import { AdminNotices } from "../../notices/components/AdminNotices";
 import { MessageBox } from "@shared/ui/components/message/MessageBox";
+import { AdminNotices } from "../../notices/components/AdminNotices";
 
 type EditableEventFields = Partial<
-  Pick<EventOverviewRow["event"], "title" | "isPublished" | "startsAt" | "endsAt">
+  Pick<
+    EventOverviewRow["event"],
+    "title" | "isPublished" | "startsAt" | "endsAt"
+  >
 > & { location?: string | null };
 
 type ConfirmState = {
@@ -37,22 +40,39 @@ type ConfirmState = {
 };
 
 export default function AdminEventsPage() {
-  const { events, orgId, bootstrap, refetch } = useOutletContext<AdminOutletContext>();
+  const { events, orgId, bootstrap, refetch } =
+    useOutletContext<AdminOutletContext>();
 
-  const { createEvent, loading: creating, error: createError, reset: resetCreate } = useCreateEvent({ supabase });
+  const {
+    createEvent,
+    loading: creating,
+    error: createError,
+    reset: resetCreate,
+  } = useCreateEvent({ supabase });
 
-    const {
-  duplicateEvent: doDuplicate,
-  loading: duplicating,
-  error: duplicateError,
-  reset: resetDuplicate,
-} = useDuplicateEvent({ supabase });
+  const {
+    duplicateEvent: doDuplicate,
+    loading: duplicating,
+    error: duplicateError,
+    reset: resetDuplicate,
+  } = useDuplicateEvent({ supabase });
 
-  const { updateEvent: doUpdate, loading: saving, error: saveError, reset: resetSave } = useUpdateEvent({ supabase });
+  const {
+    updateEvent: doUpdate,
+    loading: saving,
+    error: saveError,
+    reset: resetSave,
+  } = useUpdateEvent({ supabase });
 
-  const { deleteEvent: doDelete, loading: deleting, error: deleteError, reset: resetDelete } = useDeleteEvent({ supabase });
+  const {
+    deleteEvent: doDelete,
+    loading: deleting,
+    error: deleteError,
+    reset: resetDelete,
+  } = useDeleteEvent({ supabase });
 
-  const { selectedRow, editingId, select, closeIf, onAnimEnd, panelClassName } = useEventEditorPanel(events);
+  const { selectedRow, editingId, select, closeIf, onAnimEnd, panelClassName } =
+    useEventEditorPanel(events);
 
   const [confirm, setConfirm] = useState<ConfirmState>({
     open: false,
@@ -131,23 +151,21 @@ export default function AdminEventsPage() {
     navigate(`/admin/events/${created.slug}`);
   };
 
+  const duplicateEvent = async (row: EventOverviewRow) => {
+    if (duplicating) return;
 
+    resetDuplicate();
 
-const duplicateEvent = async (row: EventOverviewRow) => {
-  if (duplicating) return;
+    const duplicated = await doDuplicate({
+      sourceEventId: row.event.id,
+      title: `${row.event.title} (copie)`,
+    });
 
-  resetDuplicate();
+    if (!duplicated) return;
 
-  const duplicated = await doDuplicate({
-    sourceEventId: row.event.id,
-    title: `${row.event.title} (copie)`,
-  });
-
-  if (!duplicated) return;
-
-  await refetch();
-  navigate(`/admin/events/${duplicated.slug}`);
-};
+    await refetch();
+    navigate(`/admin/events/${duplicated.slug}`);
+  };
 
   const isEditorVisible = !!selectedRow;
 
@@ -170,12 +188,18 @@ const duplicateEvent = async (row: EventOverviewRow) => {
               <h3 className="adminAllEventsTitle">Événements</h3>
               <div className="adminAllEventsHint">
                 {events.length} événement(s)
-                {isEditorVisible ? <span className="adminAllEventsDot">• Éditeur ouvert</span> : null}
+                {isEditorVisible ? (
+                  <span className="adminAllEventsDot">• Éditeur ouvert</span>
+                ) : null}
               </div>
             </div>
 
             <div className="adminAllEventsHeaderActions">
-              <Button label={creating ? "Création…" : "Nouvel événement"} onClick={addEvent} disabled={creating}>
+              <Button
+                label={creating ? "Création…" : "Nouvel événement"}
+                onClick={addEvent}
+                disabled={creating}
+              >
                 <PlusIcon />
                 Nouvel événement
               </Button>
@@ -183,10 +207,10 @@ const duplicateEvent = async (row: EventOverviewRow) => {
           </div>
 
           {(createError || saveError || deleteError || duplicateError) && (
-          <MessageBox variant="error">
-            {createError ?? saveError ?? deleteError ?? duplicateError}
-          </MessageBox>
-        )}
+            <MessageBox variant="error">
+              {createError ?? saveError ?? deleteError ?? duplicateError}
+            </MessageBox>
+          )}
 
           <EditorShell
             isOpen={Boolean(selectedRow)}
@@ -217,9 +241,15 @@ const duplicateEvent = async (row: EventOverviewRow) => {
                       >
                         <EventEditor
                           event={selectedRow}
-                          onUpdateEvent={(patch) => void updateEvent(selectedRow.event.id, patch)}
+                          onUpdateEvent={(patch) =>
+                            void updateEvent(selectedRow.event.id, patch)
+                          }
                         />
-                        {saving && <div className="adminEventsSavingHint">Enregistrement…</div>}
+                        {saving && (
+                          <div className="adminEventsSavingHint">
+                            Enregistrement…
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -235,9 +265,13 @@ const duplicateEvent = async (row: EventOverviewRow) => {
                 >
                   <EventEditor
                     event={selectedRow}
-                    onUpdateEvent={(patch) => void updateEvent(selectedRow.event.id, patch)}
+                    onUpdateEvent={(patch) =>
+                      void updateEvent(selectedRow.event.id, patch)
+                    }
                   />
-                  {saving && <div className="adminEventsSavingHint">Enregistrement…</div>}
+                  {saving && (
+                    <div className="adminEventsSavingHint">Enregistrement…</div>
+                  )}
                 </div>
               ) : (
                 <div />

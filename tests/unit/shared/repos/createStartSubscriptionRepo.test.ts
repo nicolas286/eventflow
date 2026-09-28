@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createStartSubscriptionRepo } from "../../../../src/app/modules/admin/subscriptions/data/startSubscriptionRepo"
+import { createStartSubscriptionRepo } from "../../../../src/app/modules/admin/subscriptions/data/startSubscriptionRepo";
 
 function makeSupabaseInvokeMock(response: unknown) {
   return {
@@ -22,17 +22,20 @@ describe("createStartSubscriptionRepo", () => {
     const supabase = makeSupabaseInvokeMock({
       data: {
         ok: true,
-        action: "checkout",
+        action: "invoice",
+        provider: "manual",
         orgId: "11111111-1111-4111-8111-111111111111",
         plan: "starter",
-        mollieCustomerId: "cst_test",
-        checkoutUrl: "https://example.com/checkout",
-        paymentId: "tr_test",
-        canceledPrevious: false,
-        returnBaseUrl: "https://app.eventflow.test",
+        status: "active",
+        invoiceId: "22222222-2222-4222-8222-222222222222",
+        invoiceNumber: "2026-000001",
+        dueAt: "2026-10-12T12:00:00.000Z",
+        currentPeriodEnd: "2026-10-28T12:00:00.000Z",
+        reused: false,
         promoApplied: false,
         discountPercent: null,
         billingPriceValue: "25.00",
+        warnings: [],
       },
       error: null,
     });
@@ -46,15 +49,20 @@ describe("createStartSubscriptionRepo", () => {
       }),
     ).resolves.toMatchObject({
       ok: true,
-      action: "checkout",
+      action: "invoice",
+      provider: "manual",
+      invoiceNumber: "2026-000001",
     });
 
-    expect(supabase.functions.invoke).toHaveBeenCalledWith("start-subscription", {
-      body: {
-        orgId: "11111111-1111-8111-8111-111111111111",
-        plan: "starter",
+    expect(supabase.functions.invoke).toHaveBeenCalledWith(
+      "start-subscription",
+      {
+        body: {
+          orgId: "11111111-1111-8111-8111-111111111111",
+          plan: "starter",
+        },
       },
-    });
+    );
   });
 
   it("remonte l'erreur edge via edgeSafe", async () => {

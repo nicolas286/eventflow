@@ -8,7 +8,7 @@ import { MarkdownRichTextarea } from "@shared/ui/components/inputs/MarkdownRichT
 
 import { supabase } from "@shared/gateways/supabase/supabaseClient";
 import { useSaveOrgInfo } from "../../hooks/useSaveOrgInfo";
-import { useStartMollieConnect } from "@app/modules/admin/payments/hooks/useStartMollieConnect";
+import { useStripeConnect } from "@app/modules/admin/payments/hooks/useStripeConnect";
 import type { Organization } from "@shared/models/db/db.organization.schema";
 import type { OrganizationProfile } from "@shared/models/db/db.organizationProfile.schema";
 
@@ -43,7 +43,10 @@ const emptyForm: Form = {
   emailReminderDaysBefore: null,
 };
 
-function toForm(o: Organization | null, profile: OrganizationProfile | null): Form {
+function toForm(
+  o: Organization | null,
+  profile: OrganizationProfile | null,
+): Form {
   if (!o || !profile) return emptyForm;
 
   return {
@@ -77,21 +80,36 @@ function parseNullableNonNegativeInt(v: string): number | null {
   return i;
 }
 
-export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: Props) {
+export default function StructurePanel({
+  orgId,
+  orgInfo,
+  orgProfile,
+  onSaved,
+}: Props) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { loading, error, updated, saveOrgInfo, reset, hasChanges } = useSaveOrgInfo({ supabase });
+  const { loading, error, updated, saveOrgInfo, reset, hasChanges } =
+    useSaveOrgInfo({ supabase });
 
-  const {
-    loading: connecting,
-    error: connectError,
-    startMollieConnect,
-    reset: resetConnect,
-  } = useStartMollieConnect({ supabase });
+  const stripeConnect = useStripeConnect({ supabase });
+  const stripeReady = Boolean(
+    orgInfo?.stripeConnectedAccountId &&
+    orgInfo.stripeDetailsSubmitted &&
+    orgInfo.stripeChargesEnabled &&
+    orgInfo.stripePayoutsEnabled,
+  );
+  const stripeStatus: Organization["paymentsStatus"] = stripeReady
+    ? "connected"
+    : orgInfo?.stripeConnectedAccountId
+      ? "pending"
+      : "not_connected";
 
   // ✅ initial dépend de org (pas juste orgId)
-  const initial = useMemo<Form>(() => toForm(orgInfo, orgProfile), [orgInfo, orgProfile]);
+  const initial = useMemo<Form>(
+    () => toForm(orgInfo, orgProfile),
+    [orgInfo, orgProfile],
+  );
 
   // form local (on n’édite pas org directement tant que pas save)
   const [form, setForm] = useState<Form>(initial);
@@ -107,8 +125,6 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
     return updated?.profile?.slug ?? orgProfile?.slug ?? "";
   }, [updated?.profile?.slug, orgProfile?.slug]);
 
-  /* -------- Mollie return flash -------- */
-
   const [connectFlash, setConnectFlash] = useState<{
     ok: boolean;
     message: string;
@@ -116,45 +132,42 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
 
   useEffect(() => {
     const qs = new URLSearchParams(location.search);
-    const connect = qs.get("connect");
-    if (!connect) return;
+    const stripeReturn = qs.get("stripe_connect");
+    if (!stripeReturn) return;
 
-    const errorCode = qs.get("error");
-    const reason = qs.get("reason");
+    async function handleStripeReturn() {
+      if (stripeReturn === "refresh") {
+        const url = await stripeConnect.start(orgId);
+        if (url) window.location.assign(url);
+        return;
+      }
 
-    if (connect === "1") {
-      setConnectFlash({ ok: true, message: "Mollie connecté avec succès ✅" });
-      onSaved().catch(() => null);
-    } else {
-      setConnectFlash({
-        ok: false,
-        message: reason
-          ? `Connexion Mollie échouée : ${reason}`
-          : errorCode
-          ? `Connexion Mollie échouée : ${errorCode}`
-          : "Connexion Mollie échouée",
-      });
-      onSaved().catch(() => null);
-    }
+      const status = await stripeConnect.refreshStatus(orgId);
+      if (status) {
+        setConnectFlash({
+          ok: status.status === "connected",
+          message:
+            status.status === "connected"
+              ? "Stripe est prêt à encaisser et verser les fonds."
+              : "Onboarding Stripe reçu, mais les paiements ou versements ne sont pas encore activés.",
+        });
+        await onSaved();
+      }
 
-    // ✅ Nettoyage URL après un petit délai (sinon tu ne vois jamais les params / flash)
-    setTimeout(() => {
-      qs.delete("connect");
-      qs.delete("error");
-      qs.delete("reason");
-
-      const newSearch = qs.toString();
+      qs.delete("stripe_connect");
       navigate(
         {
           pathname: location.pathname,
-          search: newSearch ? `?${newSearch}` : "",
+          search: qs.toString() ? `?${qs.toString()}` : "",
         },
-        { replace: true }
+        { replace: true },
       );
-    }, 300);
+    }
 
+    void handleStripeReturn();
+    // The return marker must be handled once; hook methods are intentionally not dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, location.pathname, navigate]);
+  }, [location.search, location.pathname, navigate, orgId]);
 
   /* -------- actions -------- */
 
@@ -190,13 +203,10 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
     });
   }
 
-  async function handleConnect(mode: "test" | "live") {
-    resetConnect();
+  async function handleStripeConnect() {
     setConnectFlash(null);
-
-    const url = await startMollieConnect({ orgId, mode });
-
-    if (url) window.location.href = url;
+    const url = await stripeConnect.start(orgId);
+    if (url) window.location.assign(url);
   }
 
   /* -------- render -------- */
@@ -210,18 +220,24 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
             <div>
               <div className="structurePanel__label">Organisation</div>
               <div className="structurePanel__hint">
-                Le nom impacte le slug public. Si vous changez le nom, l’URL publique change.
+                Le nom impacte le slug public. Si vous changez le nom, l’URL
+                publique change.
               </div>
             </div>
 
-            <Badge tone={dirty ? "warn" : "info"} label={dirty ? "Modifs" : "OK"} />
+            <Badge
+              tone={dirty ? "warn" : "info"}
+              label={dirty ? "Modifs" : "OK"}
+            />
           </div>
 
           <div className="structurePanel__field">
             <div className="structurePanel__fieldLabel">Type</div>
             <Select
               value={form.type}
-              onChange={(e) => setForm((s) => ({ ...s, type: e.target.value as Form["type"] }))}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, type: e.target.value as Form["type"] }))
+              }
             >
               <option value="association">Association</option>
               <option value="person">Personne</option>
@@ -236,7 +252,10 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
               placeholder="Nom de l’organisation"
             />
             <div className="structurePanel__help">
-              Slug : <span className="structurePanel__mono">{effectiveSlug || "—"}</span>
+              Slug :{" "}
+              <span className="structurePanel__mono">
+                {effectiveSlug || "—"}
+              </span>
             </div>
           </div>
         </div>
@@ -247,7 +266,8 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
             <div>
               <div className="structurePanel__label">Infos publiques</div>
               <div className="structurePanel__hint">
-                Affichées sur les pages publiques si tu les utilises (contact, event page, etc.)
+                Affichées sur les pages publiques si tu les utilises (contact,
+                event page, etc.)
               </div>
             </div>
           </div>
@@ -266,14 +286,18 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
             <Input
               label="Email public"
               value={form.publicEmail}
-              onChange={(e) => setForm((s) => ({ ...s, publicEmail: e.target.value }))}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, publicEmail: e.target.value }))
+              }
               placeholder="contact@..."
             />
 
             <Input
               label="Téléphone"
               value={form.phone}
-              onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, phone: e.target.value }))
+              }
               placeholder="+32 ..."
             />
           </div>
@@ -282,7 +306,9 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
             <Input
               label="Site web"
               value={form.website}
-              onChange={(e) => setForm((s) => ({ ...s, website: e.target.value }))}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, website: e.target.value }))
+              }
               placeholder="https://..."
             />
           </div>
@@ -294,11 +320,17 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
               type="number"
               inputMode="numeric"
               min={0}
-              value={form.emailReminderDaysBefore === null ? "" : String(form.emailReminderDaysBefore)}
+              value={
+                form.emailReminderDaysBefore === null
+                  ? ""
+                  : String(form.emailReminderDaysBefore)
+              }
               onChange={(e) =>
                 setForm((s) => ({
                   ...s,
-                  emailReminderDaysBefore: parseNullableNonNegativeInt(e.target.value),
+                  emailReminderDaysBefore: parseNullableNonNegativeInt(
+                    e.target.value,
+                  ),
                 }))
               }
               placeholder="ex: 3 (laisser vide pour désactiver)"
@@ -310,23 +342,28 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
         </div>
       </div>
 
-      {/* ---------------- Mollie Connect ---------------- */}
+      {/* ---------------- Payment providers ---------------- */}
       <div className="structurePanel__block">
         <div className="structurePanel__labelRow">
           <div>
-            <div className="structurePanel__label">Paiements (Mollie)</div>
+            <div className="structurePanel__label">
+              Paiements des événements
+            </div>
             <div className="structurePanel__hint">
-              Lance le flow Mollie Connect. Le statut se met à jour au retour Mollie.
+              Stripe Connect verse les recettes directement sur le compte de
+              l'organisation.
             </div>
           </div>
 
           <div className="structurePanel__chip">
+            <span className="structurePanel__chipLabel">Fournisseur</span>
+            <span className="structurePanel__chipValue">Stripe</span>
             <span className="structurePanel__chipLabel">Statut</span>
             <span className="structurePanel__chipValue">
-              {orgInfo ? prettyPaymentLabel(orgInfo.paymentsStatus) : "—"}
+              {orgInfo ? prettyPaymentLabel(stripeStatus) : "—"}
             </span>
 
-            {orgInfo?.paymentsLiveReady ? (
+            {stripeReady ? (
               <span className="structurePanel__chipOk">live prêt</span>
             ) : (
               <span className="structurePanel__chipWarn">live non prêt</span>
@@ -337,23 +374,25 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
         <div className="structurePanel__actionsBar">
           <div className="structurePanel__actions">
             <Button
-              variant="secondary"
-              label={connecting ? "Ouverture…" : "Connecter (test)"}
-              onClick={() => handleConnect("test")}
-              disabled={connecting}
-            />
-            <Button
               variant="primary"
-              label={connecting ? "Ouverture…" : "Connecter (live)"}
-              onClick={() => handleConnect("live")}
-              disabled={connecting}
+              label={stripeConnect.loading ? "Ouverture…" : "Configurer Stripe"}
+              onClick={handleStripeConnect}
+              disabled={stripeConnect.loading}
             />
           </div>
 
           <div className="structurePanel__status">
-            {connectError ? <div className="structurePanel__error">{connectError}</div> : null}
+            {stripeConnect.error ? (
+              <div className="structurePanel__error">{stripeConnect.error}</div>
+            ) : null}
             {connectFlash ? (
-              <div className={connectFlash.ok ? "structurePanel__success" : "structurePanel__error"}>
+              <div
+                className={
+                  connectFlash.ok
+                    ? "structurePanel__success"
+                    : "structurePanel__error"
+                }
+              >
                 {connectFlash.message}
               </div>
             ) : null}
@@ -365,7 +404,9 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
       <div className="structurePanel__actionsBar">
         <div className="structurePanel__status">
           {error ? <div className="structurePanel__error">{error}</div> : null}
-          {updated ? <div className="structurePanel__success">Infos sauvegardées</div> : null}
+          {updated ? (
+            <div className="structurePanel__success">Infos sauvegardées</div>
+          ) : null}
         </div>
 
         <div className="structurePanel__actions">

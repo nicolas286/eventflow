@@ -1,180 +1,80 @@
 // supabase/functions/generate-invoice-pdf/index.ts
 
-import {
-  PDFDocument,
-  StandardFonts,
-} from "https://esm.sh/pdf-lib@1.17.1";
+import { PDFDocument, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
 
-import {
-  json,
-} from "../_shared/http.ts";
+import { json } from "../_shared/http.ts";
 
-import {
-  createEdgeHandler,
-} from "../_shared/edge-handler.ts";
+import { createEdgeHandler } from "../_shared/edge-handler.ts";
 
-import {
-  createAdminClient,
-} from "../_shared/supabase.ts";
+import { createAdminClient } from "../_shared/supabase.ts";
 
+const INVOICES_BUCKET = "invoices";
 
-const INVOICES_BUCKET =
-  "invoices";
+function getBearer(req: Request): string | null {
+  const authorization = req.headers.get("authorization") ?? "";
 
-
-function getBearer(
-  req: Request,
-): string | null {
-  const authorization =
-    req.headers.get(
-      "authorization",
-    ) ?? "";
-
-  const match =
-    authorization.match(
-      /^Bearer\s+(.+)$/i,
-    );
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
 
   return match?.[1] ?? null;
 }
 
+function assertInternalRequest(req: Request, serviceRoleKey: string): void {
+  const bearer = getBearer(req);
 
-function assertInternalRequest(
-  req: Request,
-  serviceRoleKey: string,
-): void {
-  const bearer =
-    getBearer(req);
-
-  if (
-    !bearer ||
-    bearer !== serviceRoleKey
-  ) {
-    throw new Error(
-      "FORBIDDEN",
-    );
+  if (!bearer || bearer !== serviceRoleKey) {
+    throw new Error("FORBIDDEN");
   }
 }
 
-
-function isUuid(
-  value: string,
-): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    .test(
-      value,
-    );
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }
 
+function moneyFromCents(cents: number, currency = "EUR"): string {
+  const amount = (Number.isFinite(cents) ? cents : 0) / 100;
 
-function moneyFromCents(
-  cents: number,
-  currency = "EUR",
-): string {
-  const amount =
-    (
-      Number.isFinite(
-          cents,
-        )
-        ? cents
-        : 0
-    ) / 100;
+  const formatted = amount.toFixed(2);
 
-  const formatted =
-    amount.toFixed(
-      2,
-    );
-
-  if (
-    currency === "EUR"
-  ) {
+  if (currency === "EUR") {
     return `${formatted} €`;
   }
 
   return `${formatted} ${currency}`;
 }
 
-
-function isoDate(
-  value: string | null | undefined,
-): string {
-  if (
-    !value
-  ) {
+function isoDate(value: string | null | undefined): string {
+  if (!value) {
     return "";
   }
 
-  const timestamp =
-    Date.parse(
-      value,
-    );
+  const timestamp = Date.parse(value);
 
-  if (
-    Number.isNaN(
-      timestamp,
-    )
-  ) {
+  if (Number.isNaN(timestamp)) {
     return "";
   }
 
-  const date =
-    new Date(
-      timestamp,
-    );
+  const date = new Date(timestamp);
 
-  const year =
-    date
-      .getUTCFullYear();
+  const year = date.getUTCFullYear();
 
-  const month =
-    String(
-      date
-        .getUTCMonth() +
-        1,
-    ).padStart(
-      2,
-      "0",
-    );
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
 
-  const day =
-    String(
-      date
-        .getUTCDate(),
-    ).padStart(
-      2,
-      "0",
-    );
+  const day = String(date.getUTCDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
 
+function formatVatRate(value: unknown): string {
+  const rate = Number(value ?? 0);
 
-function formatVatRate(
-  value: unknown,
-): string {
-  const rate =
-    Number(
-      value ?? 0,
-    );
-
-  if (
-    !Number.isFinite(
-      rate,
-    )
-  ) {
+  if (!Number.isFinite(rate)) {
     return "0";
   }
 
-  return rate
-    .toFixed(
-      2,
-    )
-    .replace(
-      /\.00$/,
-      "",
-    );
+  return rate.toFixed(2).replace(/\.00$/, "");
 }
-
 
 type InvoiceForPdf = {
   id: string;
@@ -197,52 +97,31 @@ type InvoiceForPdf = {
 
   paid_at: string | null;
 
+  due_at: string | null;
+
+  payment_reference: string | null;
+
   period_start: string | null;
 
   period_end: string | null;
 
-  billing_snapshot: Record<
-    string,
-    unknown
-  > | null;
+  billing_snapshot: Record<string, unknown> | null;
 
   pdf_path: string | null;
 };
 
+async function buildPdfBytes(invoice: InvoiceForPdf): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
 
-async function buildPdfBytes(
-  invoice: InvoiceForPdf,
-): Promise<Uint8Array> {
-  const pdf =
-    await PDFDocument.create();
+  const page = pdf.addPage([595.28, 841.89]);
 
-  const page =
-    pdf.addPage(
-      [
-        595.28,
-        841.89,
-      ],
-    );
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
 
-  const font =
-    await pdf.embedFont(
-      StandardFonts.Helvetica,
-    );
+  const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-  const fontBold =
-    await pdf.embedFont(
-      StandardFonts.HelveticaBold,
-    );
+  const { width, height } = page.getSize();
 
-  const {
-    width,
-    height,
-  } =
-    page.getSize();
-
-  const margin =
-    48;
-
+  const margin = 48;
 
   // ============================================================
   // SELLER
@@ -255,747 +134,436 @@ async function buildPdfBytes(
     "TVA BE0840.386.125",
   ];
 
-
   // ============================================================
   // BUYER
   // ============================================================
 
-  const snapshot =
-    invoice.billing_snapshot as {
-      billing?: Record<
-        string,
-        unknown
-      >;
+  const snapshot = invoice.billing_snapshot as {
+    billing?: Record<string, unknown>;
 
-      billingProfile?: Record<
-        string,
-        unknown
-      >;
-    } | null;
+    billingProfile?: Record<string, unknown>;
+  } | null;
 
-  const billing =
-    snapshot?.billing ??
-    snapshot?.billingProfile ??
-    {};
+  const billing = snapshot?.billing ?? snapshot?.billingProfile ?? {};
 
-  const legalName =
-    String(
-      billing.legalName ??
-      "-",
-    );
+  const legalName = String(billing.legalName ?? "-");
 
   const buyerVat =
-    [
-      billing.vatCountryCode,
-      billing.vatNumber,
-    ]
-      .filter(
-        Boolean,
-      )
-      .join(
-        " ",
-      ) || "-";
+    [billing.vatCountryCode, billing.vatNumber].filter(Boolean).join(" ") ||
+    "-";
 
-  const addressLine1 =
-    String(
-      billing.addressLine1 ??
-      "",
-    );
+  const addressLine1 = String(billing.addressLine1 ?? "");
 
-  const addressLine2 =
-    String(
-      billing.addressLine2 ??
-      "",
-    );
+  const addressLine2 = String(billing.addressLine2 ?? "");
 
-  const city =
-    [
-      billing.postalCode,
-      billing.city,
-    ]
-      .filter(
-        Boolean,
-      )
-      .join(
-        " ",
-      );
+  const city = [billing.postalCode, billing.city].filter(Boolean).join(" ");
 
-  const country =
-    String(
-      billing.countryCode ??
-      "",
-    );
+  const country = String(billing.countryCode ?? "");
 
-  const billingEmail =
-    String(
-      billing.billingEmail ??
-      "",
-    );
+  const billingEmail = String(billing.billingEmail ?? "");
 
-  const invoiceReference =
-    String(
-      billing.invoiceReference ??
-      "",
-    );
-
+  const invoiceReference = String(billing.invoiceReference ?? "");
 
   // ============================================================
   // INVOICE
   // ============================================================
 
-  const number =
-    invoice.number ??
-    "-";
+  const number = invoice.number ?? "-";
 
-  const issuedAt =
-    isoDate(
-      invoice.issued_at,
-    );
+  const issuedAt = isoDate(invoice.issued_at);
 
-  const paidAt =
-    isoDate(
-      invoice.paid_at,
-    );
+  const paidAt = isoDate(invoice.paid_at);
 
-  const periodStart =
-    isoDate(
-      invoice.period_start,
-    );
+  const dueAt = isoDate(invoice.due_at);
 
-  const periodEnd =
-    isoDate(
-      invoice.period_end,
-    );
+  const paymentReference = String(invoice.payment_reference ?? `E-${number}`);
 
-  const currency =
-    invoice.currency ??
-    "EUR";
+  const periodStart = isoDate(invoice.period_start);
 
-  const subtotalCents =
-    Number(
-      invoice.subtotal_cents ??
-      0,
-    );
+  const periodEnd = isoDate(invoice.period_end);
 
-  const vatCents =
-    Number(
-      invoice.vat_cents ??
-      0,
-    );
+  const currency = invoice.currency ?? "EUR";
 
-  const totalCents =
-    Number(
-      invoice.total_cents ??
-      0,
-    );
+  const subtotalCents = Number(invoice.subtotal_cents ?? 0);
 
-  const vatRate =
-    formatVatRate(
-      invoice.vat_rate,
-    );
+  const vatCents = Number(invoice.vat_cents ?? 0);
 
+  const totalCents = Number(invoice.total_cents ?? 0);
+
+  const vatRate = formatVatRate(invoice.vat_rate);
 
   // ============================================================
   // HEADER
   // ============================================================
 
-  let yLeft =
-    height -
-    margin;
+  let yLeft = height - margin;
 
-  page.drawText(
-    "FACTURE",
-    {
-      x:
-        margin,
+  page.drawText("FACTURE", {
+    x: margin,
 
-      y:
-        yLeft,
+    y: yLeft,
 
-      size:
-        30,
+    size: 30,
 
-      font:
-        fontBold,
-    },
-  );
+    font: fontBold,
+  });
 
-  yLeft -=
-    40;
-
+  yLeft -= 40;
 
   // ============================================================
   // SELLER BLOCK
   // ============================================================
 
-  page.drawText(
-    "Émetteur",
-    {
-      x:
-        margin,
+  page.drawText("Émetteur", {
+    x: margin,
 
-      y:
-        yLeft,
+    y: yLeft,
 
-      size:
-        12,
+    size: 12,
 
-      font:
-        fontBold,
-    },
-  );
+    font: fontBold,
+  });
 
-  yLeft -=
-    16;
+  yLeft -= 16;
 
-  for (
-    const line
-    of sellerLines
-  ) {
-    page.drawText(
-      line,
-      {
-        x:
-          margin,
+  for (const line of sellerLines) {
+    page.drawText(line, {
+      x: margin,
 
-        y:
-          yLeft,
+      y: yLeft,
 
-        size:
-          10,
+      size: 10,
 
-        font,
-      },
-    );
+      font,
+    });
 
-    yLeft -=
-      13;
+    yLeft -= 13;
   }
-
 
   // ============================================================
   // INVOICE META
   // ============================================================
 
-  yLeft -=
-    10;
+  yLeft -= 10;
+
+  page.drawText(`N° E-${number}`, {
+    x: margin,
+
+    y: yLeft,
+
+    size: 12,
+
+    font: fontBold,
+  });
+
+  yLeft -= 18;
+
+  page.drawText(`Émise le : ${issuedAt || "-"}`, {
+    x: margin,
+
+    y: yLeft,
+
+    size: 10,
+
+    font,
+  });
+
+  yLeft -= 14;
 
   page.drawText(
-    `N° E-${number}`,
+    paidAt ? `Payée le : ${paidAt}` : `À payer avant le : ${dueAt || "-"}`,
     {
-      x:
-        margin,
+      x: margin,
 
-      y:
-        yLeft,
+      y: yLeft,
 
-      size:
-        12,
-
-      font:
-        fontBold,
-    },
-  );
-
-  yLeft -=
-    18;
-
-  page.drawText(
-    `Émise le : ${issuedAt || "-"}`,
-    {
-      x:
-        margin,
-
-      y:
-        yLeft,
-
-      size:
-        10,
+      size: 10,
 
       font,
     },
   );
 
-  yLeft -=
-    14;
+  yLeft -= 14;
 
-  page.drawText(
-    `Payée le : ${paidAt || "-"}`,
-    {
-      x:
-        margin,
+  page.drawText(`Période : ${periodStart || "-"} - ${periodEnd || "-"}`, {
+    x: margin,
 
-      y:
-        yLeft,
+    y: yLeft,
 
-      size:
-        10,
+    size: 10,
 
-      font,
-    },
-  );
+    font,
+  });
 
-  yLeft -=
-    14;
-
-  page.drawText(
-    `Période : ${periodStart || "-"} - ${periodEnd || "-"}`,
-    {
-      x:
-        margin,
-
-      y:
-        yLeft,
-
-      size:
-        10,
-
-      font,
-    },
-  );
-
-  yLeft -=
-    18;
-
+  yLeft -= 18;
 
   // ============================================================
   // CUSTOMER BLOCK
   // ============================================================
 
-  const buyerX =
-    width / 2 +
-    20;
+  const buyerX = width / 2 + 20;
 
-  let yRight =
-    height -
-    margin -
-    40;
+  let yRight = height - margin - 40;
 
-  page.drawText(
-    "Client",
-    {
-      x:
-        buyerX,
+  page.drawText("Client", {
+    x: buyerX,
 
-      y:
-        yRight,
+    y: yRight,
 
-      size:
-        12,
+    size: 12,
 
-      font:
-        fontBold,
-    },
-  );
+    font: fontBold,
+  });
 
-  yRight -=
-    16;
+  yRight -= 16;
 
   const buyerLines = [
     legalName,
 
-    buyerVat !== "-"
-      ? `TVA : ${buyerVat}`
-      : "",
+    buyerVat !== "-" ? `TVA : ${buyerVat}` : "",
 
     addressLine1,
 
     addressLine2,
 
-    [
-      city,
-      country,
-    ]
-      .filter(
-        Boolean,
-      )
-      .join(
-        " ",
-      )
-      .trim(),
+    [city, country].filter(Boolean).join(" ").trim(),
 
-    billingEmail
-      ? `Email : ${billingEmail}`
-      : "",
+    billingEmail ? `Email : ${billingEmail}` : "",
 
-    invoiceReference
-      ? `Réf. : ${invoiceReference}`
-      : "",
-  ].filter(
-    (
-      line,
-    ) =>
-      String(
-        line,
-      )
-        .trim()
-        .length >
-      0,
-  );
+    invoiceReference ? `Réf. : ${invoiceReference}` : "",
+  ].filter((line) => String(line).trim().length > 0);
 
-  for (
-    const line
-    of buyerLines
-  ) {
-    page.drawText(
-      line,
-      {
-        x:
-          buyerX,
+  for (const line of buyerLines) {
+    page.drawText(line, {
+      x: buyerX,
 
-        y:
-          yRight,
+      y: yRight,
 
-        size:
-          10,
+      size: 10,
 
-        font,
-      },
-    );
+      font,
+    });
 
-    yRight -=
-      13;
+    yRight -= 13;
   }
-
 
   // ============================================================
   // INVOICE LINE
   // ============================================================
 
-  let y =
-    Math.min(
-      yLeft,
-      yRight,
-    ) -
-    28;
+  let y = Math.min(yLeft, yRight) - 28;
 
-  const descriptionX =
-    margin;
+  const descriptionX = margin;
 
-  const amountX =
-    width -
-    margin -
-    160;
+  const amountX = width - margin - 160;
 
-  page.drawText(
-    "Description",
-    {
-      x:
-        descriptionX,
+  page.drawText("Description", {
+    x: descriptionX,
 
-      y,
+    y,
 
-      size:
-        10,
+    size: 10,
 
-      font:
-        fontBold,
-    },
-  );
+    font: fontBold,
+  });
 
-  page.drawText(
-    "Montant HTVA",
-    {
-      x:
-        amountX,
+  page.drawText("Montant HTVA", {
+    x: amountX,
 
-      y,
+    y,
 
-      size:
-        10,
+    size: 10,
 
-      font:
-        fontBold,
-    },
-  );
+    font: fontBold,
+  });
 
-  y -=
-    16;
+  y -= 16;
 
-  page.drawText(
-    "Abonnement EventFlow",
-    {
-      x:
-        descriptionX,
+  page.drawText("Abonnement EventFlow", {
+    x: descriptionX,
 
-      y,
+    y,
 
-      size:
-        10,
+    size: 10,
 
-      font,
-    },
-  );
+    font,
+  });
 
-  page.drawText(
-    moneyFromCents(
-      subtotalCents,
-      currency,
-    ),
-    {
-      x:
-        amountX,
+  page.drawText(moneyFromCents(subtotalCents, currency), {
+    x: amountX,
 
-      y,
+    y,
 
-      size:
-        10,
+    size: 10,
 
-      font,
-    },
-  );
+    font,
+  });
 
-  y -=
-    28;
-
+  y -= 28;
 
   // ============================================================
   // TOTALS
   // ============================================================
 
-  const totalsX =
-    width -
-    margin -
-    220;
+  const totalsX = width - margin - 220;
 
   page.drawText(
-    `Sous-total HTVA : ${
-      moneyFromCents(
-        subtotalCents,
-        currency,
-      )
-    }`,
+    `Sous-total HTVA : ${moneyFromCents(subtotalCents, currency)}`,
     {
-      x:
-        totalsX,
+      x: totalsX,
 
       y,
 
-      size:
-        10,
+      size: 10,
 
       font,
     },
   );
 
-  y -=
-    14;
+  y -= 14;
 
-  page.drawText(
-    `TVA ${vatRate} % : ${
-      moneyFromCents(
-        vatCents,
-        currency,
-      )
-    }`,
-    {
-      x:
-        totalsX,
+  page.drawText(`TVA ${vatRate} % : ${moneyFromCents(vatCents, currency)}`, {
+    x: totalsX,
 
+    y,
+
+    size: 10,
+
+    font,
+  });
+
+  y -= 16;
+
+  page.drawText(`Total TVAC : ${moneyFromCents(totalCents, currency)}`, {
+    x: totalsX,
+
+    y,
+
+    size: 12,
+
+    font: fontBold,
+  });
+
+  y -= 34;
+
+  page.drawText("Paiement par virement bancaire", {
+    x: margin,
+    y,
+    size: 11,
+    font: fontBold,
+  });
+
+  y -= 16;
+
+  const paymentLines = [
+    "Bénéficiaire : Eventflow - Nicolas Manns",
+    "Compte CBC : BE51 7320 8102 5262",
+    `Communication : ${paymentReference}`,
+    `Échéance : ${dueAt || "14 jours après émission"}`,
+  ];
+
+  for (const line of paymentLines) {
+    page.drawText(line, {
+      x: margin,
       y,
-
-      size:
-        10,
-
+      size: 10,
       font,
-    },
-  );
-
-  y -=
-    16;
-
-  page.drawText(
-    `Total TVAC : ${
-      moneyFromCents(
-        totalCents,
-        currency,
-      )
-    }`,
-    {
-      x:
-        totalsX,
-
-      y,
-
-      size:
-        12,
-
-      font:
-        fontBold,
-    },
-  );
-
+    });
+    y -= 14;
+  }
 
   // ============================================================
   // FOOTER
   // ============================================================
 
-  page.drawText(
-    "Document généré automatiquement.",
-    {
-      x:
-        margin,
+  page.drawText("Document généré automatiquement.", {
+    x: margin,
 
-      y:
-        margin +
-        10,
+    y: margin + 10,
 
-      size:
-        9,
+    size: 9,
 
-      font,
-    },
-  );
+    font,
+  });
 
   return await pdf.save();
 }
-
 
 Deno.serve(
   createEdgeHandler(
     "generate-invoice-pdf",
 
-    async (
-      req,
-      {
-        logger,
-      },
-    ) => {
-      const supabaseUrl =
-        Deno.env.get(
-          "SUPABASE_URL",
-        );
+    async (req, { logger }) => {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
 
-      const serviceRoleKey =
-        Deno.env.get(
-          "SUPABASE_SERVICE_ROLE_KEY",
-        );
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-      if (
-        !supabaseUrl ||
-        !serviceRoleKey
-      ) {
-        logger.error(
-          "runtime_config_missing",
-          {
-            hasSupabaseUrl:
-              Boolean(
-                supabaseUrl,
-              ),
+      if (!supabaseUrl || !serviceRoleKey) {
+        logger.error("runtime_config_missing", {
+          hasSupabaseUrl: Boolean(supabaseUrl),
 
-            hasServiceRoleKey:
-              Boolean(
-                serviceRoleKey,
-              ),
-          },
-        );
+          hasServiceRoleKey: Boolean(serviceRoleKey),
+        });
 
         return json(
           {
-            error:
-              "SERVER_MISCONFIGURED",
+            error: "SERVER_MISCONFIGURED",
           },
           500,
         );
       }
 
       try {
-        assertInternalRequest(
-          req,
-          serviceRoleKey,
-        );
+        assertInternalRequest(req, serviceRoleKey);
       } catch {
-        logger.warn(
-          "internal_auth_rejected",
-          {},
-        );
+        logger.warn("internal_auth_rejected", {});
 
         return json(
           {
-            error:
-              "FORBIDDEN",
+            error: "FORBIDDEN",
           },
           403,
         );
       }
 
-      const body =
-        await req
-          .json()
-          .catch(
-            () =>
-              null,
-          );
+      const body = await req.json().catch(() => null);
 
-      const invoiceId =
-        String(
-          body?.invoice_id ??
-          "",
-        ).trim();
+      const invoiceId = String(body?.invoice_id ?? "").trim();
 
-      const force =
-        Boolean(
-          body?.force ??
-          false,
-        );
+      const force = Boolean(body?.force ?? false);
 
-      logger.info(
-        "payload_parsed",
-        {
-          invoiceId:
-            invoiceId ||
-            null,
+      logger.info("payload_parsed", {
+        invoiceId: invoiceId || null,
 
-          force,
-        },
-      );
+        force,
+      });
 
-      if (
-        !invoiceId ||
-        !isUuid(
-          invoiceId,
-        )
-      ) {
-        logger.warn(
-          "invoice_id_invalid",
-          {
-            invoiceId:
-              invoiceId ||
-              null,
-          },
-        );
+      if (!invoiceId || !isUuid(invoiceId)) {
+        logger.warn("invoice_id_invalid", {
+          invoiceId: invoiceId || null,
+        });
 
         return json(
           {
-            error:
-              "VALIDATION_ERROR: invoice_id invalid",
+            error: "VALIDATION_ERROR: invoice_id invalid",
           },
           400,
         );
       }
 
-      const admin =
-        createAdminClient(
-          {
-            supabaseUrl,
-            serviceKey:
-              serviceRoleKey,
-          },
-        );
+      const admin = createAdminClient({
+        supabaseUrl,
+        serviceKey: serviceRoleKey,
+      });
 
       const {
-        data:
-          invoice,
+        data: invoice,
 
-        error:
-          invoiceError,
-      } =
-        await admin
-          .from(
-            "invoices",
-          )
-          .select(
-            `
+        error: invoiceError,
+      } = await admin
+        .from("invoices")
+        .select(
+          `
               id,
               org_id,
               number,
@@ -1006,474 +574,278 @@ Deno.serve(
               vat_rate,
               issued_at,
               paid_at,
+              due_at,
+              payment_reference,
               period_start,
               period_end,
               billing_snapshot,
               pdf_path
             `,
-          )
-          .eq(
-            "id",
-            invoiceId,
-          )
-          .maybeSingle();
+        )
+        .eq("id", invoiceId)
+        .maybeSingle();
 
-      if (
-        invoiceError
-      ) {
-        logger.error(
-          "invoice_load_failed",
-          {
-            invoiceId,
+      if (invoiceError) {
+        logger.error("invoice_load_failed", {
+          invoiceId,
 
-            message:
-              invoiceError.message,
+          message: invoiceError.message,
 
-            code:
-              invoiceError.code ??
-              null,
-          },
-        );
+          code: invoiceError.code ?? null,
+        });
 
         return json(
           {
-            error:
-              "DB_ERROR",
+            error: "DB_ERROR",
 
-            details:
-              invoiceError.message,
+            details: invoiceError.message,
           },
           500,
         );
       }
 
-      if (
-        !invoice?.id
-      ) {
-        logger.warn(
-          "invoice_not_found",
-          {
-            invoiceId,
-          },
-        );
+      if (!invoice?.id) {
+        logger.warn("invoice_not_found", {
+          invoiceId,
+        });
 
         return json(
           {
-            error:
-              "NOT_FOUND",
+            error: "NOT_FOUND",
           },
           404,
         );
       }
 
-      if (
-        !invoice.org_id ||
-        !invoice.number
-      ) {
-        logger.error(
-          "invoice_data_invalid",
-          {
-            invoiceId,
+      if (!invoice.org_id || !invoice.number) {
+        logger.error("invoice_data_invalid", {
+          invoiceId,
 
-            hasOrgId:
-              Boolean(
-                invoice.org_id,
-              ),
+          hasOrgId: Boolean(invoice.org_id),
 
-            hasNumber:
-              Boolean(
-                invoice.number,
-              ),
-          },
-        );
+          hasNumber: Boolean(invoice.number),
+        });
 
         return json(
           {
-            error:
-              "VALIDATION_ERROR: invoice missing org_id/number",
+            error: "VALIDATION_ERROR: invoice missing org_id/number",
           },
           400,
         );
       }
 
-      logger.info(
-        "invoice_loaded",
-        {
-          invoiceId:
-            invoice.id,
+      logger.info("invoice_loaded", {
+        invoiceId: invoice.id,
 
-          invoiceNumber:
-            invoice.number,
+        invoiceNumber: invoice.number,
 
-          orgId:
-            invoice.org_id,
+        orgId: invoice.org_id,
 
-          subtotalCents:
-            invoice.subtotal_cents,
+        subtotalCents: invoice.subtotal_cents,
 
-          vatCents:
-            invoice.vat_cents,
+        vatCents: invoice.vat_cents,
 
-          totalCents:
-            invoice.total_cents,
+        totalCents: invoice.total_cents,
 
-          vatRate:
-            invoice.vat_rate,
+        vatRate: invoice.vat_rate,
 
-          hasExistingPdf:
-            Boolean(
-              invoice.pdf_path,
-            ),
-        },
-      );
+        hasExistingPdf: Boolean(invoice.pdf_path),
+      });
 
-      const yearFromNumber =
-        String(
-          invoice.number,
-        ).slice(
-          0,
-          4,
-        );
+      const yearFromNumber = String(invoice.number).slice(0, 4);
 
-      const year =
-        /^\d{4}$/.test(
-            yearFromNumber,
-          )
-          ? yearFromNumber
-          : String(
-            new Date()
-              .getUTCFullYear(),
-          );
+      const year = /^\d{4}$/.test(yearFromNumber)
+        ? yearFromNumber
+        : String(new Date().getUTCFullYear());
 
-      const clientPath =
-        `${invoice.org_id}/${year}/${invoice.number}.pdf`;
+      const clientPath = `${invoice.org_id}/${year}/${invoice.number}.pdf`;
 
-      const accountingPath =
-        `accounting/${year}/${invoice.number}.pdf`;
+      const accountingPath = `accounting/${year}/${invoice.number}.pdf`;
 
-      logger.info(
-        "pdf_build_start",
-        {
-          invoiceId:
-            invoice.id,
+      logger.info("pdf_build_start", {
+        invoiceId: invoice.id,
 
-          clientPath,
+        clientPath,
 
-          accountingPath,
-        },
-      );
+        accountingPath,
+      });
 
-      let pdfBytes:
-        Uint8Array;
+      let pdfBytes: Uint8Array;
 
       try {
-        pdfBytes =
-          await buildPdfBytes(
-            invoice as InvoiceForPdf,
-          );
-      } catch (
-        error
-      ) {
-        logger.error(
-          "pdf_build_failed",
-          {
-            invoiceId:
-              invoice.id,
+        pdfBytes = await buildPdfBytes(invoice as InvoiceForPdf);
+      } catch (error) {
+        logger.error("pdf_build_failed", {
+          invoiceId: invoice.id,
 
-            message:
-              error instanceof
-                  Error
-                ? error.message
-                : String(
-                  error,
-                ),
-          },
-        );
+          message: error instanceof Error ? error.message : String(error),
+        });
 
         return json(
           {
-            error:
-              "PDF_BUILD_FAILED",
+            error: "PDF_BUILD_FAILED",
           },
           500,
         );
       }
 
-      logger.info(
-        "pdf_built",
-        {
-          invoiceId:
-            invoice.id,
+      logger.info("pdf_built", {
+        invoiceId: invoice.id,
 
-          bytes:
-            pdfBytes.byteLength,
-        },
-      );
+        bytes: pdfBytes.byteLength,
+      });
 
       const uploadOptions = {
-        contentType:
-          "application/pdf",
+        contentType: "application/pdf",
 
-        upsert:
-          force,
+        upsert: force,
       };
 
-      const clientUpload =
-        await admin.storage
-          .from(
-            INVOICES_BUCKET,
-          )
-          .upload(
-            clientPath,
-            pdfBytes,
-            uploadOptions,
-          );
+      const clientUpload = await admin.storage
+        .from(INVOICES_BUCKET)
+        .upload(clientPath, pdfBytes, uploadOptions);
 
-      if (
-        clientUpload.error &&
-        !force
-      ) {
-        const message =
-          String(
-            clientUpload.error.message ??
-            clientUpload.error,
-          );
+      if (clientUpload.error && !force) {
+        const message = String(
+          clientUpload.error.message ?? clientUpload.error,
+        );
 
         const alreadyExists =
-          message
-            .toLowerCase()
-            .includes(
-              "already exists",
-            ) ||
-          message
-            .toLowerCase()
-            .includes(
-              "duplicate",
-            ) ||
-          message
-            .toLowerCase()
-            .includes(
-              "exists",
-            );
+          message.toLowerCase().includes("already exists") ||
+          message.toLowerCase().includes("duplicate") ||
+          message.toLowerCase().includes("exists");
 
-        if (
-          !alreadyExists
-        ) {
-          logger.error(
-            "client_pdf_upload_failed",
-            {
-              invoiceId:
-                invoice.id,
+        if (!alreadyExists) {
+          logger.error("client_pdf_upload_failed", {
+            invoiceId: invoice.id,
 
-              clientPath,
+            clientPath,
 
-              message,
-            },
-          );
+            message,
+          });
 
           return json(
             {
-              error:
-                "UPLOAD_FAILED_CLIENT",
+              error: "UPLOAD_FAILED_CLIENT",
 
-              details:
-                message,
+              details: message,
             },
             500,
           );
         }
 
-        logger.info(
-          "client_pdf_already_exists",
-          {
-            invoiceId:
-              invoice.id,
+        logger.info("client_pdf_already_exists", {
+          invoiceId: invoice.id,
 
-            clientPath,
-          },
-        );
+          clientPath,
+        });
       } else {
-        logger.info(
-          "client_pdf_uploaded",
-          {
-            invoiceId:
-              invoice.id,
+        logger.info("client_pdf_uploaded", {
+          invoiceId: invoice.id,
 
-            clientPath,
-          },
-        );
+          clientPath,
+        });
       }
 
-      const accountingUpload =
-        await admin.storage
-          .from(
-            INVOICES_BUCKET,
-          )
-          .upload(
-            accountingPath,
-            pdfBytes,
-            uploadOptions,
-          );
+      const accountingUpload = await admin.storage
+        .from(INVOICES_BUCKET)
+        .upload(accountingPath, pdfBytes, uploadOptions);
 
-      if (
-        accountingUpload.error &&
-        !force
-      ) {
-        const message =
-          String(
-            accountingUpload.error.message ??
-            accountingUpload.error,
-          );
+      if (accountingUpload.error && !force) {
+        const message = String(
+          accountingUpload.error.message ?? accountingUpload.error,
+        );
 
         const alreadyExists =
-          message
-            .toLowerCase()
-            .includes(
-              "already exists",
-            ) ||
-          message
-            .toLowerCase()
-            .includes(
-              "duplicate",
-            ) ||
-          message
-            .toLowerCase()
-            .includes(
-              "exists",
-            );
+          message.toLowerCase().includes("already exists") ||
+          message.toLowerCase().includes("duplicate") ||
+          message.toLowerCase().includes("exists");
 
-        if (
-          !alreadyExists
-        ) {
-          logger.error(
-            "accounting_pdf_upload_failed",
-            {
-              invoiceId:
-                invoice.id,
+        if (!alreadyExists) {
+          logger.error("accounting_pdf_upload_failed", {
+            invoiceId: invoice.id,
 
-              accountingPath,
+            accountingPath,
 
-              message,
-            },
-          );
+            message,
+          });
 
           return json(
             {
-              error:
-                "UPLOAD_FAILED_ACCOUNTING",
+              error: "UPLOAD_FAILED_ACCOUNTING",
 
-              details:
-                message,
+              details: message,
             },
             500,
           );
         }
 
-        logger.info(
-          "accounting_pdf_already_exists",
-          {
-            invoiceId:
-              invoice.id,
+        logger.info("accounting_pdf_already_exists", {
+          invoiceId: invoice.id,
 
-            accountingPath,
-          },
-        );
+          accountingPath,
+        });
       } else {
-        logger.info(
-          "accounting_pdf_uploaded",
-          {
-            invoiceId:
-              invoice.id,
+        logger.info("accounting_pdf_uploaded", {
+          invoiceId: invoice.id,
 
-            accountingPath,
-          },
-        );
+          accountingPath,
+        });
       }
 
-      if (
-        !invoice.pdf_path ||
-        force
-      ) {
-        const {
-          error:
-            pdfPathError,
-        } =
-          await admin.rpc(
-            "rpc_set_invoice_pdf_path",
-            {
-              p_invoice_id:
-                invoice.id,
+      if (!invoice.pdf_path || force) {
+        const { error: pdfPathError } = await admin.rpc(
+          "rpc_set_invoice_pdf_path",
+          {
+            p_invoice_id: invoice.id,
 
-              p_pdf_path:
-                clientPath,
-            },
-          );
+            p_pdf_path: clientPath,
+          },
+        );
 
-        if (
-          pdfPathError
-        ) {
-          logger.error(
-            "invoice_pdf_path_update_failed",
-            {
-              invoiceId:
-                invoice.id,
+        if (pdfPathError) {
+          logger.error("invoice_pdf_path_update_failed", {
+            invoiceId: invoice.id,
 
-              clientPath,
+            clientPath,
 
-              message:
-                pdfPathError.message,
-            },
-          );
+            message: pdfPathError.message,
+          });
 
           return json(
             {
-              error:
-                "SET_PDF_PATH_FAILED",
+              error: "SET_PDF_PATH_FAILED",
 
-              details:
-                pdfPathError.message,
+              details: pdfPathError.message,
             },
             500,
           );
         }
 
-        logger.info(
-          "invoice_pdf_path_updated",
-          {
-            invoiceId:
-              invoice.id,
+        logger.info("invoice_pdf_path_updated", {
+          invoiceId: invoice.id,
 
-            clientPath,
-          },
-        );
+          clientPath,
+        });
       }
 
-      logger.info(
-        "completed",
-        {
-          invoiceId:
-            invoice.id,
+      logger.info("completed", {
+        invoiceId: invoice.id,
 
-          invoiceNumber:
-            invoice.number,
+        invoiceNumber: invoice.number,
 
-          pdfPath:
-            clientPath,
+        pdfPath: clientPath,
 
-          force,
-        },
-      );
+        force,
+      });
 
       return json(
         {
-          ok:
-            true,
+          ok: true,
 
-          invoice_id:
-            invoice.id,
+          invoice_id: invoice.id,
 
-          pdf_path:
-            clientPath,
+          pdf_path: clientPath,
         },
         200,
       );
