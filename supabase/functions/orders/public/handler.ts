@@ -15,12 +15,11 @@ import { createOrderIntentOrThrow } from "./order-intent-repository.ts";
 import { buildBuyer } from "./buyer.ts";
 import { verifyCaptchaOrThrow } from "./turnstile.ts";
 import { resolveCheckoutContextOrThrow } from "./checkout.ts";
-import { getValidOrgMollieAccessOrThrow } from "./mollie-auth.ts";
 import {
-  createMolliePayment,
-  findReusablePayment,
-  insertPaymentOrRollback,
-} from "./mollie-payments.ts";
+  findReusableProviderPayment,
+  insertProviderPaymentOrRollback,
+} from "./payment-storage.ts";
+import { resolveEventPaymentProvider } from "./payment-provider.ts";
 import { completeFreeOrderOrThrow } from "./free-order.ts";
 import { assertWidgetAllowedForOrgOrThrow } from "./widget.ts";
 
@@ -154,18 +153,23 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       });
     }
 
-    const mollieAuth = await getValidOrgMollieAccessOrThrow(
+    const paymentProvider = await resolveEventPaymentProvider({
       admin,
       orgId,
-    );
-
-    logger.info("mollie_auth_loaded", {
-      orgId,
-      isTest: mollieAuth.isTest,
-      hasProfileId: Boolean(mollieAuth.profileId),
+      stripeSecretKey: config.stripeSecretKey,
+      providerSelection: config.eventPaymentProvider,
     });
 
-    const reusable = await findReusablePayment(admin, order.orderId);
+    logger.info("payment_provider_loaded", {
+      orgId,
+      provider: paymentProvider.name,
+    });
+
+    const reusable = await findReusableProviderPayment(
+      admin,
+      order.orderId,
+      paymentProvider.name,
+    );
 
     if (reusable) {
       logger.info("reusable_payment_found", {
@@ -185,48 +189,41 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       });
     }
 
-    logger.info("mollie_payment_create_start", {
+    logger.info("payment_create_start", {
       orderId: order.orderId,
       orgId,
+      provider: paymentProvider.name,
       dueNowCents: order.dueNowCents,
       totalCents: order.totalCents,
       discountCents: order.discountCents,
       currency: order.currency,
     });
 
-    const payment = await createMolliePayment({
-      accessToken: mollieAuth.accessToken,
-      profileId: mollieAuth.profileId,
-      isTest: mollieAuth.isTest,
+    const payment = await paymentProvider.createPayment({
       orderId: order.orderId,
       orgId,
       bookingToken: order.bookingToken,
-      dueNowCents: order.dueNowCents,
+      amountCents: order.dueNowCents,
       totalCents: order.totalCents,
       currency: order.currency,
-      redirectUrl: checkout.buildRedirectUrl(
-        order.orderId,
-        order.bookingToken,
-      ),
-      webhookUrl: `${config.functionsBase}/mollie-webhook-tickets`,
+      redirectUrl: checkout.buildRedirectUrl(order.orderId, order.bookingToken),
       eventTitle,
       buyerEmail: buyer.email,
     });
 
-    logger.info("mollie_payment_created", {
+    logger.info("payment_created", {
       orderId: order.orderId,
+      provider: paymentProvider.name,
       providerPaymentId: payment.providerPaymentId,
     });
 
-    await insertPaymentOrRollback({
+    await insertProviderPaymentOrRollback({
       admin,
-      accessToken: mollieAuth.accessToken,
-      isTest: mollieAuth.isTest,
+      provider: paymentProvider,
+      payment,
       orderId: order.orderId,
-      dueNowCents: order.dueNowCents,
+      amountCents: order.dueNowCents,
       currency: order.currency,
-      molliePayment: payment.raw,
-      providerPaymentId: payment.providerPaymentId,
     });
 
     logger.info("payment_inserted", {

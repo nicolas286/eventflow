@@ -12,6 +12,19 @@ export const dashboardBootstrapSchema = z.object({
   organization: organizationSchema.nullable(),
   organizationProfile: organizationProfileSchema.nullable(),
   subscription: subscriptionUISchema.nullable(),
+  latestOpenInvoice: z
+    .object({
+      id: z.uuid(),
+      number: z.string(),
+      status: z.literal("issued"),
+      issuedAt: z.string(),
+      dueAt: z.string(),
+      totalCents: z.number().int().nonnegative(),
+      currency: z.string().length(3),
+      paymentReference: z.string(),
+    })
+    .nullable()
+    .optional(),
   planLimits: planLimitsSchema,
 });
 

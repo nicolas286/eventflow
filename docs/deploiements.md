@@ -4,10 +4,10 @@ Dépôt : https://github.com/nicolas286/eventflow (ancien nom : `eventflow-front
 
 ## Circuit attendu
 
-| Action Git | Front Netlify | Backend Supabase |
-| --- | --- | --- |
-| Push sur `dev` | https://eventflow-staging.netlify.app | `cpcmcxerrsnnjncrhldr` — eventflow-staging |
-| Fusion d'une PR approuvée dans `main` | https://app.useeventflow.eu | `dixirvllhfkvqoahhfqh` — eventflow-prod |
+| Action Git                            | Front Netlify                         | Backend Supabase                           |
+| ------------------------------------- | ------------------------------------- | ------------------------------------------ |
+| Push sur `dev`                        | https://eventflow-staging.netlify.app | `cpcmcxerrsnnjncrhldr` — eventflow-staging |
+| Fusion d'une PR approuvée dans `main` | https://app.useeventflow.eu           | `dixirvllhfkvqoahhfqh` — eventflow-prod    |
 
 Le renommage du dépôt ne renomme pas les sites ni les projets Supabase. Le dossier local peut conserver son nom actuel.
 
@@ -42,7 +42,7 @@ Les environnements GitHub `staging` et `production` limitent l'accès aux secret
 - Secrets : `SUPABASE_ACCESS_TOKEN`, `NETLIFY_AUTH_TOKEN`, `VITE_SUPABASE_ANON_KEY` (clé publique). L'environnement `staging` contient aussi `SUPABASE_SERVICE_ROLE_KEY`, limitée au test d'intégration de suppression de compte.
 - Variables : `SUPABASE_PROJECT_REF`, `NETLIFY_SITE_ID`, `VITE_SUPABASE_URL`, `PUBLIC_BASE_URL`, `VITE_TURNSTILE_SITEKEY`.
 
-Le CLI Supabase utilise son jeton d'accès et un rôle de connexion temporaire ; le pipeline ne réinitialise pas le mot de passe de production. Les secrets serveur Mollie, messagerie et Billit restent dans chaque projet Supabase. Ils ne sont pas publiés dans le front ni synchronisés automatiquement entre projets.
+Le CLI Supabase utilise son jeton d'accès et un rôle de connexion temporaire ; le pipeline ne réinitialise pas le mot de passe de production. Les secrets serveur Stripe Connect, les références historiques Mollie, la messagerie et Billit restent dans chaque projet Supabase. Ils ne sont pas publiés dans le front ni synchronisés automatiquement entre projets. Les abonnements Eventflow sont facturés en interne, sans Stripe Billing. Voir [la procédure Stripe](stripe-migration.md).
 
 Les variables de dépôt `STAGING_DEPLOY_ENABLED` et `PRODUCTION_DEPLOY_ENABLED` contrôlent les workflows. La propriété `deploymentEnabled` du manifeste est un second contrôle. Un déploiement demande les deux contrôles actifs. L'activation production ne publie rien à elle seule : un push dans `main`, normalement issu d'une PR approuvée, déclenche la publication.
 

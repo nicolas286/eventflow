@@ -418,3 +418,15 @@ import_map = "./functions/import_map.json"
 [functions.mollie-webhook-tickets]
 verify_jwt = false
 import_map = "./functions/import_map.json"
+
+[functions.stripe-connect-start]
+verify_jwt = false
+import_map = "./functions/import_map.json"
+
+[functions.stripe-connect-status]
+verify_jwt = false
+import_map = "./functions/import_map.json"
+
+[functions.stripe-webhook-connect]
+verify_jwt = false
+import_map = "./functions/import_map.json"

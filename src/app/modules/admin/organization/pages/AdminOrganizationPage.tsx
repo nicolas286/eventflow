@@ -6,7 +6,6 @@ import Card, { CardBody, CardHeader } from "@ui/components/card/Card";
 import StructurePanel from "../components/OrganizationPanel/OrganizationPanel";
 import type { AdminOutletContext } from "../../dashboard/components/AdminDashboard";
 
-
 export default function AdminStructurePage() {
   const { bootstrap, orgId, refetch } = useOutletContext<AdminOutletContext>();
 
@@ -17,7 +16,7 @@ export default function AdminStructurePage() {
       <Card>
         <CardHeader
           title="Structure"
-          subtitle="Gérez l’identité, les infos publiques, et connectez Mollie pour les paiements."
+          subtitle="Gérez l’identité, les infos publiques et le fournisseur des paiements d’événements."
         />
         <CardBody>
           {!ready ? (
@@ -25,11 +24,12 @@ export default function AdminStructurePage() {
               <p>Chargement…</p>
             </div>
           ) : (
-            <StructurePanel 
-            orgId={orgId} 
-            orgInfo={bootstrap.organization} 
-            orgProfile={bootstrap.organizationProfile} 
-            onSaved={refetch} />
+            <StructurePanel
+              orgId={orgId}
+              orgInfo={bootstrap.organization}
+              orgProfile={bootstrap.organizationProfile}
+              onSaved={refetch}
+            />
           )}
         </CardBody>
       </Card>

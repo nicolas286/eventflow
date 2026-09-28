@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { generateInvoicePdf } from "../_shared/services/invoice-pdf/index.ts";
 
 export type InvoicePdfRecord = {
   id: string;
@@ -19,6 +20,7 @@ export interface InvoicePdfUrlRepository {
     path: string,
     expiresIn: number,
   ): Promise<RepositoryResult<string | null>>;
+  generatePdf(invoiceId: string): Promise<RepositoryResult<string | null>>;
 }
 
 export function createInvoicePdfUrlRepository(
@@ -64,6 +66,20 @@ export function createInvoicePdfUrlRepository(
       return error
         ? { data: null, errorMessage: error.message }
         : { data: data?.signedUrl ?? null, errorMessage: null };
+    },
+
+    async generatePdf(invoiceId) {
+      const generated = await generateInvoicePdf(serviceClient, invoiceId);
+      if (generated.error) {
+        return { data: null, errorMessage: generated.error.message };
+      }
+
+      const refreshed = await this.loadInvoice(invoiceId);
+      if (refreshed.errorMessage) return refreshed;
+      return {
+        data: refreshed.data?.pdfPath ?? null,
+        errorMessage: null,
+      };
     },
   };
 }

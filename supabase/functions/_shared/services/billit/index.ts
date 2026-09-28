@@ -394,7 +394,8 @@ function buildUblInvoice(
 
   const dueDate = isoDate(
     (
-      invoice.paid_at ??
+      invoice.due_at ??
+        invoice.paid_at ??
         invoice.issued_at
     ) as
       | string
@@ -498,6 +499,19 @@ function buildUblInvoice(
       </cac:PartyLegalEntity>
     </cac:Party>
   </cac:AccountingCustomerParty>
+
+  <cac:PaymentMeans>
+    <cbc:PaymentMeansCode name="Credit transfer">30</cbc:PaymentMeansCode>
+    <cbc:PaymentID>${escapeXml(invoice.payment_reference ?? `E-${invoice.number}`)}</cbc:PaymentID>
+    <cac:PayeeFinancialAccount>
+      <cbc:ID>BE51732081025262</cbc:ID>
+      <cbc:Name>Eventflow - Nicolas Manns</cbc:Name>
+    </cac:PayeeFinancialAccount>
+  </cac:PaymentMeans>
+
+  <cac:PaymentTerms>
+    <cbc:Note>Paiement par virement dans les 14 jours.</cbc:Note>
+  </cac:PaymentTerms>
 
   <cac:TaxTotal>
     <cbc:TaxAmount currencyID="${escapeXml(currency)}">${vat}</cbc:TaxAmount>
@@ -737,6 +751,8 @@ export async function sendInvoiceToBillit(
               vat_rate,
               issued_at,
               paid_at,
+              due_at,
+              payment_reference,
               billing_snapshot,
               pdf_path
             `,

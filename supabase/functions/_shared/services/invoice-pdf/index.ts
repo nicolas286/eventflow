@@ -129,6 +129,10 @@ type InvoiceForPdf = {
 
   paid_at: string | null;
 
+  due_at: string | null;
+
+  payment_reference: string | null;
+
   period_start: string | null;
 
   period_end: string | null;
@@ -268,6 +272,14 @@ async function buildPdfBytes(
     invoice.paid_at,
   );
 
+  const dueAt = isoDate(
+    invoice.due_at,
+  );
+
+  const paymentReference = String(
+    invoice.payment_reference ?? `E-${number}`,
+  );
+
   const periodStart = isoDate(
     invoice.period_start,
   );
@@ -395,7 +407,9 @@ async function buildPdfBytes(
   yLeft -= 14;
 
   page.drawText(
-    `Payée le : ${paidAt || "-"}`,
+    paidAt
+      ? `Payée le : ${paidAt}`
+      : `À payer avant le : ${dueAt || "-"}`,
     {
       x: margin,
 
@@ -646,6 +660,37 @@ async function buildPdfBytes(
     },
   );
 
+  y -= 34;
+
+  page.drawText(
+    "Paiement par virement bancaire",
+    {
+      x: margin,
+      y,
+      size: 11,
+      font: fontBold,
+    },
+  );
+
+  y -= 16;
+
+  const paymentLines = [
+    "Bénéficiaire : Eventflow - Nicolas Manns",
+    "Compte CBC : BE51 7320 8102 5262",
+    `Communication : ${paymentReference}`,
+    `Échéance : ${dueAt || "14 jours après émission"}`,
+  ];
+
+  for (const line of paymentLines) {
+    page.drawText(line, {
+      x: margin,
+      y,
+      size: 10,
+      font,
+    });
+    y -= 14;
+  }
+
   // ============================================================
   // FOOTER
   // ============================================================
@@ -693,6 +738,8 @@ export async function generateInvoicePdf(
               vat_rate,
               issued_at,
               paid_at,
+              due_at,
+              payment_reference,
               period_start,
               period_end,
               billing_snapshot,

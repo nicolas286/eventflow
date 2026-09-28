@@ -7,12 +7,26 @@ type Props = {
   className?: string;
 };
 
-
 export function AdminNotices({ bootstrap, className }: Props) {
   const notices: NoticeProps[] = [];
 
+  const openInvoice = bootstrap.latestOpenInvoice;
+  if (openInvoice) {
+    const dueDate = new Date(openInvoice.dueAt).toLocaleDateString("fr-BE");
+    const amount = (openInvoice.totalCents / 100).toLocaleString("fr-BE", {
+      style: "currency",
+      currency: openInvoice.currency,
+    });
+    notices.push({
+      key: `invoice-${openInvoice.id}`,
+      title: "Nouvelle facture Eventflow",
+      body: `La facture ${openInvoice.number} de ${amount} est payable par virement avant le ${dueDate}.`,
+      to: "/admin/abonnement?tab=invoices",
+      cta: "Voir la facture",
+    });
+  }
+
   const plan = bootstrap.organization?.plan ?? "free";
-  const paymentsStatus = bootstrap.organization?.paymentsStatus ?? "not_connected";
 
   if (plan === "free") {
     notices.push({
@@ -31,54 +45,42 @@ export function AdminNotices({ bootstrap, className }: Props) {
     isBlank(p.city) ||
     isBlank(p.countryCode);
 
-    if (addressMissing) {
-      notices.push({
-        key: "profile-address",
-        title: "Profil incomplet",
-        body: "Ajoutez votre adresse à votre profil.",
-        to: "/admin/profil",
-        cta: "Compléter mon profil",
-      });
-    }
+  if (addressMissing) {
+    notices.push({
+      key: "profile-address",
+      title: "Profil incomplet",
+      body: "Ajoutez votre adresse à votre profil.",
+      to: "/admin/profil",
+      cta: "Compléter mon profil",
+    });
+  }
 
-    const op = bootstrap.organizationProfile;
-    const orgDescriptionMissing = !op || isBlank(op.description);
+  const op = bootstrap.organizationProfile;
+  const orgDescriptionMissing = !op || isBlank(op.description);
 
-    if (orgDescriptionMissing) {
-      notices.push({
-        key: "org-description",
-        title: "Structure à compléter",
-        body: "Ajoutez une description de votre organisation, visible sur votre page publique.",
-        to: "/admin/structure",
-        cta: "Compléter la structure",
-      });
-    }
+  if (orgDescriptionMissing) {
+    notices.push({
+      key: "org-description",
+      title: "Structure à compléter",
+      body: "Ajoutez une description de votre organisation, visible sur votre page publique.",
+      to: "/admin/structure",
+      cta: "Compléter la structure",
+    });
+  }
 
-    if (paymentsStatus !== "connected") {
-      notices.push({
-        key: "mollie",
-        title: "Paiements non configurés",
-        body:
-          paymentsStatus === "pending"
-            ? "Mollie est en attente de validation. Terminez la configuration pour activer les paiements."
-            : "Connectez Mollie pour pouvoir encaisser en ligne.",
-        to: "/admin/structure",
-        cta: "Configurer Mollie",
-      });
-    }
+  if (notices.length === 0) return null;
 
-    if (notices.length === 0) return null;
-
-    return (
-      <div className={["adminNotices", className].filter(Boolean).join(" ")}>
-        {notices.map((n) => (
-          <Notice
+  return (
+    <div className={["adminNotices", className].filter(Boolean).join(" ")}>
+      {notices.map((n) => (
+        <Notice
           key={n.key}
           title={n.title}
           body={n.body}
           to={n.to}
-          cta={n.cta}/>
-        ))}
-      </div>
-    );
+          cta={n.cta}
+        />
+      ))}
+    </div>
+  );
 }

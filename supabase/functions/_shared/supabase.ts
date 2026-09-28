@@ -9,3 +9,5 @@ export type SupabaseRuntimeConfig = {
 export function createAdminClient(config: SupabaseRuntimeConfig) {
   return createClient(config.supabaseUrl, config.serviceKey);
 }
+
+export type AdminClient = ReturnType<typeof createAdminClient>;

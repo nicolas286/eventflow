@@ -12,6 +12,7 @@ import OrgThemeSync from "@shared/ui/components/theme/OrgThemeSync";
 import type { EventOverviewRow } from "../../events/schemas/admin.eventsOverview.schema";
 import type { DashboardBootstrap } from "../schemas/admin.dashboardBootstrap.schema";
 import { normalizeError } from "@shared/errors/errors";
+import { StripeMigrationNotice } from "../../notices/components/StripeMigrationNotice";
 
 export type AdminOutletContext = {
   org: OrgInfo | null;
@@ -52,10 +53,10 @@ export default function AdminDashboard() {
     );
   }
 
-    if (error) {
+  if (error) {
     const appError = normalizeError(
       error,
-      "Une erreur est survenue. Réessayez dans quelques instants."
+      "Une erreur est survenue. Réessayez dans quelques instants.",
     );
 
     return (
@@ -64,9 +65,7 @@ export default function AdminDashboard() {
         {!isOnboarding && <TopNav mode="admin" org={topNavOrg} />}
 
         <div className="adminPageGrid">
-          <div className="adminPageRight">
-            {appError.message}
-          </div>
+          <div className="adminPageRight">{appError.message}</div>
         </div>
       </div>
     );
@@ -88,7 +87,7 @@ export default function AdminDashboard() {
 
   // ✅ Pas d'orga => on autorise uniquement /admin/onboarding à s'afficher
   if (!orgId && !isOnboarding) {
-      return <Navigate to="/admin/onboarding" replace />;
+    return <Navigate to="/admin/onboarding" replace />;
   }
 
   return (
@@ -98,14 +97,19 @@ export default function AdminDashboard() {
 
       <div className="adminPageGrid">
         <div className="adminPageRight">
+          {!isOnboarding && bootstrap.organization ? (
+            <StripeMigrationNotice bootstrap={bootstrap} />
+          ) : null}
           <Outlet
-            context={{
-              org: topNavOrg,
-              orgId: orgId ?? "", // ✅ onboarding: "" (pas utilisé)
-              bootstrap,
-              events,
-              refetch,
-            } satisfies AdminOutletContext}
+            context={
+              {
+                org: topNavOrg,
+                orgId: orgId ?? "", // ✅ onboarding: "" (pas utilisé)
+                bootstrap,
+                events,
+                refetch,
+              } satisfies AdminOutletContext
+            }
           />
         </div>
       </div>

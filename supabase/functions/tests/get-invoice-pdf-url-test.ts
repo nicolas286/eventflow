@@ -22,7 +22,9 @@ function repository(
   return {
     loadInvoice: () => Promise.resolve(result(invoice)),
     isOrganizationMember: () => Promise.resolve(result(true)),
-    createSignedUrl: () => Promise.resolve(result("https://storage.example/signed")),
+    createSignedUrl: () =>
+      Promise.resolve(result("https://storage.example/signed")),
+    generatePdf: () => Promise.resolve(result("org/invoice.pdf")),
     ...overrides,
   };
 }
@@ -50,21 +52,24 @@ async function invoke(
 
   return {
     response,
-    body: await response.json() as Record<string, unknown>,
+    body: (await response.json()) as Record<string, unknown>,
   };
 }
 
-Deno.test("invoice PDF handler preserves the successful response contract", async () => {
-  const { response, body } = await invoke({
-    invoice_id: "11111111-1111-4111-8111-111111111111",
-  });
+Deno.test(
+  "invoice PDF handler preserves the successful response contract",
+  async () => {
+    const { response, body } = await invoke({
+      invoice_id: "11111111-1111-4111-8111-111111111111",
+    });
 
-  assertEquals(response.status, 200);
-  assertEquals(body, {
-    url: "https://storage.example/signed",
-    expiresIn: 120,
-  });
-});
+    assertEquals(response.status, 200);
+    assertEquals(body, {
+      url: "https://storage.example/signed",
+      expiresIn: 120,
+    });
+  },
+);
 
 Deno.test("invoice PDF handler rejects invalid identifiers", async () => {
   const { response, body } = await invoke({ invoice_id: "not-a-uuid" });
@@ -82,27 +87,34 @@ Deno.test("invoice PDF handler refuses another organization", async () => {
   assertEquals(body, { error: "FORBIDDEN" });
 });
 
-Deno.test("invoice PDF handler preserves not-ready and signing failures", async () => {
-  const notReady = await invoke(
-    { invoice_id: "11111111-1111-4111-8111-111111111111" },
-    repository({
-      loadInvoice: () => Promise.resolve(result({
-          id: "11111111-1111-4111-8111-111111111111",
-          orgId: "22222222-2222-4222-8222-222222222222",
-          pdfPath: null,
-        })),
-    }),
-  );
-  const signFailure = await invoke(
-    { invoice_id: "11111111-1111-4111-8111-111111111111" },
-    repository({ createSignedUrl: () => Promise.resolve(result(null)) }),
-  );
+Deno.test(
+  "invoice PDF handler preserves not-ready and signing failures",
+  async () => {
+    const notReady = await invoke(
+      { invoice_id: "11111111-1111-4111-8111-111111111111" },
+      repository({
+        loadInvoice: () =>
+          Promise.resolve(
+            result({
+              id: "11111111-1111-4111-8111-111111111111",
+              orgId: "22222222-2222-4222-8222-222222222222",
+              pdfPath: null,
+            }),
+          ),
+        generatePdf: () => Promise.resolve(result(null)),
+      }),
+    );
+    const signFailure = await invoke(
+      { invoice_id: "11111111-1111-4111-8111-111111111111" },
+      repository({ createSignedUrl: () => Promise.resolve(result(null)) }),
+    );
 
-  assertEquals(notReady.response.status, 409);
-  assertEquals(notReady.body, { error: "PDF_NOT_READY" });
-  assertEquals(signFailure.response.status, 500);
-  assertEquals(signFailure.body, {
-    error: "SIGN_FAILED",
-    details: "no_signed_url",
-  });
-});
+    assertEquals(notReady.response.status, 409);
+    assertEquals(notReady.body, { error: "PDF_NOT_READY" });
+    assertEquals(signFailure.response.status, 500);
+    assertEquals(signFailure.body, {
+      error: "SIGN_FAILED",
+      details: "no_signed_url",
+    });
+  },
+);

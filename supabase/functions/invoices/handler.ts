@@ -3,12 +3,13 @@ import { json } from "../_shared/app/http.ts";
 import type { InvoicePdfUrlRepository } from "./repository.ts";
 
 const SIGNED_URL_TTL_SECONDS = 120;
-export async function handleGetInvoicePdfUrl(
-  { req, repository }: {
-    req: Request;
-    repository: InvoicePdfUrlRepository;
-  },
-): Promise<Response> {
+export async function handleGetInvoicePdfUrl({
+  req,
+  repository,
+}: {
+  req: Request;
+  repository: InvoicePdfUrlRepository;
+}): Promise<Response> {
   const route = new URL(req.url).pathname.match(/\/invoices\/([^/]+)\/pdf$/);
   if (!route) return json(req, { error: "NOT_FOUND" }, 404);
   const parsed = getInvoicePdfUrlInputSchema.safeParse({ invoiceId: route[1] });
@@ -27,8 +28,6 @@ export async function handleGetInvoicePdfUrl(
 
   const invoice = invoiceResult.data;
   if (!invoice) return json(req, { error: "NOT_FOUND" }, 404);
-  if (!invoice.pdfPath) return json(req, { error: "PDF_NOT_READY" }, 409);
-
   const membershipResult = await repository.isOrganizationMember(invoice.orgId);
 
   if (membershipResult.errorMessage) {
@@ -44,8 +43,18 @@ export async function handleGetInvoicePdfUrl(
 
   if (!membershipResult.data) return json(req, { error: "FORBIDDEN" }, 403);
 
+  let pdfPath = invoice.pdfPath;
+  if (!pdfPath) {
+    const generated = await repository.generatePdf(invoiceId);
+    if (generated.errorMessage) {
+      return json(req, { error: "PDF_GENERATION_FAILED" }, 502);
+    }
+    if (!generated.data) return json(req, { error: "PDF_NOT_READY" }, 409);
+    pdfPath = generated.data;
+  }
+
   const signedUrlResult = await repository.createSignedUrl(
-    invoice.pdfPath,
+    pdfPath,
     SIGNED_URL_TTL_SECONDS,
   );
 
