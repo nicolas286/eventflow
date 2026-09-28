@@ -75,7 +75,7 @@ jobs:
       - name: Rebuild and verify migrations before changing the backend
         run: |
           supabase db start
-          supabase db query --local --file tests/database/baseline.sql
+          docker exec -i supabase_db_eventflow-front psql -U postgres -d postgres -v ON_ERROR_STOP=1 < tests/database/baseline.sql
       - name: Stop the verification database
         if: always()
         run: supabase stop --no-backup
