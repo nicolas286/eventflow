@@ -137,6 +137,8 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
         admin,
         orgId,
         stripeSecretKey: config.stripeSecretKey,
+        stripePaymentMethodConfigurationId:
+          config.stripePaymentMethodConfigurationId,
         providerSelection: config.eventPaymentProvider,
       });
     }
@@ -192,6 +194,8 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       admin,
       orgId,
       stripeSecretKey: config.stripeSecretKey,
+      stripePaymentMethodConfigurationId:
+        config.stripePaymentMethodConfigurationId,
       providerSelection: config.eventPaymentProvider,
     });
 

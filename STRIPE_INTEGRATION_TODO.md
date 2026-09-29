@@ -12,6 +12,7 @@ Ce fichier est la source de vérité pour terminer la configuration de la billet
 | ------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------- |
 | `STRIPE_SECRET_KEY`             | `sk_test_replace_me` | Clé secrète Stripe test du compte plateforme dans Supabase staging. Ne jamais utiliser une variable `VITE_*`. |
 | `STRIPE_CONNECT_WEBHOOK_SECRET` | `whsec_replace_me`   | Secret de signature de l’endpoint webhook Connect staging.                                                    |
+| `STRIPE_PAYMENT_METHOD_CONFIGURATION_ID` | `pmc_replace_me` | Configuration parente des moyens de paiement Connect. |
 
 ## Configured Parameters
 
@@ -23,7 +24,7 @@ Ce fichier est la source de vérité pour terminer la configuration de la billet
 | --------------------------------- | ----------------------------------------------- |
 | `ui_mode`                         | `hosted_page`                                   |
 | `mode`                            | `payment`                                       |
-| Moyens de paiement                | Configuration dynamique Stripe Connect          |
+| `payment_method_configuration`    | Configuration parente dynamique Stripe Connect  |
 | `billing_address_collection`      | `auto`                                          |
 | `phone_number_collection.enabled` | `false`                                         |
 | `automatic_tax.enabled`           | `false`                                         |

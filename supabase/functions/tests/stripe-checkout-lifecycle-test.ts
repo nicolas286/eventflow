@@ -204,7 +204,11 @@ Deno.test("Stripe storage closes checkout if the order cannot be reserved atomic
     throw new Error(`Unexpected call: ${path}`);
   };
   await assertRejects(() => insertProviderPaymentOrRollback({ admin: createClient(url, "fixture-key"),
-    provider: new StripeEventPaymentProvider("sk_test_fixture", "acct_fixture"),
+    provider: new StripeEventPaymentProvider(
+      "sk_test_fixture",
+      "acct_fixture",
+      "pmc_fixture",
+    ),
     payment: { provider: "stripe", providerAccountId: "acct_fixture", providerPaymentId: "cs_fixture",
       providerCheckoutSessionId: "cs_fixture", checkoutUrl: "https://checkout.stripe.test", raw: { expires_at: 2_000_000_000 } },
     orderId, amountCents: 500, currency: "EUR" }), Error, "PAYMENT_DB_INSERT_FAILED");
@@ -247,7 +251,11 @@ Deno.test("Stripe Checkout creation reuses the reserved deadline and idempotency
     assertEquals(new URLSearchParams(body).get("expires_at"), "2000000000");
     return Response.json({ id: "cs_fixture", url: "https://checkout.stripe.test", expires_at: 2_000_000_000 });
   };
-  const provider = new StripeEventPaymentProvider("sk_test_fixture", "acct_fixture");
+  const provider = new StripeEventPaymentProvider(
+    "sk_test_fixture",
+    "acct_fixture",
+    "pmc_fixture",
+  );
   const input = { orderId, orgId: orderId, bookingToken: "synthetic", amountCents: 500,
     totalCents: 1000, currency: "EUR", redirectUrl: "https://eventflow.test/confirmation",
     eventTitle: "Fixture", buyerEmail: "buyer@example.test", checkoutExpiresAt: 2_000_000_000 };

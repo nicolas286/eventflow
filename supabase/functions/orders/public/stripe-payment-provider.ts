@@ -24,6 +24,7 @@ export class StripeEventPaymentProvider implements EventPaymentProvider {
   constructor(
     private readonly secretKey: string,
     private readonly connectedAccountId: string,
+    private readonly paymentMethodConfigurationId: string,
   ) {}
 
   async createPayment(
@@ -50,6 +51,7 @@ export class StripeEventPaymentProvider implements EventPaymentProvider {
           expires_at: expiresAt,
           ui_mode: "hosted_page",
           mode: "payment",
+          payment_method_configuration: this.paymentMethodConfigurationId,
           billing_address_collection: "auto",
           "phone_number_collection[enabled]": false,
           "automatic_tax[enabled]": false,
