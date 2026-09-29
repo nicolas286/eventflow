@@ -14,6 +14,10 @@ import {
   persistStripeAccountStatus,
 } from "../_shared/payments/stripe-connect-db.ts";
 import { StripeConnectedAccountProvider } from "../_shared/payments/stripe-connect-provider.ts";
+import {
+  assertStripeConnectAllowedForUser,
+  isStripeConnectAllowedForOrganization,
+} from "../_shared/payments/stripe-access.ts";
 
 function isUuid(value: unknown): value is string {
   return (
@@ -60,13 +64,18 @@ export const handleStripeConnectStatus = createEdgeHandler(
     if (memberError) throw internal("AUTH_CHECK_FAILED");
     if (!member) throw forbidden();
 
+    await assertStripeConnectAllowedForUser(admin, user.id);
+
     const { data: org, error: orgError } = await admin
       .from("organizations")
-      .select("stripe_connected_account_id")
+      .select("created_by, stripe_connected_account_id")
       .eq("id", orgId)
       .maybeSingle();
     if (orgError || !org?.stripe_connected_account_id) {
       throw badRequest("STRIPE_ACCOUNT_NOT_CONFIGURED");
+    }
+    if (!(await isStripeConnectAllowedForOrganization(admin, org.created_by))) {
+      throw forbidden("STRIPE_CONNECT_NOT_ALLOWED");
     }
 
     const provider = new StripeConnectedAccountProvider(stripeSecretKey);

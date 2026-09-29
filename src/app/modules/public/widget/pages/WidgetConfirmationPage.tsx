@@ -21,6 +21,7 @@ type WidgetConfirmationData = {
   eventTitle: string;
   bookingToken?: string | null;
   status?: string | null;
+  paymentMethod?: "stripe" | "bank_transfer" | null;
   items?: Array<{
     name: string;
     quantity: number;
@@ -55,6 +56,7 @@ type OrderPublic = {
   currency?: string;
   buyerEmail?: string;
   items?: OrderItemPublic[];
+  paymentMethod?: "stripe" | "bank_transfer" | null;
 };
 
 async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> {
@@ -82,7 +84,7 @@ async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> 
     status: j.status,
     totalCents: j.totalCents,
     currency: j.currency,
-
+    paymentMethod: j.paymentMethod,
   };
 }
 
@@ -178,6 +180,7 @@ export function WidgetConfirmationPage() {
           totalTickets: (remoteOrder.items ?? []).reduce((acc, it) => acc + Number(it.quantity ?? 0), 0),
           eventTitle: resolvedTitle,
           status: remoteOrder.status,
+          paymentMethod: remoteOrder.paymentMethod,
           items: (remoteOrder.items ?? []).map((it) => ({
             name: it.name ?? "Billet",
             quantity: Number(it.quantity ?? 1),
@@ -256,6 +259,12 @@ export function WidgetConfirmationPage() {
         <p className="widgetConfirmationSubtitle">
           Votre réservation pour <strong>{resolvedData.eventTitle}</strong> est bien enregistrée.
         </p>
+
+        {resolvedData.paymentMethod === "bank_transfer" && !isSuccess ? (
+          <MessageBox variant="info">
+            Les coordonnées de paiement ont été envoyées par e-mail. Vos billets seront émis après confirmation du virement par l’organisateur.
+          </MessageBox>
+        ) : null}
 
         {resolvedData.buyerEmail ? (
           <p className="widgetConfirmationSubtitle">

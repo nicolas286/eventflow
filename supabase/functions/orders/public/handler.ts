@@ -22,6 +22,7 @@ import {
 import { resolveEventPaymentProvider } from "./payment-provider.ts";
 import { completeFreeOrderOrThrow } from "./free-order.ts";
 import { assertWidgetAllowedForOrgOrThrow } from "./widget.ts";
+import { createBankTransferPaymentOrThrow } from "./bank-transfer.ts";
 
 function json(req: Request, data: unknown, status = 200) {
   return baseJson(
@@ -153,7 +154,7 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       });
     }
 
-    const paymentProvider = await resolveEventPaymentProvider({
+    const paymentMethod = await resolveEventPaymentProvider({
       admin,
       orgId,
       stripeSecretKey: config.stripeSecretKey,
@@ -162,8 +163,37 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
 
     logger.info("payment_provider_loaded", {
       orgId,
-      provider: paymentProvider.name,
+      provider: paymentMethod.kind,
     });
+
+    if (paymentMethod.kind === "bank_transfer") {
+      await createBankTransferPaymentOrThrow({
+        admin,
+        logger,
+        orderId: order.orderId,
+        amountCents: order.dueNowCents,
+        currency: order.currency,
+        beneficiary: paymentMethod.beneficiary,
+        iban: paymentMethod.iban,
+      });
+
+      logger.info("completed_awaiting_bank_transfer", {
+        orderId: order.orderId,
+      });
+
+      return json(req, {
+        ok: true,
+        orderId: order.orderId,
+        status: "awaiting_payment",
+        paymentMethod: "bank_transfer",
+        amountDueNowCents: order.dueNowCents,
+        totalCents: order.totalCents,
+        bookingToken: order.bookingToken,
+        discountCents: order.discountCents,
+      });
+    }
+
+    const paymentProvider = paymentMethod.provider;
 
     const reusable = await findReusableProviderPayment(
       admin,
@@ -180,6 +210,7 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
         ok: true,
         orderId: order.orderId,
         status: "awaiting_payment",
+        paymentMethod: "stripe",
         checkoutUrl: reusable.checkoutUrl,
         amountDueNowCents: order.dueNowCents,
         totalCents: order.totalCents,
@@ -240,6 +271,7 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       ok: true,
       orderId: order.orderId,
       status: "awaiting_payment",
+      paymentMethod: "stripe",
       checkoutUrl: payment.checkoutUrl,
       amountDueNowCents: order.dueNowCents,
       totalCents: order.totalCents,

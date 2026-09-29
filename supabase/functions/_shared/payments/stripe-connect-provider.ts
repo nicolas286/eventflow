@@ -44,7 +44,10 @@ export class StripeConnectedAccountProvider implements ConnectedAccountProvider 
         method: "POST",
         idempotencyKey: `eventflow-connect-${input.orgId}`,
         params: {
-          type: "express",
+          // Standard/full-dashboard accounts keep Stripe responsible for
+          // negative balances. Ticket Checkout remains a direct charge on
+          // this account, so Eventflow never receives the ticket proceeds.
+          type: "standard",
           email: input.email,
           "business_profile[name]": input.displayName,
           "metadata[eventflow_org_id]": input.orgId,

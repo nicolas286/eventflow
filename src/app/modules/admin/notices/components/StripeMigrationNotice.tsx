@@ -7,6 +7,8 @@ export function StripeMigrationNotice({
   bootstrap: DashboardBootstrap;
 }) {
   const organization = bootstrap.organization;
+  if (bootstrap.profile.stripeConnectAllowed !== true) return null;
+
   const wasOnboardedWithMollie =
     organization?.stripeMigrationRequired === true ||
     (organization?.paymentsProvider === "mollie" &&

@@ -127,11 +127,13 @@ export const registerSuccessPaidSchema = z
   })
   .strict();
 
-export const registerSuccessAwaitingPaymentSchema = z
+export const registerSuccessStripeAwaitingPaymentSchema = z
   .object({
     ok: z.literal(true),
     orderId: uuidSchema,
     status: z.literal("awaiting_payment"),
+    // Optional during rolling deployment so the current Stripe response remains readable.
+    paymentMethod: z.literal("stripe").optional(),
     checkoutUrl: z.string().url(),
 
     amountDueNowCents: z.number().int().min(1),
@@ -142,6 +144,24 @@ export const registerSuccessAwaitingPaymentSchema = z
     bookingToken: z.string(),
   })
   .strict();
+
+export const registerSuccessBankTransferSchema = z
+  .object({
+    ok: z.literal(true),
+    orderId: uuidSchema,
+    status: z.literal("awaiting_payment"),
+    paymentMethod: z.literal("bank_transfer"),
+    amountDueNowCents: z.number().int().min(1),
+    totalCents: z.number().int().min(0),
+    discountCents: z.number().int().min(0).optional(),
+    bookingToken: z.string(),
+  })
+  .strict();
+
+export const registerSuccessAwaitingPaymentSchema = z.union([
+  registerSuccessStripeAwaitingPaymentSchema,
+  registerSuccessBankTransferSchema,
+]);
 
 export const registerSuccessSchema = z.union([
   registerSuccessPaidSchema,

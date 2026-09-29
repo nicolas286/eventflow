@@ -9,6 +9,7 @@ import { MarkdownRichTextarea } from "@shared/ui/components/inputs/MarkdownRichT
 import { supabase } from "@shared/gateways/supabase/supabaseClient";
 import { useSaveOrgInfo } from "../../hooks/useSaveOrgInfo";
 import { useStripeConnect } from "@app/modules/admin/payments/hooks/useStripeConnect";
+import { useSavePaymentSettings } from "../../hooks/useSavePaymentSettings";
 import type { Organization } from "@shared/models/db/db.organization.schema";
 import type { OrganizationProfile } from "@shared/models/db/db.organizationProfile.schema";
 
@@ -16,6 +17,7 @@ type Props = {
   orgId: string;
   orgInfo: Organization | null;
   orgProfile: OrganizationProfile | null;
+  stripeConnectAllowed: boolean;
   onSaved: () => Promise<void>;
 };
 
@@ -30,6 +32,12 @@ type Form = {
 
   // ✅ NEW: nullable (vide = null)
   emailReminderDaysBefore: number | null;
+};
+
+type PaymentForm = {
+  provider: "stripe" | "bank_transfer";
+  beneficiary: string;
+  iban: string;
 };
 
 const emptyForm: Form = {
@@ -84,6 +92,7 @@ export default function StructurePanel({
   orgId,
   orgInfo,
   orgProfile,
+  stripeConnectAllowed,
   onSaved,
 }: Props) {
   const location = useLocation();
@@ -93,6 +102,7 @@ export default function StructurePanel({
     useSaveOrgInfo({ supabase });
 
   const stripeConnect = useStripeConnect({ supabase });
+  const paymentSettings = useSavePaymentSettings({ supabase });
   const stripeReady = Boolean(
     orgInfo?.stripeConnectedAccountId &&
     orgInfo.stripeDetailsSubmitted &&
@@ -114,12 +124,38 @@ export default function StructurePanel({
   // form local (on n’édite pas org directement tant que pas save)
   const [form, setForm] = useState<Form>(initial);
 
+  const initialPaymentForm = useMemo<PaymentForm>(
+    () => ({
+      provider:
+        stripeConnectAllowed && orgInfo?.paymentsProvider === "stripe"
+          ? "stripe"
+          : "bank_transfer",
+      beneficiary: orgInfo?.bankTransferBeneficiary ?? "",
+      iban: orgInfo?.bankTransferIban ?? "",
+    }),
+    [orgInfo, stripeConnectAllowed],
+  );
+  const [paymentForm, setPaymentForm] =
+    useState<PaymentForm>(initialPaymentForm);
+
   // resync quand bootstrap/refetch modifie org
   useEffect(() => {
     setForm(initial);
   }, [initial]);
 
+  useEffect(() => {
+    setPaymentForm(initialPaymentForm);
+  }, [initialPaymentForm]);
+
   const dirty = hasChanges(initial, form);
+  const paymentDirty =
+    paymentForm.provider !== initialPaymentForm.provider ||
+    paymentForm.beneficiary.trim() !== initialPaymentForm.beneficiary.trim() ||
+    paymentForm.iban.replace(/\s+/g, "").toUpperCase() !==
+      initialPaymentForm.iban.replace(/\s+/g, "").toUpperCase();
+  const bankTransferReady = Boolean(
+    paymentForm.beneficiary.trim() && paymentForm.iban.trim(),
+  );
 
   const effectiveSlug = useMemo(() => {
     return updated?.profile?.slug ?? orgProfile?.slug ?? "";
@@ -133,7 +169,7 @@ export default function StructurePanel({
   useEffect(() => {
     const qs = new URLSearchParams(location.search);
     const stripeReturn = qs.get("stripe_connect");
-    if (!stripeReturn) return;
+    if (!stripeReturn || !stripeConnectAllowed) return;
 
     async function handleStripeReturn() {
       if (stripeReturn === "refresh") {
@@ -167,7 +203,13 @@ export default function StructurePanel({
     void handleStripeReturn();
     // The return marker must be handled once; hook methods are intentionally not dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, location.pathname, navigate, orgId]);
+  }, [
+    location.search,
+    location.pathname,
+    navigate,
+    orgId,
+    stripeConnectAllowed,
+  ]);
 
   /* -------- actions -------- */
 
@@ -207,6 +249,24 @@ export default function StructurePanel({
     setConnectFlash(null);
     const url = await stripeConnect.start(orgId);
     if (url) window.location.assign(url);
+  }
+
+  async function handlePaymentSettingsSave() {
+    paymentSettings.reset();
+    const result = await paymentSettings.save({
+      orgId,
+      paymentsProvider: paymentForm.provider,
+      bankTransferBeneficiary: paymentForm.beneficiary || null,
+      bankTransferIban: paymentForm.iban || null,
+    });
+    if (!result) return;
+
+    setPaymentForm({
+      provider: result.paymentsProvider,
+      beneficiary: result.bankTransferBeneficiary ?? "",
+      iban: result.bankTransferIban ?? "",
+    });
+    await onSaved();
   }
 
   /* -------- render -------- */
@@ -350,39 +410,111 @@ export default function StructurePanel({
               Paiements des événements
             </div>
             <div className="structurePanel__hint">
-              Stripe Connect verse les recettes directement sur le compte de
-              l'organisation.
+              {stripeConnectAllowed
+                ? "Choisissez Stripe Connect pour un encaissement immédiat ou le virement bancaire pour confirmer vous-même les paiements reçus."
+                : "Renseignez vos coordonnées bancaires pour recevoir les paiements par virement et confirmer vous-même les montants reçus."}
             </div>
           </div>
 
           <div className="structurePanel__chip">
             <span className="structurePanel__chipLabel">Fournisseur</span>
-            <span className="structurePanel__chipValue">Stripe</span>
+            <span className="structurePanel__chipValue">
+              {paymentForm.provider === "stripe" ? "Stripe" : "Virement"}
+            </span>
             <span className="structurePanel__chipLabel">Statut</span>
             <span className="structurePanel__chipValue">
-              {orgInfo ? prettyPaymentLabel(stripeStatus) : "—"}
+              {paymentForm.provider === "stripe"
+                ? orgInfo
+                  ? prettyPaymentLabel(stripeStatus)
+                  : "—"
+                : bankTransferReady
+                  ? "Configuré"
+                  : "À compléter"}
             </span>
 
-            {stripeReady ? (
-              <span className="structurePanel__chipOk">live prêt</span>
+            {(
+              paymentForm.provider === "stripe"
+                ? stripeReady
+                : bankTransferReady
+            ) ? (
+              <span className="structurePanel__chipOk">prêt</span>
             ) : (
-              <span className="structurePanel__chipWarn">live non prêt</span>
+              <span className="structurePanel__chipWarn">non prêt</span>
             )}
           </div>
         </div>
 
+        <div className="structurePanel__field">
+          <div className="structurePanel__fieldLabel">Mode de paiement</div>
+          <Select
+            value={paymentForm.provider}
+            onChange={(event) =>
+              setPaymentForm((current) => ({
+                ...current,
+                provider: event.target.value as PaymentForm["provider"],
+              }))
+            }
+          >
+            {stripeConnectAllowed ? (
+              <option value="stripe">Stripe Connect (Bancontact)</option>
+            ) : null}
+            <option value="bank_transfer">Virement bancaire</option>
+          </Select>
+        </div>
+
+        {paymentForm.provider === "bank_transfer" ? (
+          <div className="structurePanel__grid2Inner">
+            <Input
+              label="Nom du bénéficiaire"
+              value={paymentForm.beneficiary}
+              onChange={(event) =>
+                setPaymentForm((current) => ({
+                  ...current,
+                  beneficiary: event.target.value,
+                }))
+              }
+              placeholder="Nom ou raison sociale"
+            />
+            <Input
+              label="IBAN"
+              value={paymentForm.iban}
+              onChange={(event) =>
+                setPaymentForm((current) => ({
+                  ...current,
+                  iban: event.target.value.toUpperCase(),
+                }))
+              }
+              placeholder="BE00 0000 0000 0000"
+            />
+          </div>
+        ) : null}
+
         <div className="structurePanel__actionsBar">
           <div className="structurePanel__actions">
+            {stripeConnectAllowed && paymentForm.provider === "stripe" ? (
+              <Button
+                variant="secondary"
+                label={
+                  stripeConnect.loading ? "Ouverture…" : "Configurer Stripe"
+                }
+                onClick={handleStripeConnect}
+                disabled={stripeConnect.loading}
+              />
+            ) : null}
             <Button
               variant="primary"
-              label={stripeConnect.loading ? "Ouverture…" : "Configurer Stripe"}
-              onClick={handleStripeConnect}
-              disabled={stripeConnect.loading}
+              label={
+                paymentSettings.loading
+                  ? "Enregistrement…"
+                  : "Enregistrer le mode"
+              }
+              onClick={handlePaymentSettingsSave}
+              disabled={!paymentDirty || paymentSettings.loading}
             />
           </div>
 
           <div className="structurePanel__status">
-            {stripeConnect.error ? (
+            {stripeConnectAllowed && stripeConnect.error ? (
               <div className="structurePanel__error">{stripeConnect.error}</div>
             ) : null}
             {connectFlash ? (
@@ -394,6 +526,16 @@ export default function StructurePanel({
                 }
               >
                 {connectFlash.message}
+              </div>
+            ) : null}
+            {paymentSettings.error ? (
+              <div className="structurePanel__error">
+                {paymentSettings.error}
+              </div>
+            ) : null}
+            {paymentSettings.updated ? (
+              <div className="structurePanel__success">
+                Mode de paiement enregistré
               </div>
             ) : null}
           </div>

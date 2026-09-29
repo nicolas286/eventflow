@@ -157,7 +157,7 @@ describe("Stripe provider boundaries", () => {
     );
   });
 
-  it("creates an Express account with Eventflow metadata", async () => {
+  it("creates a Standard account so Stripe carries negative-balance liability", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -183,7 +183,7 @@ describe("Stripe provider boundaries", () => {
       detailsSubmitted: false,
     });
     const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
-    expect(String(init.body)).toContain("type=express");
+    expect(String(init.body)).toContain("type=standard");
     expect(String(init.body)).toContain(
       "metadata%5Beventflow_org_id%5D=org_test",
     );
@@ -248,6 +248,8 @@ describe("Stripe provider boundaries", () => {
     expect(String(init.body)).toContain(
       "payment_method_types%5B0%5D=bancontact",
     );
+    expect(String(init.body)).not.toContain("transfer_data");
+    expect(String(init.body)).not.toContain("on_behalf_of");
     expect(String(init.body)).not.toContain("never-send-this-token");
   });
 

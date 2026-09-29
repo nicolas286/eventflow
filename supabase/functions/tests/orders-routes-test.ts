@@ -27,6 +27,97 @@ Deno.test("orders routes reject anonymous administrative creation", () => withRu
   assertEquals(await response.json(), { error: "NOT_AUTHENTICATED" });
 }));
 
+Deno.test("orders routes reject anonymous bank-transfer confirmation", () => withRuntime(async () => {
+  const response = await handleOrdersRequest(new Request(
+    `https://edge.test/orders/admin/${orderId}/mark-paid`,
+    { method: "POST" },
+  ));
+  assertEquals(response.status, 401);
+  assertEquals(await response.json(), { error: "NOT_AUTHENTICATED" });
+}));
+
+Deno.test("bank-transfer confirmation rejects a user outside the organization", () => withRuntime(async () => {
+  const previous = globalThis.fetch;
+  const urls: string[] = [];
+  globalThis.fetch = (input) => {
+    const url = String(input);
+    urls.push(url);
+    const data = url.includes("/auth/v1/user")
+      ? { id: orderId, email: "fixture@example.com" }
+      : url.includes("/orders?")
+      ? {
+        id: orderId,
+        org_id: "22222222-2222-4222-8222-222222222222",
+        status: "awaiting_payment",
+        total_cents: 2000,
+        paid_cents: 0,
+        currency: "EUR",
+      }
+      : null;
+    return Promise.resolve(Response.json(data));
+  };
+  try {
+    const response = await handleOrdersRequest(new Request(
+      `https://edge.test/orders/admin/${orderId}/mark-paid`,
+      { method: "POST", headers: { authorization: "Bearer fixture-user" } },
+    ));
+    assertEquals(response.status, 403);
+    assertEquals(await response.json(), { error: "FORBIDDEN" });
+    assertEquals(urls.some((url) => url.includes("apply_order_payment")), false);
+  } finally { globalThis.fetch = previous; }
+}));
+
+Deno.test("an organization admin can confirm a bank transfer idempotently", () => withRuntime(async () => {
+  const previous = globalThis.fetch;
+  const urls: string[] = [];
+  globalThis.fetch = (input) => {
+    const url = String(input);
+    urls.push(url);
+    const data = url.includes("/auth/v1/user")
+      ? { id: orderId, email: "fixture@example.com" }
+      : url.includes("/orders?")
+      ? {
+        id: orderId,
+        org_id: "22222222-2222-4222-8222-222222222222",
+        status: "awaiting_payment",
+        total_cents: 2000,
+        paid_cents: 0,
+        currency: "EUR",
+      }
+      : url.includes("/organization_members?")
+      ? { role: "admin" }
+      : url.includes("/payments?")
+      ? {
+        amount_cents: 2000,
+        currency: "EUR",
+        status: "open",
+        raw: { method: "bank_transfer" },
+      }
+      : url.includes("/rpc/apply_order_payment")
+      ? { status: "paid", paid_cents: 2000, total_cents: 2000, idempotent: false }
+      : url.includes("/rpc/claim_order_confirmation_email")
+      ? { ok: false }
+      : null;
+    return Promise.resolve(Response.json(data));
+  };
+  try {
+    const response = await handleOrdersRequest(new Request(
+      `https://edge.test/orders/admin/${orderId}/mark-paid`,
+      { method: "POST", headers: { authorization: "Bearer fixture-user" } },
+    ));
+    assertEquals(response.status, 200);
+    assertEquals(await response.json(), {
+      ok: true,
+      orderId,
+      status: "paid",
+      paidCents: 2000,
+      totalCents: 2000,
+      idempotent: false,
+    });
+    assertEquals(urls.some((url) => url.includes("issue_order_tickets")), true);
+  } finally { globalThis.fetch = previous; }
+}));
+
 Deno.test("public order read requires booking token before accessing storage", () => withRuntime(async () => {
   const response = await handleOrdersRequest(new Request(`https://edge.test/orders/${orderId}`));
   assertEquals(response.status, 401);
@@ -54,14 +145,14 @@ Deno.test("public order read preserves the database cancelled spelling", () => w
   globalThis.fetch = (input) => {
     const data = String(input).includes("/orders?")
       ? { id: orderId, status: "cancelled", total_cents: 2000, currency: "EUR" }
-      : { status: "canceled" };
+      : { provider: "offline", provider_payment_id: `bank_transfer:${orderId}`, status: "open" };
     return Promise.resolve(Response.json(data));
   };
   try {
     const response = await handleOrdersRequest(new Request(`https://edge.test/orders/${orderId}?token=fixture-booking-token`));
     assertEquals(response.status, 200);
     assertEquals(await response.json(), {
-      id: orderId, status: "cancelled", totalCents: 2000, currency: "EUR", paymentStatus: "canceled",
+      id: orderId, status: "cancelled", totalCents: 2000, currency: "EUR", paymentStatus: "open", paymentMethod: "bank_transfer",
     });
   } finally { globalThis.fetch = previous; }
 }));

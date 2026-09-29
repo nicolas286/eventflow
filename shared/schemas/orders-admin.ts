@@ -184,3 +184,18 @@ export const adminRegisterResponseSchema = z.union([
 export type AdminRegisterResponse = z.infer<typeof adminRegisterResponseSchema>;
 export type AdminOrderStatus = z.infer<typeof orderStatusSchema>;
 export type AdminRegisterPayloadInput = z.input<typeof adminRegisterPayloadSchema>;
+
+export const markBankTransferPaidResponseSchema = z
+  .object({
+    ok: z.literal(true),
+    orderId: uuidSchema,
+    status: z.enum(["paid", "partially_paid"]),
+    paidCents: z.number().int().min(0),
+    totalCents: z.number().int().min(0),
+    idempotent: z.boolean(),
+  })
+  .strict();
+
+export type MarkBankTransferPaidResponse = z.infer<
+  typeof markBankTransferPaidResponseSchema
+>;

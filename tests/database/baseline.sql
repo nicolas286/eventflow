@@ -64,6 +64,98 @@ END $$;
 
 BEGIN;
 
+INSERT INTO auth.users (
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  created_at,
+  updated_at
+) VALUES (
+  '20000000-0000-4000-8000-000000000001',
+  'authenticated',
+  'authenticated',
+  'stripe-gate@example.test',
+  '',
+  now(),
+  now()
+);
+
+INSERT INTO public.organizations (id, type, name, created_by)
+VALUES (
+  '20000000-0000-4000-8000-000000000002',
+  'association',
+  'Stripe Gate Test',
+  '20000000-0000-4000-8000-000000000001'
+);
+
+INSERT INTO public.organization_members (org_id, user_id, role)
+VALUES (
+  '20000000-0000-4000-8000-000000000002',
+  '20000000-0000-4000-8000-000000000001',
+  'owner'
+);
+
+SET LOCAL ROLE authenticated;
+SET LOCAL "request.jwt.claim.role" = 'authenticated';
+SET LOCAL "request.jwt.claim.sub" = '20000000-0000-4000-8000-000000000001';
+
+DO $$
+DECLARE
+  v_result jsonb;
+BEGIN
+  IF (
+    SELECT payments_provider
+    FROM public.organizations
+    WHERE id = '20000000-0000-4000-8000-000000000002'
+  ) IS DISTINCT FROM 'bank_transfer' THEN
+    RAISE EXCEPTION 'A non-allowlisted user must start on bank transfer';
+  END IF;
+
+  BEGIN
+    UPDATE public.user_profile
+    SET stripe_connect_allowed = true
+    WHERE user_id = '20000000-0000-4000-8000-000000000001';
+    RAISE EXCEPTION 'An authenticated user changed their own Stripe allowlist flag';
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF SQLERRM NOT LIKE '%FORBIDDEN%' THEN
+        RAISE;
+      END IF;
+  END;
+
+  BEGIN
+    PERFORM public.update_organization_payment_settings(
+      '20000000-0000-4000-8000-000000000002',
+      'stripe',
+      NULL,
+      NULL
+    );
+    RAISE EXCEPTION 'A non-allowlisted user selected Stripe through the RPC';
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF SQLERRM NOT LIKE '%STRIPE_CONNECT_NOT_ALLOWED%' THEN
+        RAISE;
+      END IF;
+  END;
+
+  v_result := public.update_organization_payment_settings(
+    '20000000-0000-4000-8000-000000000002',
+    'bank_transfer',
+    'Stripe Gate Test ASBL',
+    'BE51732081025262'
+  );
+
+  IF v_result->>'paymentsProvider' IS DISTINCT FROM 'bank_transfer' THEN
+    RAISE EXCEPTION 'The bank-transfer fallback could not be configured';
+  END IF;
+END $$;
+
+ROLLBACK;
+
+BEGIN;
+
 INSERT INTO public.organizations (id, type, name)
 VALUES ('10000000-0000-4000-8000-000000000001', 'association', 'Facturation Test');
 
@@ -179,6 +271,30 @@ BEGIN
       AND column_name = 'stripe_connected_account_id'
   ) THEN
     RAISE EXCEPTION 'Stripe connected account mapping is missing';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'user_profile'
+      AND column_name = 'stripe_connect_allowed'
+      AND data_type = 'boolean'
+      AND column_default = 'false'
+  ) THEN
+    RAISE EXCEPTION 'The server-managed Stripe Connect user allowlist is missing';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger t
+    JOIN pg_class c ON c.oid = t.tgrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'user_profile'
+      AND t.tgname = 'trg_protect_stripe_connect_allowlist'
+      AND NOT t.tgisinternal
+  ) THEN
+    RAISE EXCEPTION 'Stripe Connect allowlist changes are not protected server-side';
   END IF;
 
   IF NOT EXISTS (

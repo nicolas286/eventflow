@@ -269,6 +269,29 @@ export function WidgetPaymentPage() {
 
       clearDraft(orgSlug, eventSlug);
 
+      if (r?.paymentMethod === "bank_transfer" && orderId) {
+        const confirmationKey = `eventflow:widget:confirmation:${orgSlug}:${eventSlug}`;
+        sessionStorage.setItem(confirmationKey, JSON.stringify({
+          orderId,
+          buyerEmail: buyerEmail.trim(),
+          totalCents,
+          currency,
+          totalTickets: picked.reduce((acc, x) => acc + x.qty, 0),
+          eventTitle: event.title,
+          bookingToken,
+          status,
+          paymentMethod: "bank_transfer",
+          items: picked.map(({ p, qty }) => ({
+            name: p.name,
+            quantity: qty,
+            totalCents: qty * p.priceCents,
+            currency: p.currency ?? currency,
+          })),
+        }));
+        navigate(`/widget/o/${orgSlug}/e/${eventSlug}/confirmation${search}`);
+        return;
+      }
+
       if (typeof checkoutUrl === "string" && checkoutUrl.startsWith("http")) {
         window.location.assign(checkoutUrl);
         return;

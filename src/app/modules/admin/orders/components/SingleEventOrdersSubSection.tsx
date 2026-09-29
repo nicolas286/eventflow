@@ -13,6 +13,7 @@ import { OrdersPeopleList } from "./OrdersPeopleList";
 
 import { useAdminUpdateOrderAttendee } from "../hooks/useUpdateOrderAttendeeAnswers";
 import { useDeleteOrder } from "../hooks/useDeleteOrder";
+import { useMarkBankTransferPaid } from "../hooks/useMarkBankTransferPaid";
 import { useParticipantsViewModel,
   buildParticipantsViewModel
  } from "../hooks/useParticipantsViewModel";
@@ -29,6 +30,7 @@ import type {
 import type { OrderItem } from "@shared/models/db/db.orderItems.schema";
 import type { OrdersUI, OrderUI } from "../schemas/admin.ordersSchema";
 import type { Attendee } from "@shared/models/db/db.attendee.schema";
+import type { PaymentUI } from "@shared/models/db/db.payment.schema";
 
 import { toRows } from "@helpers/normalize";
 import { makeLocalAnswers, buildUpdateAttendeeFromForm } from "@helpers/attendeeAnswers";
@@ -47,6 +49,7 @@ export function SingleEventOrdersSubSection(props: {
   formFieldsGroups: EventFormFieldGroup[];
   orders: OrdersUI;
   orderItems: OrderItem[];
+  payments: PaymentUI[];
   attendees: Attendee[];
   attendeeAnswers: AttendeesAnswers;
   ordersPage: number;
@@ -64,6 +67,7 @@ export function SingleEventOrdersSubSection(props: {
     attendees,
     attendeeAnswers,
     orderItems,
+    payments,
     ordersPage,
     ordersPageSize,
     onOrdersPageChange,
@@ -90,9 +94,11 @@ export function SingleEventOrdersSubSection(props: {
 
   const updateAttendee = useAdminUpdateOrderAttendee({ supabase });
   const deleteOrder = useDeleteOrder({ supabase });
+  const markBankTransferPaid = useMarkBankTransferPaid({ supabase });
 
   const [confirmDeleteOrderOpen, setConfirmDeleteOrderOpen] = useState(false);
   const [targetOrderId, setTargetOrderId] = useState<string | null>(null);
+  const [confirmPaidOrderId, setConfirmPaidOrderId] = useState<string | null>(null);
 
   const regFields = useMemo(() => toRows<EventFormField>(formFields), [formFields]);
 
@@ -123,6 +129,21 @@ export function SingleEventOrdersSubSection(props: {
   const activeOrderItems: OrderItem[] = isSearchMode
     ? toRows<OrderItem>(activeData?.orderItems ?? [])
     : baseOrderItemsRows;
+  const bankTransferOrderIds = useMemo(() => {
+    const activePayments: PaymentUI[] = isSearchMode
+      ? toRows<PaymentUI>(activeData?.payments ?? [])
+      : toRows<PaymentUI>(payments);
+    return new Set(
+      activePayments
+      .filter((payment) =>
+        payment.provider === "offline" &&
+        payment.type === "payment" &&
+        payment.status !== "paid" &&
+        payment.providerPaymentId.startsWith("bank_transfer:")
+      )
+      .map((payment) => payment.orderId),
+    );
+  }, [activeData?.payments, isSearchMode, payments]);
 
   const initialAttendees = useMemo(
     () => (isSearchMode ? toRows<Attendee>(activeData?.attendees ?? []) : attendees),
@@ -347,6 +368,14 @@ export function SingleEventOrdersSubSection(props: {
     onChanged,
   ]);
 
+  const confirmBankTransferPaid = useCallback(async () => {
+    if (!confirmPaidOrderId) return;
+    const result = await markBankTransferPaid.markPaid(confirmPaidOrderId);
+    if (!result) return;
+    setConfirmPaidOrderId(null);
+    await onChanged?.().catch(() => {});
+  }, [confirmPaidOrderId, markBankTransferPaid, onChanged]);
+
   const inlineEditorProps = useMemo((): InlineEditorProps => {
     return {
       supabase,
@@ -387,6 +416,12 @@ export function SingleEventOrdersSubSection(props: {
       targetOrderId={targetOrderId}
       deleteOrderLoading={deleteOrder.loading}
       onRequestDeleteOrder={requestDeleteOrder}
+      bankTransferOrderIds={bankTransferOrderIds}
+      markPaidLoadingOrderId={markBankTransferPaid.loading ? confirmPaidOrderId : null}
+      onRequestMarkPaid={(orderId) => {
+        markBankTransferPaid.reset();
+        setConfirmPaidOrderId(orderId);
+      }}
       editorOpen={attendeeEditorOpen}
       editingAttendeeId={editingAttendeeId}
       inlineEditorProps={inlineEditorProps}
@@ -522,6 +557,24 @@ export function SingleEventOrdersSubSection(props: {
 
   return (
     <>
+      <ConfirmModal
+        isOpen={Boolean(confirmPaidOrderId)}
+        title="Confirmer la réception du virement ?"
+        intent="primary"
+        confirmLabel="Marquer comme payé"
+        confirmLoadingLabel="Confirmation…"
+        loading={markBankTransferPaid.loading}
+        error={markBankTransferPaid.error}
+        onCancel={() => {
+          if (markBankTransferPaid.loading) return;
+          setConfirmPaidOrderId(null);
+          markBankTransferPaid.reset();
+        }}
+        onConfirm={confirmBankTransferPaid}
+      >
+        Cette action confirme le paiement, émet les billets et envoie l’e-mail de confirmation à l’acheteur.
+      </ConfirmModal>
+
       <ConfirmModal
         isOpen={confirmDeleteOrderOpen}
         title="Supprimer la commande ?"

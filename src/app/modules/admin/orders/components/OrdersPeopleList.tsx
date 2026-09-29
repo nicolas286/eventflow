@@ -81,6 +81,9 @@ type OrdersPeopleListProps = {
   targetOrderId: string | null;
   deleteOrderLoading: boolean;
   onRequestDeleteOrder: (orderId: string) => void;
+  bankTransferOrderIds: Set<string>;
+  markPaidLoadingOrderId: string | null;
+  onRequestMarkPaid: (orderId: string) => void;
 
   editorOpen: boolean;
   editingAttendeeId: string | null;
@@ -104,6 +107,9 @@ export function OrdersPeopleList(props: OrdersPeopleListProps) {
     targetOrderId,
     deleteOrderLoading,
     onRequestDeleteOrder,
+    bankTransferOrderIds,
+    markPaidLoadingOrderId,
+    onRequestMarkPaid,
     editorOpen,
     editingAttendeeId,
     inlineEditorProps,
@@ -121,6 +127,12 @@ export function OrdersPeopleList(props: OrdersPeopleListProps) {
           const meta = orderMetaById.get(orderId);
           const orderNumber = meta?.orderNumber ?? orderId.slice(0, 8);
           const isDeletingThisOrder = deleteOrderLoading && targetOrderId === orderId;
+          const canMarkPaid =
+            bankTransferOrderIds.has(orderId) &&
+            ["open", "pending", "awaiting_payment", "partially_paid"].includes(
+              meta?.status ?? "",
+            );
+          const isMarkingPaid = markPaidLoadingOrderId === orderId;
 
           const total = meta?.totalCents ?? 0;
           const paid = meta?.paidCents ?? 0;
@@ -182,6 +194,16 @@ export function OrdersPeopleList(props: OrdersPeopleListProps) {
                   <span className="adminOrderPill">
                     {people.length} inscrit{people.length > 1 ? "s" : ""}
                   </span>
+
+                  {canMarkPaid ? (
+                    <Button
+                      variant="primary"
+                      onClick={() => onRequestMarkPaid(orderId)}
+                      disabled={isMarkingPaid}
+                    >
+                      {isMarkingPaid ? "Confirmation…" : "Marquer comme payé"}
+                    </Button>
+                  ) : null}
 
                   <Button
                     variant="danger"

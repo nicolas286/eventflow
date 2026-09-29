@@ -28,6 +28,7 @@ export default function AdminStructurePage() {
               orgId={orgId}
               orgInfo={bootstrap.organization}
               orgProfile={bootstrap.organizationProfile}
+              stripeConnectAllowed={bootstrap.profile.stripeConnectAllowed}
               onSaved={refetch}
             />
           )}

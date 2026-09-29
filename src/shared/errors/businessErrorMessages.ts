@@ -22,6 +22,9 @@ export function humanBusinessMessage(msg: string): string | null {
 
     FORBIDDEN: "Accès refusé : vous n'avez pas les droits nécessaires.",
 
+    STRIPE_CONNECT_NOT_ALLOWED:
+      "Stripe Connect n’est pas activé pour votre compte. Utilisez le paiement par virement bancaire.",
+
     NOT_AUTHENTICATED: "Votre session a expiré. Reconnectez-vous.",
 
     EVENT_MISMATCH: "Ce ticket n’est pas lié à cet événement.",

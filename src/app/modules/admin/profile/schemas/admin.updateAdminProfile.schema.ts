@@ -5,6 +5,7 @@ export const adminProfileFormSchema = profileSchema
   .omit({
     createdAt: true,
     updatedAt: true,
+    stripeConnectAllowed: true,
   })
   .extend({
     firstName: z.string().max(80).optional().nullable(),
@@ -20,12 +21,12 @@ export const adminProfileFormSchema = profileSchema
 
 export type AdminProfileForm = z.infer<typeof adminProfileFormSchema>;
 
-
 export const adminProfilePatchSchema = profileSchema
   .omit({
     userId: true,
     createdAt: true,
     updatedAt: true,
+    stripeConnectAllowed: true,
   })
   .partial()
   .strict();
@@ -37,6 +38,8 @@ export const updateAdminProfileInputSchema = z
   })
   .strict();
 
-export type UpdateAdminProfileInput = z.infer<typeof updateAdminProfileInputSchema>;
+export type UpdateAdminProfileInput = z.infer<
+  typeof updateAdminProfileInputSchema
+>;
 export type AdminProfile = z.infer<typeof profileSchema>;
 export type AdminProfilePatch = z.infer<typeof adminProfilePatchSchema>;

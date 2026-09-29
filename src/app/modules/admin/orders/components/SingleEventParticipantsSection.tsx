@@ -72,6 +72,7 @@ export function SingleEventParticipantsSection(props: {
 
   const orders = ordersViewData?.orders ?? null;
   const orderItems = ordersViewData?.orderItems ?? null;
+  const payments = ordersViewData?.payments ?? null;
   const attendees = ordersViewData?.attendees ?? null;
   const attendeeAnswers = ordersViewData?.attendeeAnswers ?? null;
 
@@ -131,7 +132,7 @@ export function SingleEventParticipantsSection(props: {
             <div className="adminEventEmpty">Chargement des commandes…</div>
           ) : ordersViewError ? (
             <div className="adminEventEmpty">{ordersViewError}</div>
-          ) : orders && orderItems && attendees && attendeeAnswers ? (
+          ) : orders && orderItems && payments && attendees && attendeeAnswers ? (
             <SingleEventOrdersSubSection
               orgId={orgId}
               event={event}
@@ -140,6 +141,7 @@ export function SingleEventParticipantsSection(props: {
               formFieldsGroups={formFieldsGroups}
               orders={orders}
               orderItems={orderItems}
+              payments={payments}
               attendees={attendees}
               attendeeAnswers={attendeeAnswers}
               ordersPage={safePage}

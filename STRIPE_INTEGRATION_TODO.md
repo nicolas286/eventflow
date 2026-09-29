@@ -48,10 +48,18 @@ Ce fichier est la source de vérité pour terminer la configuration de la billet
 1. Configurer l’endpoint Connect staging : `https://cpcmcxerrsnnjncrhldr.supabase.co/functions/v1/stripe-webhook-connect`.
 2. Ajouter les événements listés dans [docs/stripe-migration.md](docs/stripe-migration.md).
 3. Enregistrer `STRIPE_SECRET_KEY` et `STRIPE_CONNECT_WEBHOOK_SECRET` dans les secrets Supabase staging.
-4. Activer `EVENT_PAYMENT_PROVIDER=stripe` uniquement après la configuration des secrets.
-5. Tester un onboarding Express et un paiement Bancontact Stripe test.
-6. Tester une souscription et un upgrade : plan actif, facture, notification, PDF et échéance à 14 jours.
-7. Vérifier sur staging que le job `eventflow-manual-subscription-renewals` est présent et qu’un abonnement synthétique arrivé à échéance produit une seule nouvelle facture.
-8. Après validation du staging, préparer des secrets et un webhook Connect live distincts pour la production.
+4. Activer `EVENT_PAYMENT_PROVIDER=stripe` uniquement après la configuration des secrets. Le virement bancaire reste disponible indépendamment de cette variable.
+5. Autoriser explicitement les utilisateurs pilotes en positionnant `public.user_profile.stripe_connect_allowed = true` avec un accès serveur ou administrateur. Ne jamais exposer ce changement dans le profil utilisateur.
+6. Tester un nouvel onboarding Standard et un paiement Bancontact Stripe test. Les comptes déjà onboardés en Express sont conservés et ne sont pas convertis automatiquement.
+7. Tester un utilisateur non autorisé : aucune mention ni action Stripe dans l’interface, endpoints Connect refusés, et virement bancaire proposé.
+8. Tester une souscription et un upgrade : plan actif, facture, notification, PDF et échéance à 14 jours.
+9. Vérifier sur staging que le job `eventflow-manual-subscription-renewals` est présent et qu’un abonnement synthétique arrivé à échéance produit une seule nouvelle facture.
+10. Après validation du staging, préparer des secrets et un webhook Connect live distincts pour la production.
+
+## Responsabilité et flux Connect
+
+- Les paiements de billets sont des direct charges : la Checkout Session est créée avec l’en-tête `Stripe-Account` du compte connecté, sans `transfer_data` ni `on_behalf_of`.
+- Seul Bancontact est activé ; Stripe indique que ce moyen de paiement ne prend pas en charge les contestations donnant lieu à des chargebacks.
+- Les nouveaux comptes sont créés en Standard afin que Stripe, et non Eventflow, assume la responsabilité ultime des soldes négatifs. Un compte Express existant ne change pas de type automatiquement.
 
 Ressources : [Stripe Support](https://support.stripe.com) et [Stripe MCP](https://docs.stripe.com/mcp).

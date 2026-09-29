@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { registerPayloadSchema } from "../../../shared/schemas/orders-public";
+import { registerPayloadSchema, registerResponseSchema } from "../../../shared/schemas/orders-public";
 import { adminRegisterPayloadSchema } from "../../../shared/schemas/orders-admin";
 import { orderPublicSchema, bookingTokenSchema } from "../../../shared/schemas/orders-read";
 
@@ -12,7 +12,7 @@ const base = {
 
 describe("shared order boundary contracts", () => {
   it.each(["pending", "awaiting_payment", "partially_paid", "paid", "cancelled", "expired"])("preserves SQL order status %s", (status) => {
-    const result = orderPublicSchema.parse({ id: eventId, status, totalCents: null, currency: null, paymentStatus: null });
+    const result = orderPublicSchema.parse({ id: eventId, status, totalCents: null, currency: null, paymentStatus: null, paymentMethod: null });
     expect(result.status).toBe(status);
   });
   it("public checkout requires captcha and rejects admin payment controls", () => {
@@ -30,8 +30,14 @@ describe("shared order boundary contracts", () => {
     expect(adminRegisterPayloadSchema.safeParse({ ...base, turnstileToken: "captcha" }).success).toBe(false);
   });
   it("validates the public response and booking token", () => {
-    expect(orderPublicSchema.safeParse({ id: eventId, status: "paid", totalCents: 2000, currency: "EUR", paymentStatus: "paid" }).success).toBe(true);
+    expect(orderPublicSchema.safeParse({ id: eventId, status: "paid", totalCents: 2000, currency: "EUR", paymentStatus: "paid", paymentMethod: "bank_transfer" }).success).toBe(true);
     expect(bookingTokenSchema.safeParse(" ").success).toBe(false);
     expect(bookingTokenSchema.safeParse("a".repeat(2049)).success).toBe(false);
+  });
+  it("distinguishes Stripe checkout from bank-transfer reservations", () => {
+    const shared = { ok: true, orderId: eventId, status: "awaiting_payment", amountDueNowCents: 2000, totalCents: 2000, bookingToken: "booking-token" } as const;
+    expect(registerResponseSchema.safeParse({ ...shared, paymentMethod: "stripe", checkoutUrl: "https://checkout.stripe.com/example" }).success).toBe(true);
+    expect(registerResponseSchema.safeParse({ ...shared, paymentMethod: "bank_transfer" }).success).toBe(true);
+    expect(registerResponseSchema.safeParse({ ...shared, paymentMethod: "bank_transfer", checkoutUrl: "https://checkout.stripe.com/example" }).success).toBe(false);
   });
 });

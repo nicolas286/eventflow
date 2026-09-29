@@ -16,11 +16,19 @@ export const handleReadOrderRequest = createEdgeHandler({
     .eq("booking_token", bookingToken.data).maybeSingle();
   if (error) return json(req, { error: "DB_ERROR", details: error.message }, 500);
   if (!order) return json(req, { error: "NOT_FOUND" }, 404);
-  const { data: payment } = await admin.from("payments").select("status")
-    .eq("order_id", orderId).eq("provider", "mollie")
+  const { data: payment } = await admin.from("payments")
+    .select("provider, provider_payment_id, status")
+    .eq("order_id", orderId).eq("is_refund", false)
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const paymentMethod = payment?.provider === "stripe"
+    ? "stripe"
+    : payment?.provider === "offline" &&
+        String(payment.provider_payment_id ?? "").startsWith("bank_transfer:")
+    ? "bank_transfer"
+    : null;
   return json(req, orderPublicSchema.parse({
     id: order.id, status: order.status, totalCents: order.total_cents ?? null,
     currency: order.currency ?? null, paymentStatus: payment?.status ?? null,
+    paymentMethod,
   }));
 });

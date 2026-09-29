@@ -61,6 +61,7 @@ describe("createRegisterRepo", () => {
         ok: true,
         orderId: "33333333-3333-4333-8333-333333333333",
         status: "awaiting_payment",
+        paymentMethod: "stripe",
         checkoutUrl: "https://example.com/checkout",
         amountDueNowCents: 1599,
         totalCents: 1599,
@@ -75,11 +76,33 @@ describe("createRegisterRepo", () => {
     await expect(repo.register(validPayload)).resolves.toMatchObject({
       ok: true,
       status: "awaiting_payment",
+      paymentMethod: "stripe",
       checkoutUrl: "https://example.com/checkout",
     });
 
     expect(supabase.functions.invoke).toHaveBeenCalledWith("orders", {
       body: validPayload,
+    });
+  });
+
+  it("retourne une réservation par virement sans URL de checkout", async () => {
+    const supabase = makeSupabaseInvokeMock({
+      data: {
+        ok: true,
+        orderId: "33333333-3333-4333-8333-333333333333",
+        status: "awaiting_payment",
+        paymentMethod: "bank_transfer",
+        amountDueNowCents: 1599,
+        totalCents: 1599,
+        bookingToken: "booking-token",
+      },
+      error: null,
+    });
+    const repo = createRegisterRepo(supabase);
+    await expect(repo.register(validPayload)).resolves.toMatchObject({
+      ok: true,
+      status: "awaiting_payment",
+      paymentMethod: "bank_transfer",
     });
   });
 

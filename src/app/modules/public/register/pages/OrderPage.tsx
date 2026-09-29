@@ -40,6 +40,7 @@ export type OrderPublic = {
   status: OrderStatus;
   totalCents?: number;
   currency?: string;
+  paymentMethod?: "stripe" | "bank_transfer" | null;
 
   orgSlug?: string;
   eventSlug?: string;
@@ -91,8 +92,7 @@ async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> 
 
     totalCents: j.totalCents,
     currency: j.currency,
-
-
+    paymentMethod: j.paymentMethod,
 
   };
 }
@@ -254,6 +254,13 @@ export function OrderPage() {
   const statusPill = useMemo(() => {
     if (!order) return null;
 
+    if (
+      order.status === "awaiting_payment" &&
+      order.paymentMethod === "bank_transfer"
+    ) {
+      return { kind: "info" as const, label: "En attente du virement" };
+    }
+
     if (isReturn && !isFinalStatus(order.status)) {
       return { kind: "loading" as const, label: "Validation du paiement…" };
     }
@@ -283,6 +290,13 @@ export function OrderPage() {
 
     if (isFailureStatus(order.status)) {
       return `Statut : ${order.status}`;
+    }
+
+    if (
+      order.status === "awaiting_payment" &&
+      order.paymentMethod === "bank_transfer"
+    ) {
+      return "Votre réservation est enregistrée. Elle sera confirmée dès réception du virement.";
     }
 
     return `Statut : ${order.status}`;
@@ -397,7 +411,11 @@ export function OrderPage() {
               </h2>
 
               <p className="orderReturnSubtitle">{subtitle}</p>
-              <p className="orderReturnSubtitle">Vous recevrez un mail de confirmation dans quelques instants.</p>
+              <p className="orderReturnSubtitle">
+                {order.paymentMethod === "bank_transfer" && order.status === "awaiting_payment"
+                  ? "Les coordonnées de paiement viennent de vous être envoyées par e-mail."
+                  : "Vous recevrez un mail de confirmation dans quelques instants."}
+              </p>
               <p className="orderReturnSubtitle">Pour toutes questions, contactez l'organisateur de l'événement.</p>
 
               {isReturn && !isFinalStatus(order.status) ? (

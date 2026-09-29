@@ -8,5 +8,6 @@ export const orderPublicSchema = z.object({
   totalCents: z.number().int().nullable(),
   currency: z.string().nullable(),
   paymentStatus: z.string().nullable(),
+  paymentMethod: z.enum(["stripe", "bank_transfer"]).nullable().optional(),
 });
 export type OrderPublicResponse = z.infer<typeof orderPublicSchema>;
