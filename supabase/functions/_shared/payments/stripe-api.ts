@@ -4,12 +4,12 @@ export type StripeRecord = Record<string, unknown> & { id?: string };
 
 export class StripeApiError extends ResponseError {
   constructor(
-    status: number,
+    public readonly providerStatus: number,
     public readonly stripeCode: string | null,
     public readonly requestId: string | null,
   ) {
     super(502, "STRIPE_API_ERROR", {
-      providerStatus: status,
+      providerStatus,
       stripeCode,
       requestId,
     });

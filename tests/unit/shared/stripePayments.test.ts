@@ -129,6 +129,9 @@ describe("Stripe API requests", () => {
     ).catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(StripeApiError);
     expect((error as StripeApiError).message).toBe("STRIPE_API_ERROR");
+    expect((error as StripeApiError).providerStatus).toBe(402);
+    expect((error as StripeApiError).stripeCode).toBe("card_declined");
+    expect((error as StripeApiError).requestId).toBe("req_test");
     expect((error as StripeApiError).details).not.toContain("sensitive");
   });
 });
@@ -290,16 +293,18 @@ describe("Stripe provider boundaries", () => {
     expect((init.headers as Headers).get("Stripe-Account")).toBe(
       "acct_test_org",
     );
-    expect(String(init.body)).toContain(
-      "payment_method_types%5B0%5D=bancontact",
-    );
-    expect(String(init.body)).toContain("expires_at=");
+    const body = new URLSearchParams(String(init.body));
+    expect(body.get("payment_method_types[0]")).toBe("bancontact");
+    expect(body.get("ui_mode")).toBe("hosted");
+    expect(body.has("integration_identifier")).toBe(false);
+    expect(body.has("origin_context")).toBe(false);
+    expect(body.has("expires_at")).toBe(true);
     expect(new Date(payment.orderExpiresAt).getTime()).toBe(
       new Date(payment.checkoutExpiresAt).getTime(),
     );
-    expect(String(init.body)).not.toContain("transfer_data");
-    expect(String(init.body)).not.toContain("on_behalf_of");
-    expect(String(init.body)).not.toContain("never-send-this-token");
+    expect(String(body)).not.toContain("transfer_data");
+    expect(String(body)).not.toContain("on_behalf_of");
+    expect(String(body)).not.toContain("never-send-this-token");
   });
 
   it("creates refunds on the same connected account", async () => {
