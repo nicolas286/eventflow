@@ -6,6 +6,7 @@ import { resolveRequestClientIp } from "../../_shared/app/client-ip.ts";
 import { consumeRequestRateLimit } from "../../_shared/app/rate-limit/mod.ts";
 import { badRequest, internal, ResponseError } from "../../_shared/errors.ts";
 import { serializeError } from "../../_shared/modules/logger/mod.ts";
+import { StripeApiError } from "../../_shared/payments/stripe-api.ts";
 
 import { parseRegisterPayload } from "./validation.ts";
 import { toCreateOrderIntentArgs } from "./registerTickets.contracts.ts";
@@ -51,6 +52,13 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
         logger.warn("response_error", {
           code: error.code,
           status: error.status,
+          ...(error instanceof StripeApiError
+            ? {
+                providerStatus: error.providerStatus,
+                stripeCode: error.stripeCode,
+                stripeRequestId: error.requestId,
+              }
+            : {}),
         });
         return json(req, { error: error.code }, error.status);
       }
