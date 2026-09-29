@@ -35,11 +35,7 @@ export async function sendTicketConfirmation(
   const config = resolveRuntimeConfig();
   const order = await loadOrderForConfirmationOrThrow(admin, orderId);
 
-  const event = await loadEventForConfirmation(
-    admin,
-    order.eventId,
-    logger,
-  );
+  const event = await loadEventForConfirmation(admin, order.eventId, logger);
 
   const items = await loadOrderItemsForConfirmation(admin, orderId, logger);
 
@@ -56,20 +52,22 @@ export async function sendTicketConfirmation(
     order.totalCents - discountCents - order.paidCents,
   );
 
-  const orderUrl = `${config.appBaseUrl}/order/${orderId}?token=${
-    encodeURIComponent(
-      order.bookingToken,
-    )
-  }`;
+  const orderUrl = `${config.appBaseUrl}/order/${orderId}?token=${encodeURIComponent(
+    order.bookingToken,
+  )}`;
 
-  const subject = subjectOverride ||
-    `Inscription confirmée – ${event.eventTitle}`;
+  const subject =
+    subjectOverride || `Inscription confirmée – ${event.eventTitle}`;
 
   const html = buildOrderConfirmationHtml({
     eventTitle: event.eventTitle,
     startsAt: event.startsAt,
     location: event.location,
     description: event.description,
+    organizerName: event.organizerName,
+    organizerEmail: event.organizerEmail,
+    organizerPhone: event.organizerPhone,
+    organizerWebsite: event.organizerWebsite,
     orderUrl,
     currency: order.currency,
     items,
@@ -79,11 +77,7 @@ export async function sendTicketConfirmation(
     dueCents,
   });
 
-  const ticketRows = await loadTicketsForConfirmation(
-    admin,
-    orderId,
-    logger,
-  );
+  const ticketRows = await loadTicketsForConfirmation(admin, orderId, logger);
 
   const productIds = Array.from(
     new Set(
@@ -121,27 +115,30 @@ export async function sendTicketConfirmation(
     productMetaById,
   });
 
-  const pdfAttachment = tickets.length > 0
-    ? await generateTicketsPdf({
-      orderId,
-      eventTitle: event.eventTitle,
-      startsAt: event.startsAt,
-      location: event.location,
-      currency: order.currency,
-      tickets,
-    })
-    : null;
+  const pdfAttachment =
+    tickets.length > 0
+      ? await generateTicketsPdf({
+          orderId,
+          eventTitle: event.eventTitle,
+          startsAt: event.startsAt,
+          location: event.location,
+          currency: order.currency,
+          tickets,
+        })
+      : null;
 
   await sendEmailOrThrow({
     to: order.to,
     subject,
     html,
     attachments: pdfAttachment
-      ? [{
-        filename: pdfAttachment.filename,
-        content: pdfAttachment.contentBase64,
-        contentType: pdfAttachment.contentType,
-      }]
+      ? [
+          {
+            filename: pdfAttachment.filename,
+            content: pdfAttachment.contentBase64,
+            contentType: pdfAttachment.contentType,
+          },
+        ]
       : [],
     tags: {
       kind: "order_confirmation",

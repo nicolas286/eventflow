@@ -84,6 +84,7 @@ export const registerPayloadSchema = z
     widgetReturnUrl: z.string().trim().min(1).max(2048).optional(),
     checkoutSource: z.enum(["widget", "public"]).optional(),
     promoCode: promoCodeSchema.optional().nullable(),
+    termsAccepted: z.literal(true),
   })
   .strict()
   .superRefine((body, ctx) => {
@@ -242,7 +243,7 @@ export type CreateOrderIntentArgs = z.infer<typeof createOrderIntentArgsSchema>;
 
 export function toCreateOrderIntentArgs(
   payload: RegisterPayload,
-  rateKey: string
+  rateKey: string,
 ): CreateOrderIntentArgs {
   const buyer = payload.buyer ?? {};
   const email = buyer.email ?? payload.buyerEmail ?? null;

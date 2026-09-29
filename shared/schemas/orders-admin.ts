@@ -144,6 +144,7 @@ const orderStatusSchema = z
     "pending",
     "canceled",
     "cancelled",
+    "refunded",
   ])
   .transform((s) => (s === "cancelled" ? "canceled" : s));
 
@@ -183,7 +184,9 @@ export const adminRegisterResponseSchema = z.union([
 
 export type AdminRegisterResponse = z.infer<typeof adminRegisterResponseSchema>;
 export type AdminOrderStatus = z.infer<typeof orderStatusSchema>;
-export type AdminRegisterPayloadInput = z.input<typeof adminRegisterPayloadSchema>;
+export type AdminRegisterPayloadInput = z.input<
+  typeof adminRegisterPayloadSchema
+>;
 
 export const markBankTransferPaidResponseSchema = z
   .object({

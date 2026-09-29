@@ -4,7 +4,10 @@ import {
   StripeApiError,
 } from "../../../supabase/functions/_shared/payments/stripe-api";
 import { verifyStripeWebhook } from "../../../supabase/functions/_shared/payments/stripe-webhook";
-import { StripeConnectedAccountProvider } from "../../../supabase/functions/_shared/payments/stripe-connect-provider";
+import {
+  StripeConnectedAccountProvider,
+  stripeAccountToStatus,
+} from "../../../supabase/functions/_shared/payments/stripe-connect-provider";
 import { StripeEventPaymentProvider } from "../../../supabase/functions/orders/public/stripe-payment-provider";
 import { isStripeAccountReady } from "../../../supabase/functions/_shared/payments/stripe-connect-db";
 import { humanBusinessMessage } from "../../../src/shared/errors/businessErrorMessages";
@@ -38,6 +41,7 @@ describe("Stripe webhook verification", () => {
   const body = JSON.stringify({
     id: "evt_test_1",
     type: "checkout.session.completed",
+    livemode: false,
     data: { object: { id: "cs_test_1" } },
   });
 
@@ -135,6 +139,14 @@ describe("Stripe provider boundaries", () => {
       isStripeAccountReady({
         provider: "stripe",
         providerAccountId: "acct_test_org",
+        accountType: "standard",
+        controllerFeesPayer: null,
+        controllerLossesPayments: null,
+        controllerRequirementCollection: null,
+        controllerDashboardType: null,
+        requirementsDisabledReason: null,
+        requirementsCurrentlyDue: [],
+        configurationSupported: true,
         detailsSubmitted: true,
         chargesEnabled: true,
         payoutsEnabled: false,
@@ -144,10 +156,40 @@ describe("Stripe provider boundaries", () => {
       isStripeAccountReady({
         provider: "stripe",
         providerAccountId: "acct_test_org",
+        accountType: "standard",
+        controllerFeesPayer: null,
+        controllerLossesPayments: null,
+        controllerRequirementCollection: null,
+        controllerDashboardType: null,
+        requirementsDisabledReason: null,
+        requirementsCurrentlyDue: [],
+        configurationSupported: true,
         detailsSubmitted: true,
         chargesEnabled: true,
         payoutsEnabled: true,
       }),
+    ).toBe(true);
+  });
+
+  it("rejects Express accounts and accepts Standard/full-dashboard liability", () => {
+    expect(
+      stripeAccountToStatus({
+        id: "acct_express",
+        type: "express",
+        details_submitted: true,
+        charges_enabled: true,
+        payouts_enabled: true,
+      }).configurationSupported,
+    ).toBe(false);
+    expect(
+      stripeAccountToStatus({
+        id: "acct_standard",
+        type: "standard",
+        details_submitted: true,
+        charges_enabled: true,
+        payouts_enabled: true,
+        requirements: { currently_due: [] },
+      }).configurationSupported,
     ).toBe(true);
   });
 
@@ -162,6 +204,7 @@ describe("Stripe provider boundaries", () => {
       new Response(
         JSON.stringify({
           id: "acct_test_org",
+          type: "standard",
           details_submitted: false,
           charges_enabled: false,
           payouts_enabled: false,
@@ -194,6 +237,7 @@ describe("Stripe provider boundaries", () => {
       new Response(
         JSON.stringify({
           id: "acct_test_org",
+          type: "standard",
           details_submitted: true,
           charges_enabled: true,
           payouts_enabled: true,
@@ -218,6 +262,7 @@ describe("Stripe provider boundaries", () => {
         JSON.stringify({
           id: "cs_test_ticket",
           url: "https://checkout.stripe.test/ticket",
+          expires_at: Math.floor(Date.now() / 1000) + 31 * 60,
         }),
         { status: 200 },
       ),
@@ -247,6 +292,10 @@ describe("Stripe provider boundaries", () => {
     );
     expect(String(init.body)).toContain(
       "payment_method_types%5B0%5D=bancontact",
+    );
+    expect(String(init.body)).toContain("expires_at=");
+    expect(new Date(payment.orderExpiresAt).getTime()).toBeGreaterThan(
+      new Date(payment.checkoutExpiresAt).getTime(),
     );
     expect(String(init.body)).not.toContain("transfer_data");
     expect(String(init.body)).not.toContain("on_behalf_of");

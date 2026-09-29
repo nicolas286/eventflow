@@ -48,3 +48,31 @@ export async function completeWebhookEvent(
 
   if (error) throw new Error(error.message ?? "WEBHOOK_COMPLETE_FAILED");
 }
+
+export async function claimRefundNotification(
+  admin: AdminClient,
+  input: { refundId: string; orderId: string },
+): Promise<boolean> {
+  const { data, error } = await admin.rpc("claim_payment_refund_notification", {
+    p_provider: "stripe",
+    p_refund_id: input.refundId,
+    p_order_id: input.orderId,
+  });
+  if (error)
+    throw new Error(error.message ?? "REFUND_NOTIFICATION_CLAIM_FAILED");
+  return data === true;
+}
+
+export async function completeRefundNotification(
+  admin: AdminClient,
+  input: { refundId: string; success: boolean; error?: string | null },
+) {
+  const { error } = await admin.rpc("complete_payment_refund_notification", {
+    p_provider: "stripe",
+    p_refund_id: input.refundId,
+    p_success: input.success,
+    p_error: input.error ?? null,
+  });
+  if (error)
+    throw new Error(error.message ?? "REFUND_NOTIFICATION_COMPLETE_FAILED");
+}

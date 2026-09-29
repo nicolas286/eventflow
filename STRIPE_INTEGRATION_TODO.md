@@ -48,10 +48,10 @@ Ce fichier est la source de vérité pour terminer la configuration de la billet
 1. Configurer l’endpoint Connect staging : `https://cpcmcxerrsnnjncrhldr.supabase.co/functions/v1/stripe-webhook-connect`.
 2. Ajouter les événements listés dans [docs/stripe-migration.md](docs/stripe-migration.md).
 3. Enregistrer `STRIPE_SECRET_KEY` et `STRIPE_CONNECT_WEBHOOK_SECRET` dans les secrets Supabase staging.
-4. Activer `EVENT_PAYMENT_PROVIDER=stripe` uniquement après la configuration des secrets. Le virement bancaire reste disponible indépendamment de cette variable.
-5. Autoriser explicitement les utilisateurs pilotes en positionnant `public.user_profile.stripe_connect_allowed = true` avec un accès serveur ou administrateur. Ne jamais exposer ce changement dans le profil utilisateur.
+4. Activer le fournisseur Stripe uniquement après la configuration des secrets. Le virement bancaire de billetterie reste désactivé par le flag global.
+5. Vérifier que chaque organisateur a renseigné un e-mail public et validé ses conditions organisateur avant l’onboarding.
 6. Tester un nouvel onboarding Standard et un paiement Bancontact Stripe test. Les comptes déjà onboardés en Express sont conservés et ne sont pas convertis automatiquement.
-7. Tester un utilisateur non autorisé : aucune mention ni action Stripe dans l’interface, endpoints Connect refusés, et virement bancaire proposé.
+7. Tester un compte Express historique : paiements bloqués avec demande de migration vers un compte Standard, sans suppression de son identifiant historique.
 8. Tester une souscription et un upgrade : plan actif, facture, notification, PDF et échéance à 14 jours.
 9. Vérifier sur staging que le job `eventflow-manual-subscription-renewals` est présent et qu’un abonnement synthétique arrivé à échéance produit une seule nouvelle facture.
 10. Après validation du staging, préparer des secrets et un webhook Connect live distincts pour la production.

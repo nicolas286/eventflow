@@ -89,11 +89,17 @@ export const handleOrganizationPaymentSettingsRequest = createEdgeHandler(
     if (input.action === "read") {
       const { data, error } = await serviceClient
         .from("organizations")
-        .select("id, payments_provider, bank_transfer_beneficiary, bank_transfer_iban")
+        .select(
+          "id, payments_provider, bank_transfer_beneficiary, bank_transfer_iban, organization_profile(sales_terms, sales_terms_version, sales_terms_accepted_version, sales_terms_accepted_at, sales_terms_accepted_by)",
+        )
         .eq("id", input.orgId)
         .maybeSingle();
 
       if (error || !data) throw internal("PAYMENT_SETTINGS_LOAD_FAILED");
+
+      const profile = Array.isArray(data.organization_profile)
+        ? data.organization_profile[0]
+        : data.organization_profile;
 
       return json(
         req,
@@ -105,8 +111,45 @@ export const handleOrganizationPaymentSettingsRequest = createEdgeHandler(
           bankTransferIbanMasked: data.bank_transfer_iban
             ? maskIban(data.bank_transfer_iban)
             : null,
+          salesTerms: profile?.sales_terms ?? null,
+          salesTermsVersion: profile?.sales_terms_version ?? null,
+          salesTermsAcceptedVersion:
+            profile?.sales_terms_accepted_version ?? null,
+          salesTermsAcceptedAt: profile?.sales_terms_accepted_at ?? null,
+          salesTermsAcceptedBy: profile?.sales_terms_accepted_by ?? null,
+          salesTermsCurrent: Boolean(
+            profile?.sales_terms_accepted_at &&
+            profile?.sales_terms_version &&
+            profile.sales_terms_accepted_version ===
+              profile.sales_terms_version,
+          ),
         }),
       );
+    }
+
+    if (input.action === "accept_terms") {
+      const { data: accepted, error: acceptError } = await supabase.rpc(
+        "accept_organization_sales_terms",
+        {
+          p_org_id: input.orgId,
+          p_sales_terms: input.salesTerms,
+        },
+      );
+
+      if (acceptError || !accepted) {
+        if (acceptError?.message?.includes("FORBIDDEN")) {
+          throw forbidden("FORBIDDEN");
+        }
+        if (acceptError?.message?.includes("valid public organizer email")) {
+          throw badRequest("ORGANIZER_PUBLIC_EMAIL_REQUIRED");
+        }
+        if (acceptError?.message?.includes("invalid organizer sales terms")) {
+          throw badRequest("ORGANIZER_SALES_TERMS_INVALID");
+        }
+        throw internal("ORGANIZER_TERMS_ACCEPTANCE_FAILED");
+      }
+
+      return json(req, organizationPaymentSettingsResultSchema.parse(accepted));
     }
 
     const { data: updated, error: updateError } = await supabase.rpc(
@@ -150,11 +193,15 @@ export const handleOrganizationPaymentSettingsRequest = createEdgeHandler(
             .maybeSingle(),
         ]);
 
-      const recipients = Array.from(new Set([
-        user.email?.trim().toLowerCase(),
-        profile?.public_email?.trim().toLowerCase(),
-        billing?.billing_email?.trim().toLowerCase(),
-      ].filter((value): value is string => Boolean(value))));
+      const recipients = Array.from(
+        new Set(
+          [
+            user.email?.trim().toLowerCase(),
+            profile?.public_email?.trim().toLowerCase(),
+            billing?.billing_email?.trim().toLowerCase(),
+          ].filter((value): value is string => Boolean(value)),
+        ),
+      );
 
       if (recipients.length > 0) {
         try {

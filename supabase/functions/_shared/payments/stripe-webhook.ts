@@ -2,7 +2,7 @@ export type StripeWebhookEvent = {
   id: string;
   type: string;
   account?: string | null;
-  livemode?: boolean;
+  livemode: boolean;
   data: {
     object: Record<string, unknown>;
   };
@@ -82,6 +82,7 @@ export async function verifyStripeWebhook(
   if (
     typeof event.id !== "string" ||
     typeof event.type !== "string" ||
+    typeof event.livemode !== "boolean" ||
     typeof event.data !== "object" ||
     event.data === null ||
     typeof event.data.object !== "object" ||

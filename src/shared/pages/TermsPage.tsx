@@ -127,7 +127,9 @@ export default function TermsPage() {
               <h3>4.1 Prestataires de paiement tiers</h3>
               <p>
                 Les paiements électroniques proposés sur Eventflow sont exécutés
-                par un ou plusieurs prestataires de services de paiement tiers.
+                par Stripe. L’organisateur est le vendeur des billets et le
+                marchand auprès du participant. Eventflow fournit la plateforme
+                technique et ne vend pas les billets en son nom.
               </p>
               <p>
                 Selon les fonctionnalités utilisées, l’organisateur peut être
@@ -227,9 +229,9 @@ export default function TermsPage() {
 
               <h3>4.6 Moyens de paiement alternatifs</h3>
               <p>
-                Eventflow peut proposer des moyens de paiement ne passant pas
-                par son prestataire de paiement intégré, notamment le virement
-                bancaire direct vers l’organisateur.
+                Eventflow pourra proposer à l’avenir des moyens de paiement ne
+                passant pas par son prestataire intégré. Le paiement par
+                virement direct pour les billets n’est pas activé à ce jour.
               </p>
               <p>
                 Dans ce cas, les délais de confirmation et les modalités de

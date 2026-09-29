@@ -3,6 +3,14 @@ export type PaymentProviderName = "mollie" | "stripe";
 export type ConnectedAccountStatus = {
   provider: PaymentProviderName;
   providerAccountId: string;
+  accountType: string | null;
+  controllerFeesPayer: string | null;
+  controllerLossesPayments: string | null;
+  controllerRequirementCollection: string | null;
+  controllerDashboardType: string | null;
+  requirementsDisabledReason: string | null;
+  requirementsCurrentlyDue: string[];
+  configurationSupported: boolean;
   detailsSubmitted: boolean;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
@@ -26,6 +34,8 @@ export type CreatedEventPayment = {
   providerAccountId: string | null;
   providerCheckoutSessionId: string | null;
   checkoutUrl: string;
+  checkoutExpiresAt: string | null;
+  orderExpiresAt: string | null;
   raw: Record<string, unknown>;
 };
 

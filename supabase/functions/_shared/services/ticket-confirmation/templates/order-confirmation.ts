@@ -2,27 +2,38 @@ import { escapeHtml } from "../../../text.ts";
 import { markdownToSafeHtml } from "../../../markdown.ts";
 import { formatDateTimeBrussels, formatMoney } from "../../../format.ts";
 
-export function buildOrderConfirmationHtml(
-  p: {
-    eventTitle: string;
-    startsAt: string | null;
-    location: string | null;
-    description: string | null;
-    orderUrl: string;
-    currency: string;
-    items: Array<
-      { name: string; qty: number; unitCents: number; lineCents: number }
-    >;
-    totalCents: number;
-    paidCents: number;
-    discountCents?: number;
-    dueCents?: number;
-    reminderDays?: number;
-  },
-) {
+export function buildOrderConfirmationHtml(p: {
+  eventTitle: string;
+  startsAt: string | null;
+  location: string | null;
+  description: string | null;
+  organizerName: string;
+  organizerEmail: string | null;
+  organizerPhone: string | null;
+  organizerWebsite: string | null;
+  orderUrl: string;
+  currency: string;
+  items: Array<{
+    name: string;
+    qty: number;
+    unitCents: number;
+    lineCents: number;
+  }>;
+  totalCents: number;
+  paidCents: number;
+  discountCents?: number;
+  dueCents?: number;
+  reminderDays?: number;
+}) {
   const title = escapeHtml(p.eventTitle);
   const when = formatDateTimeBrussels(p.startsAt ?? null);
   const location = String(p.location ?? "").trim();
+  const organizerEmail = String(p.organizerEmail ?? "").trim();
+  const organizerPhone = String(p.organizerPhone ?? "").trim();
+  const organizerWebsite = String(p.organizerWebsite ?? "").trim();
+  const organizerWebsiteUrl = /^https?:\/\//i.test(organizerWebsite)
+    ? organizerWebsite
+    : "";
 
   const descHtml = markdownToSafeHtml(p.description, {
     maxLength: 1200,
@@ -79,9 +90,9 @@ ${escapeHtml(formatMoney(x.lineCents, p.currency))}
 
 <tbody>
 ${
-      itemsRows ||
-      `<tr><td colspan="4" style="padding:12px;color:#666">Aucun billet trouvé.</td></tr>`
-    }
+  itemsRows ||
+  `<tr><td colspan="4" style="padding:12px;color:#666">Aucun billet trouvé.</td></tr>`
+}
 </tbody>
 
 </table>
@@ -95,13 +106,13 @@ ${
 </div>
 
 ${
-      discount > 0
-        ? `<div style="margin:4px 0">
+  discount > 0
+    ? `<div style="margin:4px 0">
 <span style="opacity:.75">Remise :</span>
 <strong>- ${escapeHtml(formatMoney(discount, p.currency))}</strong>
 </div>`
-        : ""
-    }
+    : ""
+}
 
 <div style="margin:4px 0">
 <span style="opacity:.75">Payé :</span>
@@ -109,13 +120,13 @@ ${
 </div>
 
 ${
-      due > 0
-        ? `<div style="margin:4px 0">
+  due > 0
+    ? `<div style="margin:4px 0">
 <span style="opacity:.75">Reste à payer :</span>
 <strong>${escapeHtml(formatMoney(due, p.currency))}</strong>
 </div>`
-        : ""
-    }
+    : ""
+}
 
 </div>
 `
@@ -143,28 +154,36 @@ ${title}
 </div>
 
 ${
-    when
-      ? `<div style="margin:6px 0;font-size:13px;opacity:.85">
+  when
+    ? `<div style="margin:6px 0;font-size:13px;opacity:.85">
 <span style="font-weight:800">🗓️ Date</span> : ${escapeHtml(when)}
 </div>`
-      : ""
-  }
+    : ""
+}
 
 ${
-    location
-      ? `<div style="margin:6px 0;font-size:13px;opacity:.85">
+  location
+    ? `<div style="margin:6px 0;font-size:13px;opacity:.85">
 <span style="font-weight:800">📍 Lieu</span> : ${escapeHtml(location)}
 </div>`
-      : ""
-  }
+    : ""
+}
 
 </div>
 
 ${itemsTable}
 
+<div style="margin:16px 0;padding:12px 14px;background:#f6f6f7;border-radius:12px;font-size:13px">
+  <div><strong>Vendeur et organisateur :</strong> ${escapeHtml(p.organizerName)}</div>
+  ${organizerEmail ? `<div>Contact : <a href="mailto:${escapeHtml(organizerEmail)}">${escapeHtml(organizerEmail)}</a></div>` : ""}
+  ${organizerPhone ? `<div>Téléphone : ${escapeHtml(organizerPhone)}</div>` : ""}
+  ${organizerWebsiteUrl ? `<div>Site : <a href="${escapeHtml(organizerWebsiteUrl)}">${escapeHtml(organizerWebsiteUrl)}</a></div>` : ""}
+  <div style="margin-top:6px;opacity:.75">Le paiement a été encaissé directement par l’organisateur via son compte Stripe connecté. Eventflow fournit la plateforme technique.</div>
+</div>
+
 ${
-    p.orderUrl
-      ? `
+  p.orderUrl
+    ? `
 <div style="text-align:center;margin:18px 0">
   <a href="${escapeHtml(p.orderUrl)}"
      style="display:inline-block;background:#111;color:#fff;text-decoration:none;font-weight:800;padding:12px 18px;border-radius:999px">
@@ -172,20 +191,20 @@ ${
   </a>
 </div>
 `
-      : ""
-  }
+    : ""
+}
 
 ${
-    descHtml
-      ? `
+  descHtml
+    ? `
 <div style="margin:16px 0 8px;font-weight:900">Détails</div>
 
 <div style="font-size:14px;color:#333;opacity:.95">
 ${descHtml}
 </div>
 `
-      : ""
-  }
+    : ""
+}
 
 </div>
 

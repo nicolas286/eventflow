@@ -1,6 +1,11 @@
 import { orderPublicSchema } from "@contracts/orders-read";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, useLocation, useSearchParams } from "react-router-dom";
+import {
+  useNavigate,
+  useParams,
+  useLocation,
+  useSearchParams,
+} from "react-router-dom";
 
 import { Button } from "@shared/ui/components";
 import { useWidgetTheme } from "../hooks/useWidgetTheme";
@@ -41,7 +46,8 @@ type OrderStatus =
   | "canceled"
   | "expired"
   | "awaiting_payment"
-  | "partially_paid";
+  | "partially_paid"
+  | "refunded";
 
 type OrderItemPublic = {
   name?: string;
@@ -62,17 +68,20 @@ type OrderPublic = {
   bankTransfer?: BankTransferInstructions | null;
 };
 
-async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> {
+async function fetchOrder(
+  orderId: string,
+  token: string,
+): Promise<OrderPublic> {
   const res = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/orders/${encodeURIComponent(
-      orderId
+      orderId,
     )}?token=${encodeURIComponent(token)}`,
     {
       headers: {
         apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
       },
-    }
+    },
   );
 
   if (!res.ok) {
@@ -80,7 +89,11 @@ async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> 
   }
 
   const parsed = orderPublicSchema.parse(await res.json());
-  const j = { ...parsed, totalCents: parsed.totalCents ?? undefined, currency: parsed.currency ?? undefined };
+  const j = {
+    ...parsed,
+    totalCents: parsed.totalCents ?? undefined,
+    currency: parsed.currency ?? undefined,
+  };
 
   return {
     id: j.id,
@@ -109,7 +122,8 @@ export function WidgetConfirmationPage() {
   }>();
 
   const orderIdFromUrl = searchParams.get("orderId");
-  const tokenFromUrl = searchParams.get("token") ?? searchParams.get("bookingToken");
+  const tokenFromUrl =
+    searchParams.get("token") ?? searchParams.get("bookingToken");
   const isPaymentReturn = Boolean(orderIdFromUrl && tokenFromUrl);
 
   const confirmationKey =
@@ -135,34 +149,34 @@ export function WidgetConfirmationPage() {
   const [remoteError, setRemoteError] = useState<string | null>(null);
 
   useEffect(() => {
-  if (!orderIdFromUrl || !tokenFromUrl) return;
+    if (!orderIdFromUrl || !tokenFromUrl) return;
 
-  let cancelled = false;
+    let cancelled = false;
 
-  async function run() {
-    try {
-      setLoadingRemote(true);
-      setRemoteError(null);
+    async function run() {
+      try {
+        setLoadingRemote(true);
+        setRemoteError(null);
 
-      const order = await fetchOrder(orderIdFromUrl!, tokenFromUrl!);
+        const order = await fetchOrder(orderIdFromUrl!, tokenFromUrl!);
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      setRemoteOrder(order);
-    } catch {
-      if (cancelled) return;
-      setRemoteError("Impossible de récupérer la commande.");
-    } finally {
-      if (!cancelled) setLoadingRemote(false);
+        setRemoteOrder(order);
+      } catch {
+        if (cancelled) return;
+        setRemoteError("Impossible de récupérer la commande.");
+      } finally {
+        if (!cancelled) setLoadingRemote(false);
+      }
     }
-  }
 
-  run();
+    run();
 
-  return () => {
-    cancelled = true;
-  };
-}, [orderIdFromUrl, tokenFromUrl]);
+    return () => {
+      cancelled = true;
+    };
+  }, [orderIdFromUrl, tokenFromUrl]);
 
   function goBackToEvents() {
     if (!orgSlug) return;
@@ -181,7 +195,10 @@ export function WidgetConfirmationPage() {
           buyerEmail: remoteOrder.buyerEmail ?? "",
           totalCents: remoteOrder.totalCents ?? 0,
           currency: remoteOrder.currency ?? "EUR",
-          totalTickets: (remoteOrder.items ?? []).reduce((acc, it) => acc + Number(it.quantity ?? 0), 0),
+          totalTickets: (remoteOrder.items ?? []).reduce(
+            (acc, it) => acc + Number(it.quantity ?? 0),
+            0,
+          ),
           eventTitle: resolvedTitle,
           status: remoteOrder.status,
           paymentMethod: remoteOrder.paymentMethod,
@@ -190,7 +207,8 @@ export function WidgetConfirmationPage() {
             name: it.name ?? "Billet",
             quantity: Number(it.quantity ?? 1),
             totalCents: Number(
-              it.totalCents ?? Number(it.unitPriceCents ?? 0) * Number(it.quantity ?? 1)
+              it.totalCents ??
+                Number(it.unitPriceCents ?? 0) * Number(it.quantity ?? 1),
             ),
             currency: it.currency ?? remoteOrder.currency ?? "EUR",
           })),
@@ -239,7 +257,9 @@ export function WidgetConfirmationPage() {
           {remoteError ? (
             <MessageBox variant="error">{remoteError}</MessageBox>
           ) : (
-            <div className="widgetEmpty">Impossible de retrouver les détails de la réservation.</div>
+            <div className="widgetEmpty">
+              Impossible de retrouver les détails de la réservation.
+            </div>
           )}
 
           <div className="widgetRecap widgetRecapActions">
@@ -251,23 +271,45 @@ export function WidgetConfirmationPage() {
   }
 
   const isSuccess = isSuccessStatus(resolvedData.status);
+  const isRefunded = resolvedData.status === "refunded";
 
   return (
     <WidgetRoot theme={theme}>
       <div className="widgetConfirmationCard">
         <div className="widgetConfirmationPill">
-          {isSuccess ? "Réservation confirmée ✅" : "Commande enregistrée"}
+          {isSuccess
+            ? "Réservation confirmée ✅"
+            : isRefunded
+              ? "Commande remboursée"
+              : "Commande enregistrée"}
         </div>
 
-        <h2>{isSuccess ? "Merci !" : "Confirmation"}</h2>
+        <h2>
+          {isSuccess
+            ? "Merci !"
+            : isRefunded
+              ? "Remboursement confirmé"
+              : "Confirmation"}
+        </h2>
 
         <p className="widgetConfirmationSubtitle">
-          Votre réservation pour <strong>{resolvedData.eventTitle}</strong> est bien enregistrée.
+          {isRefunded ? (
+            <>
+              Votre réservation pour <strong>{resolvedData.eventTitle}</strong>{" "}
+              a été remboursée. Les billets associés ne sont plus valables.
+            </>
+          ) : (
+            <>
+              Votre réservation pour <strong>{resolvedData.eventTitle}</strong>{" "}
+              est bien enregistrée.
+            </>
+          )}
         </p>
 
         {resolvedData.paymentMethod === "bank_transfer" && !isSuccess ? (
           <MessageBox variant="info">
-            Les coordonnées de paiement ont été envoyées par e-mail. Vos billets seront émis après confirmation du virement par l’organisateur.
+            Les coordonnées de paiement ont été envoyées par e-mail. Vos billets
+            seront émis après confirmation du virement par l’organisateur.
           </MessageBox>
         ) : null}
 
@@ -287,13 +329,15 @@ export function WidgetConfirmationPage() {
                 </strong>
               </div>
               <div>
-                Bénéficiaire : <strong>{resolvedData.bankTransfer.beneficiary}</strong>
+                Bénéficiaire :{" "}
+                <strong>{resolvedData.bankTransfer.beneficiary}</strong>
               </div>
               <div>
                 IBAN : <strong>{resolvedData.bankTransfer.iban}</strong>
               </div>
               <div>
-                Communication : <strong>{resolvedData.bankTransfer.communication}</strong>
+                Communication :{" "}
+                <strong>{resolvedData.bankTransfer.communication}</strong>
               </div>
               <div>
                 Référence Eventflow :{" "}
@@ -301,18 +345,22 @@ export function WidgetConfirmationPage() {
               </div>
             </div>
             <p className="widgetConfirmationSubtitle">
-              Votre place sera définitivement confirmée après réception du paiement.
+              Votre place sera définitivement confirmée après réception du
+              paiement.
             </p>
           </div>
         ) : null}
 
         {resolvedData.buyerEmail ? (
           <p className="widgetConfirmationSubtitle">
-            Un email de confirmation sera envoyé à <strong>{resolvedData.buyerEmail}</strong>.
+            Un email de confirmation sera envoyé à{" "}
+            <strong>{resolvedData.buyerEmail}</strong>.
           </p>
         ) : null}
 
-        {remoteError ? <MessageBox variant="error">{remoteError}</MessageBox> : null}
+        {remoteError ? (
+          <MessageBox variant="error">{remoteError}</MessageBox>
+        ) : null}
 
         <div className="widgetConfirmationSection">
           <div className="widgetSectionTitle">Récapitulatif</div>
@@ -336,7 +384,9 @@ export function WidgetConfirmationPage() {
 
           <div className="widgetPaymentTotalRow">
             <div>Total</div>
-            <div>{formatMoney(resolvedData.totalCents, resolvedData.currency)}</div>
+            <div>
+              {formatMoney(resolvedData.totalCents, resolvedData.currency)}
+            </div>
           </div>
 
           <div className="widgetPaymentInfos">
@@ -346,11 +396,16 @@ export function WidgetConfirmationPage() {
         </div>
 
         <div className="widgetRecap widgetRecapActions">
-          <Button className="widgetButton" variant="secondary" label="Retour aux événements" onClick={goBackToEvents} />
+          <Button
+            className="widgetButton"
+            variant="secondary"
+            label="Retour aux événements"
+            onClick={goBackToEvents}
+          />
         </div>
       </div>
 
-      <WidgetFooter/>
+      <WidgetFooter />
     </WidgetRoot>
   );
 }

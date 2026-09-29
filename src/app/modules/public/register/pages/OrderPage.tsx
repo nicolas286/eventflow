@@ -26,7 +26,8 @@ export type OrderStatus =
   | "canceled"
   | "expired"
   | "awaiting_payment"
-  | "partially_paid";
+  | "partially_paid"
+  | "refunded";
 
 export type OrderItemPublic = {
   name?: string;
@@ -57,7 +58,8 @@ function isFinalStatus(status: OrderStatus) {
     status === "partially_paid" ||
     status === "failed" ||
     status === "canceled" ||
-    status === "expired"
+    status === "expired" ||
+    status === "refunded"
   );
 }
 
@@ -66,10 +68,18 @@ function isSuccessStatus(status: OrderStatus) {
 }
 
 function isFailureStatus(status: OrderStatus) {
-  return status === "failed" || status === "canceled" || status === "expired";
+  return (
+    status === "failed" ||
+    status === "canceled" ||
+    status === "expired" ||
+    status === "refunded"
+  );
 }
 
-async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> {
+async function fetchOrder(
+  orderId: string,
+  token: string,
+): Promise<OrderPublic> {
   if (!orderId) throw new Error("order_fetch_failed");
 
   const res = await fetch(
@@ -86,7 +96,11 @@ async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> 
 
   if (!res.ok) throw new Error("order_fetch_failed");
   const parsed = orderPublicSchema.parse(await res.json());
-  const j = { ...parsed, totalCents: parsed.totalCents ?? undefined, currency: parsed.currency ?? undefined };
+  const j = {
+    ...parsed,
+    totalCents: parsed.totalCents ?? undefined,
+    currency: parsed.currency ?? undefined,
+  };
 
   return {
     id: j.id,
@@ -96,7 +110,6 @@ async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> 
     currency: j.currency,
     paymentMethod: j.paymentMethod,
     bankTransfer: j.bankTransfer ?? null,
-
   };
 }
 
@@ -108,16 +121,18 @@ async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> 
  */
 export function OrderPage() {
   const { orderId } = useParams<{ orderId: string }>();
-  
+
   const [search] = useSearchParams();
 
   /* ---------------- Query params ---------------- */
 
   const isReturn = search.get("return") === "1";
-  const bookingToken = search.get("token") ?? search.get("bookingToken") ?? null;
+  const bookingToken =
+    search.get("token") ?? search.get("bookingToken") ?? null;
 
   const orgSlugFromQuery = search.get("org") ?? search.get("orgSlug") ?? null;
-  const eventSlugFromQuery = search.get("event") ?? search.get("eventSlug") ?? null;
+  const eventSlugFromQuery =
+    search.get("event") ?? search.get("eventSlug") ?? null;
 
   /* ---------------- State ---------------- */
 
@@ -145,7 +160,6 @@ export function OrderPage() {
     orgSlug,
     eventSlug,
   });
-
 
   /* ---------------- Fetch helpers ---------------- */
 
@@ -206,10 +220,8 @@ export function OrderPage() {
     }
 
     async function firstLoad() {
-      
-        if (!orderId || !bookingToken) return;
-        try {
-        
+      if (!orderId || !bookingToken) return;
+      try {
         const o = await fetchOrder(orderId, bookingToken);
         if (cancelled) return;
         safeSetOrder(o);
@@ -271,8 +283,13 @@ export function OrderPage() {
     if (isSuccessStatus(order.status)) {
       return {
         kind: "success" as const,
-        label: order.status === "paid" ? "Paiement confirmé ✅" : "Acompte reçu ✅",
+        label:
+          order.status === "paid" ? "Paiement confirmé ✅" : "Acompte reçu ✅",
       };
+    }
+
+    if (order.status === "refunded") {
+      return { kind: "warn" as const, label: "Commande remboursée" };
     }
 
     if (isFailureStatus(order.status)) {
@@ -289,6 +306,10 @@ export function OrderPage() {
       return order.status === "paid"
         ? "Votre commande est bien enregistrée."
         : "Votre acompte a bien été reçu.";
+    }
+
+    if (order.status === "refunded") {
+      return "Cette commande a été intégralement remboursée. Les billets associés ne sont plus valables.";
     }
 
     if (isFailureStatus(order.status)) {
@@ -337,7 +358,9 @@ export function OrderPage() {
               <span className="orderReturnSpinner" aria-hidden="true" />
               <div>
                 <div className="orderReturnLoadingTitle">Chargement…</div>
-                <div className="orderReturnLoadingSub">Récupération de votre commande</div>
+                <div className="orderReturnLoadingSub">
+                  Récupération de votre commande
+                </div>
               </div>
             </div>
           </div>
@@ -355,7 +378,10 @@ export function OrderPage() {
               <CardBody>
                 <h2 className="orderReturnTitle">Erreur</h2>
                 <p className="orderReturnSubtitle">{error}</p>
-                <div className="orderReturnFooter" style={{ justifyContent: "center" }}>
+                <div
+                  className="orderReturnFooter"
+                  style={{ justifyContent: "center" }}
+                >
                   <Button onClick={() => loadOnce()}>Réessayer</Button>
                 </div>
               </CardBody>
@@ -374,7 +400,10 @@ export function OrderPage() {
             <Card className="orderReturnCard">
               <CardBody>
                 <h2 className="orderReturnTitle">Commande introuvable</h2>
-                <div className="orderReturnFooter" style={{ justifyContent: "center" }}>
+                <div
+                  className="orderReturnFooter"
+                  style={{ justifyContent: "center" }}
+                >
                   <Button onClick={() => loadOnce()}>Rafraîchir</Button>
                 </div>
               </CardBody>
@@ -401,44 +430,60 @@ export function OrderPage() {
     <div className="publicPage">
       <Container>
         {orgSlug && eventForHeader ? (
-          <PublicEventHeader orgSlug={orgSlug} org={orgForHeader} event={eventForHeader} />
+          <PublicEventHeader
+            orgSlug={orgSlug}
+            org={orgForHeader}
+            event={eventForHeader}
+          />
         ) : null}
 
         <div className="orderReturnCenter">
           <Card className="orderReturnCard">
             <CardBody>
-              {statusPill ? <div className={pillClass}>{statusPill.label}</div> : null}
+              {statusPill ? (
+                <div className={pillClass}>{statusPill.label}</div>
+              ) : null}
 
               <h2 className="orderReturnTitle">
-                {isSuccessStatus(order.status) ? "Merci !" : "Récapitulatif de la commande"}
+                {isSuccessStatus(order.status)
+                  ? "Merci !"
+                  : "Récapitulatif de la commande"}
               </h2>
 
               <p className="orderReturnSubtitle">{subtitle}</p>
               <p className="orderReturnSubtitle">
-                {order.paymentMethod === "bank_transfer" && order.status === "awaiting_payment"
+                {order.paymentMethod === "bank_transfer" &&
+                order.status === "awaiting_payment"
                   ? "Les coordonnées de paiement viennent de vous être envoyées par e-mail."
                   : "Vous recevrez un mail de confirmation dans quelques instants."}
               </p>
-              <p className="orderReturnSubtitle">Pour toutes questions, contactez l'organisateur de l'événement.</p>
+              <p className="orderReturnSubtitle">
+                Pour toutes questions, contactez l'organisateur de l'événement.
+              </p>
 
               {isReturn && !isFinalStatus(order.status) ? (
                 <div className="orderReturnLoading" style={{ marginTop: 10 }}>
                   <span className="orderReturnSpinner" aria-hidden="true" />
                   <div>
                     <div className="orderReturnLoadingSub">
-                      Cela peut prendre quelques secondes. Statut : <strong>{order.status}</strong>
+                      Cela peut prendre quelques secondes. Statut :{" "}
+                      <strong>{order.status}</strong>
                     </div>
                   </div>
                 </div>
               ) : null}
 
               {orgSlug && eventSlug && eventLoading ? (
-                <div className="orderReturnHint">Chargement des infos de l’événement…</div>
+                <div className="orderReturnHint">
+                  Chargement des infos de l’événement…
+                </div>
               ) : null}
 
               {/* --------- Détails commande --------- */}
               <div className="orderReturnSection">
-                <div className="orderReturnSectionTitle">Détail de la commande</div>
+                <div className="orderReturnSectionTitle">
+                  Détail de la commande
+                </div>
 
                 <div className="orderReturnMeta">
                   <div>
@@ -449,7 +494,9 @@ export function OrderPage() {
                   {order.buyerEmail ? (
                     <div>
                       <span className="orderReturnLabel">Email :</span>
-                      <span className="orderReturnStrong">{order.buyerEmail}</span>
+                      <span className="orderReturnStrong">
+                        {order.buyerEmail}
+                      </span>
                     </div>
                   ) : null}
 
@@ -472,38 +519,53 @@ export function OrderPage() {
               order.status === "awaiting_payment" &&
               order.bankTransfer ? (
                 <div className="orderReturnSection">
-                  <div className="orderReturnSectionTitle">Instructions de virement</div>
+                  <div className="orderReturnSectionTitle">
+                    Instructions de virement
+                  </div>
                   <p className="orderReturnSubtitle">
-                    Votre réservation est enregistrée et reste en attente de paiement.
+                    Votre réservation est enregistrée et reste en attente de
+                    paiement.
                   </p>
                   <div className="orderReturnMeta">
                     <div>
                       <span className="orderReturnLabel">Montant :</span>
                       <span className="orderReturnStrong">
-                        {formatMoney(order.bankTransfer.amountCents, order.bankTransfer.currency)}
+                        {formatMoney(
+                          order.bankTransfer.amountCents,
+                          order.bankTransfer.currency,
+                        )}
                       </span>
                     </div>
                     <div>
                       <span className="orderReturnLabel">Bénéficiaire :</span>
-                      <span className="orderReturnStrong">{order.bankTransfer.beneficiary}</span>
+                      <span className="orderReturnStrong">
+                        {order.bankTransfer.beneficiary}
+                      </span>
                     </div>
                     <div>
                       <span className="orderReturnLabel">IBAN :</span>
-                      <span className="orderReturnStrong">{order.bankTransfer.iban}</span>
+                      <span className="orderReturnStrong">
+                        {order.bankTransfer.iban}
+                      </span>
                     </div>
                     <div>
                       <span className="orderReturnLabel">Communication :</span>
-                      <span className="orderReturnStrong">{order.bankTransfer.communication}</span>
+                      <span className="orderReturnStrong">
+                        {order.bankTransfer.communication}
+                      </span>
                     </div>
                     <div>
-                      <span className="orderReturnLabel">Référence Eventflow :</span>
+                      <span className="orderReturnLabel">
+                        Référence Eventflow :
+                      </span>
                       <span className="orderReturnStrong">
                         {order.bankTransfer.internalReference}
                       </span>
                     </div>
                   </div>
                   <p className="orderReturnSubtitle">
-                    Votre place sera définitivement confirmée après réception du paiement.
+                    Votre place sera définitivement confirmée après réception du
+                    paiement.
                   </p>
                 </div>
               ) : null}
@@ -515,12 +577,17 @@ export function OrderPage() {
                     {order.items.map((it, idx) => (
                       <div key={idx} className="orderReturnItemRow">
                         <div className="orderReturnItemLeft">
-                          <div className="orderReturnItemName">{it.name ?? "Article"}</div>
-                          <div className="orderReturnItemQty">Quantité : {it.quantity ?? 1}</div>
+                          <div className="orderReturnItemName">
+                            {it.name ?? "Article"}
+                          </div>
+                          <div className="orderReturnItemQty">
+                            Quantité : {it.quantity ?? 1}
+                          </div>
                         </div>
                         <div className="orderReturnItemPrice">
                           {formatMoney(
-                            it.totalCents ?? (it.unitPriceCents ?? 0) * (it.quantity ?? 1),
+                            it.totalCents ??
+                              (it.unitPriceCents ?? 0) * (it.quantity ?? 1),
                             it.currency ?? order.currency,
                           )}
                         </div>
@@ -531,20 +598,27 @@ export function OrderPage() {
               ) : null}
 
               {/* --------- Footer actions --------- */}
-            <div className="orderReturnFooter" style={{ gap: 10, flexWrap: "wrap" }}>
-              <Button onClick={() => loadOnce({ silent: false })} disabled={isRefreshing} variant="secondary">
-                {isRefreshing ? "Rafraîchissement…" : "Rafraîchir"}
-              </Button>
-
-              <Button
-                variant="primary"
-                onClick={() => {
-                  window.location.href = "https://www.useeventflow.eu";
-                }}
+              <div
+                className="orderReturnFooter"
+                style={{ gap: 10, flexWrap: "wrap" }}
               >
-                Retourner à l'accueil
-              </Button>
-            </div>
+                <Button
+                  onClick={() => loadOnce({ silent: false })}
+                  disabled={isRefreshing}
+                  variant="secondary"
+                >
+                  {isRefreshing ? "Rafraîchissement…" : "Rafraîchir"}
+                </Button>
+
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    window.location.href = "https://www.useeventflow.eu";
+                  }}
+                >
+                  Retourner à l'accueil
+                </Button>
+              </div>
 
               {/* petit hint si tu veux */}
               {error ? <div className="orderReturnHint">⚠️ {error}</div> : null}

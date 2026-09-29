@@ -23,7 +23,25 @@ export function humanBusinessMessage(msg: string): string | null {
     FORBIDDEN: "Accès refusé : vous n'avez pas les droits nécessaires.",
 
     STRIPE_CONNECT_NOT_ALLOWED:
-      "Stripe Connect n’est pas activé pour votre compte. Utilisez le paiement par virement bancaire.",
+      "Stripe Connect n’est pas encore activé pour votre compte.",
+
+    STRIPE_ACCOUNT_REQUIRES_STANDARD_MIGRATION:
+      "Ce compte Stripe n’est pas compatible avec le modèle Eventflow. Connectez un compte Stripe Standard.",
+
+    ORGANIZER_SALES_TERMS_REQUIRED:
+      "L’organisateur doit valider ses conditions de vente et renseigner un email public avant d’activer les paiements.",
+
+    ORGANIZER_PUBLIC_EMAIL_REQUIRED:
+      "Enregistrez une adresse e-mail publique valide avant de valider les conditions organisateur.",
+
+    ORGANIZER_SALES_TERMS_INVALID:
+      "Les conditions organisateur doivent contenir entre 200 et 10 000 caractères.",
+
+    BANK_TRANSFER_DISABLED:
+      "Le paiement par virement n’est pas disponible actuellement.",
+
+    TEST_PAYMENTS_DISABLED:
+      "Une configuration Stripe de test ne peut pas être utilisée en production.",
 
     NOT_AUTHENTICATED: "Votre session a expiré. Reconnectez-vous.",
 

@@ -6,6 +6,7 @@ import {
   assertMollieApiKey,
   assertMollieTestMode,
   assertStripeApiKey,
+  assertStripeWebhookMode,
 } from "../../../supabase/functions/_shared/environment-safety";
 
 function environment(values: Record<string, string>) {
@@ -22,6 +23,9 @@ describe("staging external effects", () => {
     expect(() => assertStripeApiKey("sk_live_secret")).toThrow(
       "LIVE_PAYMENTS_DISABLED",
     );
+    expect(() => assertStripeWebhookMode(true)).toThrow(
+      "LIVE_PAYMENTS_DISABLED",
+    );
     expect(() => assertMailRecipients("customer@example.com")).toThrow();
     expect(() => assertBillitEnabled()).toThrow();
   });
@@ -33,6 +37,7 @@ describe("staging external effects", () => {
     expect(() => assertMollieTestMode("test")).not.toThrow();
     expect(() => assertMollieApiKey("test_secret")).not.toThrow();
     expect(() => assertStripeApiKey("sk_test_secret")).not.toThrow();
+    expect(() => assertStripeWebhookMode(false)).not.toThrow();
     expect(() => assertMailRecipients("QA@example.com")).not.toThrow();
     expect(() =>
       assertMailRecipients(["qa@example.com", "customer@example.com"]),
@@ -55,6 +60,13 @@ describe("staging external effects", () => {
     expect(() => assertMollieTestMode("live")).not.toThrow();
     expect(() => assertMollieApiKey("live_secret")).not.toThrow();
     expect(() => assertStripeApiKey("sk_live_secret")).not.toThrow();
+    expect(() => assertStripeApiKey("sk_test_secret")).toThrow(
+      "TEST_PAYMENTS_DISABLED",
+    );
+    expect(() => assertStripeWebhookMode(true)).not.toThrow();
+    expect(() => assertStripeWebhookMode(false)).toThrow(
+      "TEST_PAYMENTS_DISABLED",
+    );
     expect(() => assertMailRecipients("customer@example.com")).not.toThrow();
     expect(() => assertBillitEnabled()).not.toThrow();
   });

@@ -6,7 +6,7 @@ Mollie n’est plus utilisé pour créer, modifier ou annuler un paiement. Ses i
 
 Les deux flux financiers sont séparés :
 
-- **billetterie** : Checkout Stripe en `payment`, sous forme de direct charge sur le Connected Account Express de l’organisateur, exclusivement avec Bancontact ;
+- **billetterie** : Checkout Stripe en mode paiement, sous forme de direct charge sur le compte Stripe Standard de l’organisateur, exclusivement avec Bancontact ;
 - **abonnements Eventflow** : facture interne payable par virement dans les 14 jours, sans Stripe Customer, Stripe Billing, Checkout d’abonnement ni Customer Portal.
 
 Le compte bancaire indiqué sur les factures est le compte CBC `BE51 7320 8102 5262`, au nom de `Eventflow - Nicolas Manns`. La communication est `E-<numéro de facture>`.
@@ -15,9 +15,13 @@ Le compte bancaire indiqué sur les factures est le compte CBC `BE51 7320 8102 5
 
 La route publique `orders` crée la commande puis une Checkout Session dans le Connected Account de l’organisateur. Le paramètre `payment_method_types[0]=bancontact` empêche Checkout de proposer une carte.
 
-Les organisations anciennement onboardées avec Mollie, en test ou en live, reçoivent une alerte d’onboarding Stripe. Un événement payant reste bloqué tant que le compte Stripe n’a pas ses indicateurs `details_submitted`, `charges_enabled` et `payouts_enabled` à `true`. Les inscriptions gratuites restent disponibles.
+Les organisations anciennement onboardées avec Mollie, en test ou en live, reçoivent une alerte d’onboarding Stripe. Un événement payant reste bloqué tant que l’organisateur n’a pas validé ses conditions de vente et que le compte Stripe n’est pas Standard (ou équivalent avec Dashboard complet et responsabilité Stripe), sans exigence en attente, avec les indicateurs `details_submitted`, `charges_enabled` et `payouts_enabled` à `true`. Les inscriptions gratuites restent disponibles.
 
-Le webhook Connect vérifie la signature, exige un événement lié à un Connected Account et utilise le journal privé `private.payment_webhook_events` pour l’idempotence.
+Le webhook Connect vérifie la signature et le mode live/test, exige un événement lié à un Connected Account et utilise le journal privé des événements pour l’idempotence. Un remboursement total invalide les billets et libère la capacité une seule fois ; un e-mail de remboursement idempotent est envoyé.
+
+Le Checkout expire après environ 31 minutes et la commande deux minutes plus tard. Le virement bancaire de billetterie reste conservé pour l’historique mais est désactivé par le flag global.
+
+Les conditions organisateur par défaut sont créées pour toutes les organisations. Elles doivent être relues et validées par un owner ou admin avec un e-mail public avant onboarding. Leur version et leur snapshot accepté par l’acheteur sont conservés. Une réauthentification dédiée avant validation reste une amélioration future.
 
 ## Abonnements et factures internes
 

@@ -44,8 +44,31 @@ export function useSavePaymentSettings(input: { supabase: SupabaseClient }) {
       return await repo.read(orgId);
     } catch (caught) {
       setError(
-        normalizeError(caught, "Impossible d’afficher les coordonnées bancaires")
-          .message,
+        normalizeError(
+          caught,
+          "Impossible d’afficher les coordonnées bancaires",
+        ).message,
+      );
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function acceptTerms(orgId: string, salesTerms: string) {
+    try {
+      setLoading(true);
+      setError(null);
+      setUpdated(null);
+      const result = await repo.acceptTerms(orgId, salesTerms);
+      setUpdated(result);
+      return result;
+    } catch (caught) {
+      setError(
+        normalizeError(
+          caught,
+          "Impossible de valider les conditions organisateur",
+        ).message,
       );
       return null;
     } finally {
@@ -58,5 +81,5 @@ export function useSavePaymentSettings(input: { supabase: SupabaseClient }) {
     setUpdated(null);
   }
 
-  return { loading, error, updated, save, read, reset };
+  return { loading, error, updated, save, read, acceptTerms, reset };
 }

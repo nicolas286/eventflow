@@ -3,7 +3,12 @@ import type { AdminClient } from "../supabase.ts";
 
 export function isStripeAccountReady(status: ConnectedAccountStatus) {
   return (
-    status.detailsSubmitted && status.chargesEnabled && status.payoutsEnabled
+    status.configurationSupported &&
+    !status.requirementsDisabledReason &&
+    status.requirementsCurrentlyDue.length === 0 &&
+    status.detailsSubmitted &&
+    status.chargesEnabled &&
+    status.payoutsEnabled
   );
 }
 
@@ -27,13 +32,23 @@ export async function persistStripeAccountStatus(
     organization?.payments_provider === "stripe";
   const values: Record<string, unknown> = {
     stripe_connected_account_id: status.providerAccountId,
+    stripe_account_type: status.accountType,
+    stripe_controller_fees_payer: status.controllerFeesPayer,
+    stripe_controller_losses_payments: status.controllerLossesPayments,
+    stripe_controller_requirement_collection:
+      status.controllerRequirementCollection,
+    stripe_controller_dashboard_type: status.controllerDashboardType,
+    stripe_requirements_disabled_reason: status.requirementsDisabledReason,
+    stripe_requirements_currently_due: status.requirementsCurrentlyDue,
+    stripe_compliance_verified: status.configurationSupported,
     stripe_details_submitted: status.detailsSubmitted,
     stripe_charges_enabled: status.chargesEnabled,
     stripe_payouts_enabled: status.payoutsEnabled,
     payments_account_updated_at: new Date().toISOString(),
   };
 
-  if (ready) values.stripe_migration_required = false;
+  values.stripe_migration_required = !status.configurationSupported;
+  if (status.configurationSupported) values.stripe_deauthorized_at = null;
 
   if (shouldReflectAsActive) {
     values.payments_provider = "stripe";

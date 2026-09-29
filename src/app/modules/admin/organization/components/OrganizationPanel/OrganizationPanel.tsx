@@ -12,6 +12,8 @@ import { useStripeConnect } from "@app/modules/admin/payments/hooks/useStripeCon
 import { useSavePaymentSettings } from "../../hooks/useSavePaymentSettings";
 import type { Organization } from "@shared/models/db/db.organization.schema";
 import type { OrganizationProfile } from "@shared/models/db/db.organizationProfile.schema";
+import { BANK_TRANSFER_EVENT_PAYMENTS_ENABLED } from "@contracts/bank-transfer";
+import { DEFAULT_ORGANIZATION_SALES_TERMS } from "@contracts/organization-sales-terms";
 
 type Props = {
   orgId: string;
@@ -127,7 +129,8 @@ export default function StructurePanel({
   const initialPaymentForm = useMemo<PaymentForm>(
     () => ({
       provider:
-        stripeConnectAllowed && orgInfo?.paymentsProvider === "stripe"
+        !BANK_TRANSFER_EVENT_PAYMENTS_ENABLED ||
+        (stripeConnectAllowed && orgInfo?.paymentsProvider === "stripe")
           ? "stripe"
           : "bank_transfer",
       beneficiary: orgInfo?.bankTransferBeneficiary ?? "",
@@ -143,6 +146,16 @@ export default function StructurePanel({
   const [paymentDetailsRevealed, setPaymentDetailsRevealed] = useState(
     !hasStoredBankTransferIban,
   );
+  const initialSalesTerms =
+    orgProfile?.salesTerms?.trim() || DEFAULT_ORGANIZATION_SALES_TERMS;
+  const [salesTerms, setSalesTerms] = useState(initialSalesTerms);
+  const [salesTermsConfirmed, setSalesTermsConfirmed] = useState(false);
+  const salesTermsCurrent = Boolean(
+    orgProfile?.salesTermsAcceptedAt &&
+    orgProfile?.salesTermsVersion &&
+    orgProfile.salesTermsAcceptedVersion === orgProfile.salesTermsVersion &&
+    salesTerms.trim() === initialSalesTerms,
+  );
 
   // resync quand bootstrap/refetch modifie org
   useEffect(() => {
@@ -154,6 +167,11 @@ export default function StructurePanel({
     setHasStoredBankTransferIban(Boolean(orgInfo?.bankTransferIban));
     setPaymentDetailsRevealed(!orgInfo?.bankTransferIban);
   }, [initialPaymentForm, orgInfo?.bankTransferIban]);
+
+  useEffect(() => {
+    setSalesTerms(initialSalesTerms);
+    setSalesTermsConfirmed(false);
+  }, [initialSalesTerms]);
 
   const dirty = hasChanges(initial, form);
   const paymentDirty =
@@ -255,31 +273,26 @@ export default function StructurePanel({
 
   async function handleStripeConnect() {
     setConnectFlash(null);
+    if (!salesTermsCurrent) {
+      setConnectFlash({
+        ok: false,
+        message: "Validez d’abord les conditions organisateur.",
+      });
+      return;
+    }
     const url = await stripeConnect.start(orgId);
     if (url) window.location.assign(url);
   }
 
   async function handlePaymentSettingsSave() {
-    if (
-      paymentForm.provider === "bank_transfer" &&
-      hasStoredBankTransferIban &&
-      !paymentDetailsRevealed
-    ) {
-      return;
-    }
+    if (paymentForm.provider !== "stripe") return;
 
     paymentSettings.reset();
     const result = await paymentSettings.save({
       orgId,
-      paymentsProvider: paymentForm.provider,
-      bankTransferBeneficiary:
-        paymentForm.provider === "bank_transfer"
-          ? paymentForm.beneficiary || null
-          : null,
-      bankTransferIban:
-        paymentForm.provider === "bank_transfer"
-          ? paymentForm.iban || null
-          : null,
+      paymentsProvider: "stripe",
+      bankTransferBeneficiary: null,
+      bankTransferIban: null,
     });
     if (!result) return;
 
@@ -290,6 +303,16 @@ export default function StructurePanel({
     });
     setHasStoredBankTransferIban(Boolean(result.bankTransferIbanMasked));
     setPaymentDetailsRevealed(false);
+    await onSaved();
+  }
+
+  async function handleAcceptSalesTerms() {
+    paymentSettings.reset();
+    if (!salesTermsConfirmed) return;
+    const result = await paymentSettings.acceptTerms(orgId, salesTerms);
+    if (!result) return;
+    setSalesTerms(result.salesTerms ?? salesTerms);
+    setSalesTermsConfirmed(false);
     await onSaved();
   }
 
@@ -447,9 +470,8 @@ export default function StructurePanel({
               Paiements des événements
             </div>
             <div className="structurePanel__hint">
-              {stripeConnectAllowed
-                ? "Choisissez Stripe Connect pour un encaissement immédiat ou le virement bancaire pour confirmer vous-même les paiements reçus."
-                : "Renseignez vos coordonnées bancaires pour recevoir les paiements par virement et confirmer vous-même les montants reçus."}
+              Stripe Connect encaisse directement les paiements sur le compte de
+              l’organisateur. Le paiement par virement est désactivé.
             </div>
           </div>
 
@@ -482,9 +504,61 @@ export default function StructurePanel({
         </div>
 
         <div className="structurePanel__field">
+          <div className="structurePanel__fieldLabel">
+            Conditions organisateur
+          </div>
+          <MarkdownRichTextarea
+            value={salesTerms}
+            onChange={(next: string) => {
+              setSalesTerms(next);
+              setSalesTermsConfirmed(false);
+            }}
+          />
+          <div className="structurePanel__help">
+            Ces conditions sont présentées aux acheteurs. Vérifiez-les et
+            adaptez-les à vos règles d’annulation et de remboursement avant de
+            les valider. Un e-mail public est obligatoire pour les demandes des
+            participants.
+          </div>
+          <label style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <input
+              type="checkbox"
+              checked={salesTermsConfirmed}
+              onChange={(event) => setSalesTermsConfirmed(event.target.checked)}
+            />
+            <span>
+              Je confirme être autorisé à engager l’organisation et que ces
+              conditions correspondent aux modalités appliquées aux
+              participants.
+            </span>
+          </label>
+          <div className="structurePanel__actions">
+            <Button
+              variant={salesTermsCurrent ? "secondary" : "primary"}
+              label={
+                paymentSettings.loading
+                  ? "Validation…"
+                  : salesTermsCurrent
+                    ? "Conditions validées"
+                    : "Valider les conditions"
+              }
+              onClick={handleAcceptSalesTerms}
+              disabled={
+                paymentSettings.loading ||
+                !salesTermsConfirmed ||
+                salesTerms.trim().length < 200 ||
+                !form.publicEmail.trim() ||
+                form.publicEmail.trim() !== initial.publicEmail.trim()
+              }
+            />
+          </div>
+        </div>
+
+        <div className="structurePanel__field">
           <div className="structurePanel__fieldLabel">Mode de paiement</div>
           <Select
             value={paymentForm.provider}
+            disabled={!BANK_TRANSFER_EVENT_PAYMENTS_ENABLED}
             onChange={(event) =>
               setPaymentForm((current) => ({
                 ...current,
@@ -495,7 +569,9 @@ export default function StructurePanel({
             {stripeConnectAllowed ? (
               <option value="stripe">Stripe Connect (Bancontact)</option>
             ) : null}
-            <option value="bank_transfer">Virement bancaire</option>
+            {BANK_TRANSFER_EVENT_PAYMENTS_ENABLED ? (
+              <option value="bank_transfer">Virement bancaire</option>
+            ) : null}
           </Select>
         </div>
 
@@ -550,7 +626,7 @@ export default function StructurePanel({
                   stripeConnect.loading ? "Ouverture…" : "Configurer Stripe"
                 }
                 onClick={handleStripeConnect}
-                disabled={stripeConnect.loading}
+                disabled={stripeConnect.loading || !salesTermsCurrent}
               />
             ) : null}
             <Button
@@ -599,7 +675,8 @@ export default function StructurePanel({
             {paymentSettings.updated?.bankTransferIbanChanged &&
             !paymentSettings.updated.securityEmailSent ? (
               <div className="structurePanel__error">
-                Les coordonnées ont été enregistrées, mais l’e-mail de sécurité n’a pas pu être envoyé.
+                Les coordonnées ont été enregistrées, mais l’e-mail de sécurité
+                n’a pas pu être envoyé.
               </div>
             ) : null}
           </div>

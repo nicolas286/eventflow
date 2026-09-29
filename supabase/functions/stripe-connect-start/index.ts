@@ -3,6 +3,7 @@ import { json } from "../_shared/app/http.ts";
 import { envTrim } from "../_shared/config.ts";
 import {
   badRequest,
+  conflict,
   forbidden,
   internal,
   ResponseError,
@@ -18,6 +19,7 @@ import {
   assertStripeConnectAllowedForUser,
   isStripeConnectAllowedForOrganization,
 } from "../_shared/payments/stripe-access.ts";
+import { getAcceptedOrganizationSalesTerms } from "../_shared/payments/organization-sales-terms.ts";
 import {
   parseAllowedOrigins,
   resolveAppBaseUrlFromRequest,
@@ -83,9 +85,10 @@ export const handleStripeConnectStart = createEdgeHandler(
     if (!(await isStripeConnectAllowedForOrganization(admin, org.created_by))) {
       throw forbidden("STRIPE_CONNECT_NOT_ALLOWED");
     }
+    await getAcceptedOrganizationSalesTerms(admin, orgId);
 
     const provider = new StripeConnectedAccountProvider(stripeSecretKey);
-    const status = org.stripe_connected_account_id
+    let status = org.stripe_connected_account_id
       ? await provider.getConnectedAccountStatus(
           org.stripe_connected_account_id,
         )
@@ -95,9 +98,33 @@ export const handleStripeConnectStart = createEdgeHandler(
           displayName: org.name,
         });
 
+    if (org.stripe_connected_account_id && !status.configurationSupported) {
+      const replacement = await provider.createConnectedAccount({
+        orgId,
+        email: user.email ?? null,
+        displayName: org.name,
+      });
+      const { error: migrationError } = await admin.rpc(
+        "replace_stripe_account_for_standard_migration",
+        {
+          p_org_id: orgId,
+          p_expected_old_account_id: org.stripe_connected_account_id,
+          p_new_account_id: replacement.providerAccountId,
+        },
+      );
+      if (migrationError) {
+        throw internal("STRIPE_ACCOUNT_MIGRATION_SAVE_FAILED");
+      }
+      status = replacement;
+    }
+
     await persistStripeAccountStatus(admin, orgId, status, {
       selectProvider: isStripeAccountReady(status),
     });
+
+    if (!status.configurationSupported) {
+      throw conflict("STRIPE_ACCOUNT_REQUIRES_STANDARD_MIGRATION");
+    }
 
     const url = await provider.createAccountOnboardingLink({
       providerAccountId: status.providerAccountId,

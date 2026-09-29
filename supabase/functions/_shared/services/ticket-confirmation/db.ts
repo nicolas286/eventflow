@@ -52,12 +52,16 @@ export async function loadEventForConfirmation(
       startsAt: null,
       location: null,
       description: null,
+      organizerName: "L’organisateur",
+      organizerEmail: null,
+      organizerPhone: null,
+      organizerWebsite: null,
     };
   }
 
   const { data, error } = await admin
     .from("events")
-    .select("title, description, starts_at, location")
+    .select("title, description, starts_at, location, org_id")
     .eq("id", eventId)
     .maybeSingle();
 
@@ -68,11 +72,32 @@ export async function loadEventForConfirmation(
     });
   }
 
+  const { data: profile, error: profileError } = data?.org_id
+    ? await admin
+        .from("organization_profile")
+        .select("display_name, public_email, phone, website")
+        .eq("org_id", data.org_id)
+        .maybeSingle()
+    : { data: null, error: null };
+
+  if (profileError) {
+    logger.error("organization_profile_load_failed", {
+      eventId,
+      error: profileError,
+    });
+  }
+
   return {
     eventTitle: data?.title ? String(data.title) : "Votre événement",
     startsAt: data?.starts_at ? String(data.starts_at) : null,
     location: data?.location ? String(data.location) : null,
     description: data?.description ? String(data.description) : null,
+    organizerName: profile?.display_name
+      ? String(profile.display_name)
+      : "L’organisateur",
+    organizerEmail: profile?.public_email ? String(profile.public_email) : null,
+    organizerPhone: profile?.phone ? String(profile.phone) : null,
+    organizerWebsite: profile?.website ? String(profile.website) : null,
   };
 }
 
@@ -132,7 +157,7 @@ export async function loadPromoCodeRedemptionRows(
     });
   }
 
-  return (rows ?? []);
+  return rows ?? [];
 }
 
 export async function loadTicketsForConfirmation(
@@ -175,9 +200,7 @@ function compactAnswerValue(value: unknown): string | null {
   }
 
   if (Array.isArray(value)) {
-    const parts = value
-      .map((x) => compactAnswerValue(x))
-      .filter(Boolean);
+    const parts = value.map((x) => compactAnswerValue(x)).filter(Boolean);
 
     return parts.length ? parts.join(", ") : null;
   }
@@ -250,8 +273,8 @@ export async function loadTicketProductMetaById(
 
     for (const row of data ?? []) {
       orderItemMetaById.set(String(row.id), {
-        productNameSnapshot: String(row.product_name_snapshot ?? "").trim() ||
-          "Billet",
+        productNameSnapshot:
+          String(row.product_name_snapshot ?? "").trim() || "Billet",
         unitPriceCents: Number(row.unit_price_cents_snapshot ?? 0) || 0,
       });
     }
@@ -326,8 +349,8 @@ export async function loadAnswersByAttendeeIdForConfirmation(
   for (const row of data ?? []) {
     const attendeeId = String(row.attendee_id);
     const key = String(row.field_key_snapshot ?? "").trim();
-    const label = String(row.field_label_snapshot ?? "").trim() || key ||
-      "Champ";
+    const label =
+      String(row.field_label_snapshot ?? "").trim() || key || "Champ";
     const value = compactAnswerValue(row.value);
 
     if (!value) continue;
@@ -368,12 +391,8 @@ export function buildPdfTickets(input: {
     >;
   };
 }) {
-  const {
-    ticketRows,
-    attendeeRows,
-    answersByAttendeeId,
-    productMetaById,
-  } = input;
+  const { ticketRows, attendeeRows, answersByAttendeeId, productMetaById } =
+    input;
 
   const attendeeIdsByProductId = new Map<string, string[]>();
 

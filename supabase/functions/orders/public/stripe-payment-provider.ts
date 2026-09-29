@@ -13,7 +13,11 @@ import {
 type StripeCheckoutSession = StripeRecord & {
   url?: string | null;
   payment_intent?: string | null;
+  expires_at?: number | null;
 };
+
+export const STRIPE_CHECKOUT_LIFETIME_SECONDS = 31 * 60;
+export const ORDER_EXPIRY_GRACE_SECONDS = 2 * 60;
 
 export class StripeEventPaymentProvider implements EventPaymentProvider {
   readonly name = "stripe" as const;
@@ -27,6 +31,8 @@ export class StripeEventPaymentProvider implements EventPaymentProvider {
     input: CreateEventPaymentInput,
   ): Promise<CreatedEventPayment> {
     const productName = input.eventTitle?.trim() || "Billet Eventflow";
+    const requestedExpiresAt =
+      Math.floor(Date.now() / 1000) + STRIPE_CHECKOUT_LIFETIME_SECONDS;
     const cancelUrl = new URL(input.redirectUrl);
     cancelUrl.searchParams.set("payment", "cancelled");
 
@@ -52,6 +58,7 @@ export class StripeEventPaymentProvider implements EventPaymentProvider {
           origin_context: "web",
           success_url: input.redirectUrl,
           cancel_url: cancelUrl.toString(),
+          expires_at: requestedExpiresAt,
           client_reference_id: input.orderId,
           customer_email: input.buyerEmail,
           "line_items[0][quantity]": 1,
@@ -80,6 +87,18 @@ export class StripeEventPaymentProvider implements EventPaymentProvider {
     if (typeof session.url !== "string" || !session.url) {
       throw badGateway("STRIPE_CHECKOUT_URL_MISSING");
     }
+    if (
+      typeof session.expires_at !== "number" ||
+      !Number.isInteger(session.expires_at) ||
+      session.expires_at <= Math.floor(Date.now() / 1000)
+    ) {
+      throw badGateway("STRIPE_CHECKOUT_EXPIRY_MISSING");
+    }
+
+    const checkoutExpiresAt = new Date(session.expires_at * 1000).toISOString();
+    const orderExpiresAt = new Date(
+      (session.expires_at + ORDER_EXPIRY_GRACE_SECONDS) * 1000,
+    ).toISOString();
 
     return {
       provider: "stripe",
@@ -90,6 +109,8 @@ export class StripeEventPaymentProvider implements EventPaymentProvider {
       providerAccountId: this.connectedAccountId,
       providerCheckoutSessionId: sessionId,
       checkoutUrl: session.url,
+      checkoutExpiresAt,
+      orderExpiresAt,
       raw: session,
     };
   }

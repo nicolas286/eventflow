@@ -23,12 +23,20 @@ export function assertMollieApiKey(key: string | null | undefined) {
 }
 
 export function assertStripeApiKey(key: string | null | undefined) {
-  if (
-    isRestrictedEnvironment() &&
-    !key?.startsWith("sk_test_") &&
-    !key?.startsWith("rk_test_")
-  ) {
+  const restricted = isRestrictedEnvironment();
+  const isTest = key?.startsWith("sk_test_") || key?.startsWith("rk_test_");
+  const isLive = key?.startsWith("sk_live_") || key?.startsWith("rk_live_");
+
+  if (restricted && !isTest) throw new Error("LIVE_PAYMENTS_DISABLED");
+  if (!restricted && !isLive) throw new Error("TEST_PAYMENTS_DISABLED");
+}
+
+export function assertStripeWebhookMode(livemode: boolean) {
+  if (isRestrictedEnvironment() && livemode) {
     throw new Error("LIVE_PAYMENTS_DISABLED");
+  }
+  if (!isRestrictedEnvironment() && !livemode) {
+    throw new Error("TEST_PAYMENTS_DISABLED");
   }
 }
 

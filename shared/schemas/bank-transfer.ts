@@ -1,4 +1,9 @@
 import { z } from "zod";
+import { acceptOrganizationSalesTermsSchema } from "./organization-sales-terms.ts";
+
+// Historical bank-transfer data remains supported, but new event payments
+// cannot select or execute this method until this global flag is enabled.
+export const BANK_TRANSFER_EVENT_PAYMENTS_ENABLED = false;
 
 export function normalizeIban(value: string): string {
   return value.replace(/\s+/gu, "").toUpperCase();
@@ -61,7 +66,19 @@ export const updateOrganizationPaymentSettingsSchema = z
   .superRefine((value, ctx) => {
     if (value.paymentsProvider !== "bank_transfer") return;
 
-    if (!value.bankTransferBeneficiary || value.bankTransferBeneficiary.length < 2) {
+    if (!BANK_TRANSFER_EVENT_PAYMENTS_ENABLED) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["paymentsProvider"],
+        message: "Le paiement par virement n’est pas encore disponible",
+      });
+      return;
+    }
+
+    if (
+      !value.bankTransferBeneficiary ||
+      value.bankTransferBeneficiary.length < 2
+    ) {
       ctx.addIssue({
         code: "custom",
         path: ["bankTransferBeneficiary"],
@@ -93,6 +110,7 @@ export const readOrganizationPaymentSettingsSchema = z.object({
 export const organizationPaymentSettingsRequestSchema = z.union([
   readOrganizationPaymentSettingsSchema,
   updateOrganizationPaymentSettingsSchema,
+  acceptOrganizationSalesTermsSchema,
 ]);
 
 export const organizationPaymentSettingsResultSchema = z.object({
@@ -101,6 +119,12 @@ export const organizationPaymentSettingsResultSchema = z.object({
   bankTransferBeneficiary: z.string().nullable(),
   bankTransferIban: z.string().nullable(),
   bankTransferIbanMasked: z.string().nullable(),
+  salesTerms: z.string().nullable().optional(),
+  salesTermsVersion: z.string().nullable().optional(),
+  salesTermsAcceptedVersion: z.string().nullable().optional(),
+  salesTermsAcceptedAt: z.string().nullable().optional(),
+  salesTermsAcceptedBy: z.uuid().nullable().optional(),
+  salesTermsCurrent: z.boolean().optional(),
   bankTransferIbanChanged: z.boolean().optional(),
   securityEmailSent: z.boolean().optional(),
 });

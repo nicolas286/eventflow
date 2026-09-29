@@ -21,7 +21,8 @@ export type OrderMeta = {
     | "partially_paid"
     | "expired"
     | "canceled"
-    | "paid";
+    | "paid"
+    | "refunded";
 
   currency: string;
 
@@ -40,11 +41,13 @@ export type OrderMeta = {
     createdAt: string;
   } | null;
 
-  nonAttendeeItems?: {
-    id: string;
-    name: string;
-    quantity: number;
-  }[] | undefined;
+  nonAttendeeItems?:
+    | {
+        id: string;
+        name: string;
+        quantity: number;
+      }[]
+    | undefined;
 };
 
 type FilledField = {
@@ -74,7 +77,10 @@ function stringifyAnswerValue(value: unknown): string {
   if (value == null) return "";
 
   if (Array.isArray(value)) {
-    return value.map((v) => String(v ?? "")).filter(Boolean).join(", ");
+    return value
+      .map((v) => String(v ?? ""))
+      .filter(Boolean)
+      .join(", ");
   }
 
   try {
@@ -84,7 +90,9 @@ function stringifyAnswerValue(value: unknown): string {
   }
 }
 
-export function buildParticipantsViewModel(params: BuildParticipantsViewModelParams) {
+export function buildParticipantsViewModel(
+  params: BuildParticipantsViewModelParams,
+) {
   const {
     localAttendees,
     localAnswers,
@@ -121,54 +129,50 @@ export function buildParticipantsViewModel(params: BuildParticipantsViewModelPar
   const orderMetaById = new Map<string, OrderMeta>();
 
   for (const o of localOrders) {
-  const total = o.totalCents ?? 0;
-  const paid = o.paidCents ?? 0;
+    const total = o.totalCents ?? 0;
+    const paid = o.paidCents ?? 0;
 
-  const discount =
-    o.discountCents ??
-    o.promoRedemption?.discountCents ??
-    0;
+    const discount = o.discountCents ?? o.promoRedemption?.discountCents ?? 0;
 
-  const due =
-    typeof o.dueCents === "number"
-      ? o.dueCents
-      : Math.max(0, total - discount - paid);
+    const due =
+      typeof o.dueCents === "number"
+        ? o.dueCents
+        : Math.max(0, total - discount - paid);
 
-  const orderItems = itemsByOrderId.get(o.id) ?? [];
+    const orderItems = itemsByOrderId.get(o.id) ?? [];
 
-  const nonAttendeeItems = orderItems
-    .filter((item) => {
-      const createsAttendees =
-        item.productId
-          ? createsAttendeesByProductId.get(item.productId) ?? true
+    const nonAttendeeItems = orderItems
+      .filter((item) => {
+        const createsAttendees = item.productId
+          ? (createsAttendeesByProductId.get(item.productId) ?? true)
           : true;
 
-      const quantity = Number(item.quantity ?? 0);
-      return !createsAttendees && quantity > 0;
-    })
-    .map((item) => ({
-      id: item.id,
-      name: item.productNameSnapshot || "Billet",
-      quantity: Number(item.quantity ?? 0),
-    }));
+        const quantity = Number(item.quantity ?? 0);
+        return !createsAttendees && quantity > 0;
+      })
+      .map((item) => ({
+        id: item.id,
+        name: item.productNameSnapshot || "Billet",
+        quantity: Number(item.quantity ?? 0),
+      }));
 
-  orderMetaById.set(o.id, {
-    orderNumber: o.id.slice(0, 8),
-    createdAt: o.createdAt,
-    status: o.status,
-    currency: o.currency ?? "EUR",
+    orderMetaById.set(o.id, {
+      orderNumber: o.id.slice(0, 8),
+      createdAt: o.createdAt,
+      status: o.status,
+      currency: o.currency ?? "EUR",
 
-    totalCents: total,
-    paidCents: paid,
-    discountCents: discount,
-    dueCents: due,
+      totalCents: total,
+      paidCents: paid,
+      discountCents: discount,
+      dueCents: due,
 
-    promoRedemption: o.promoRedemption ?? null,
+      promoRedemption: o.promoRedemption ?? null,
 
-    buyerEmail: o.buyerEmail ?? undefined,
-    nonAttendeeItems,
-  });
-}
+      buyerEmail: o.buyerEmail ?? undefined,
+      nonAttendeeItems,
+    });
+  }
 
   /* -------------------- ANSWERS BY ATTENDEE (FILLED) -------------------- */
   const filledFieldsByAttendeeId = new Map<string, FilledField[]>();
@@ -230,23 +234,23 @@ export function buildParticipantsViewModel(params: BuildParticipantsViewModelPar
 
   /* -------------------- IDENTITY -------------------- */
   const computeIdentity = (attendeeId: string) => {
-  const fields = filledFieldsByAttendeeId.get(attendeeId) ?? [];
-  const getVal = (...keys: string[]) =>
-    fields.find((f) => keys.includes(f.key))?.value ?? "";
+    const fields = filledFieldsByAttendeeId.get(attendeeId) ?? [];
+    const getVal = (...keys: string[]) =>
+      fields.find((f) => keys.includes(f.key))?.value ?? "";
 
-  const full = `${getVal("firstName", "prenom", "first_name")} ${getVal(
-    "lastName",
-    "nom",
-    "last_name",
-  )}`.trim();
+    const full = `${getVal("firstName", "prenom", "first_name")} ${getVal(
+      "lastName",
+      "nom",
+      "last_name",
+    )}`.trim();
 
-  const email = getVal("email");
+    const email = getVal("email");
 
-  return {
-    title: full || email || "Participant",
-    subtitle: email || "",
+    return {
+      title: full || email || "Participant",
+      subtitle: email || "",
+    };
   };
-};
 
   /* -------------------- FILTERED ATTENDEES -------------------- */
   const q = normalizeText(query);
@@ -297,8 +301,11 @@ export function buildParticipantsViewModel(params: BuildParticipantsViewModelPar
   const shouldShowOrder = (orderId: string) => {
     if (!q) return true;
     if (filterMode === "order") return orderMatchesQuery(orderId);
-    if (filterMode.startsWith("field:")) return (byOrder.get(orderId) ?? []).length > 0;
-    return orderMatchesQuery(orderId) || (byOrder.get(orderId) ?? []).length > 0;
+    if (filterMode.startsWith("field:"))
+      return (byOrder.get(orderId) ?? []).length > 0;
+    return (
+      orderMatchesQuery(orderId) || (byOrder.get(orderId) ?? []).length > 0
+    );
   };
 
   const visibleOrders = localOrders
@@ -307,7 +314,8 @@ export function buildParticipantsViewModel(params: BuildParticipantsViewModelPar
     .filter((x) => shouldShowOrder(x.orderId));
 
   visibleOrders.sort((a, b) => {
-    if (b.createdAt !== a.createdAt) return b.createdAt.localeCompare(a.createdAt);
+    if (b.createdAt !== a.createdAt)
+      return b.createdAt.localeCompare(a.createdAt);
     return b.orderId.localeCompare(a.orderId);
   });
 
@@ -329,7 +337,9 @@ export function buildParticipantsViewModel(params: BuildParticipantsViewModelPar
   };
 }
 
-export function useParticipantsViewModel(params: BuildParticipantsViewModelParams) {
+export function useParticipantsViewModel(
+  params: BuildParticipantsViewModelParams,
+) {
   const {
     localAttendees,
     localAnswers,
@@ -353,6 +363,15 @@ export function useParticipantsViewModel(params: BuildParticipantsViewModelParam
         productsRows,
         regFields,
       }),
-    [localAttendees, localAnswers, localOrders, localOrderItems, query, filterMode, productsRows, regFields],
+    [
+      localAttendees,
+      localAnswers,
+      localOrders,
+      localOrderItems,
+      query,
+      filterMode,
+      productsRows,
+      regFields,
+    ],
   );
 }

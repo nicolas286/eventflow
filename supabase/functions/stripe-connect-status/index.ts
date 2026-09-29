@@ -18,6 +18,7 @@ import {
   assertStripeConnectAllowedForUser,
   isStripeConnectAllowedForOrganization,
 } from "../_shared/payments/stripe-access.ts";
+import { getAcceptedOrganizationSalesTerms } from "../_shared/payments/organization-sales-terms.ts";
 
 function isUuid(value: unknown): value is string {
   return (
@@ -77,6 +78,7 @@ export const handleStripeConnectStatus = createEdgeHandler(
     if (!(await isStripeConnectAllowedForOrganization(admin, org.created_by))) {
       throw forbidden("STRIPE_CONNECT_NOT_ALLOWED");
     }
+    await getAcceptedOrganizationSalesTerms(admin, orgId);
 
     const provider = new StripeConnectedAccountProvider(stripeSecretKey);
     const status = await provider.getConnectedAccountStatus(
@@ -88,7 +90,16 @@ export const handleStripeConnectStatus = createEdgeHandler(
 
     return json(req, {
       ok: true,
-      status: isStripeAccountReady(status) ? "connected" : "pending",
+      status: !status.configurationSupported
+        ? "requires_migration"
+        : isStripeAccountReady(status)
+          ? "connected"
+          : "pending",
+      accountType: status.accountType,
+      configurationSupported: status.configurationSupported,
+      complianceVerified: status.configurationSupported,
+      requirementsDisabledReason: status.requirementsDisabledReason,
+      requirementsCurrentlyDue: status.requirementsCurrentlyDue,
       detailsSubmitted: status.detailsSubmitted,
       chargesEnabled: status.chargesEnabled,
       payoutsEnabled: status.payoutsEnabled,

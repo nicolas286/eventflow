@@ -42,6 +42,17 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Bank details and their audit trail must remain private';
   END IF;
+  IF has_table_privilege(
+    'anon', 'private.organization_sales_terms_acceptances', 'SELECT'
+  ) OR has_table_privilege(
+    'authenticated', 'private.organization_sales_terms_acceptances', 'SELECT'
+  ) OR has_table_privilege(
+    'anon', 'private.payment_refund_notifications', 'SELECT'
+  ) OR has_table_privilege(
+    'authenticated', 'private.payment_refund_notifications', 'SELECT'
+  ) THEN
+    RAISE EXCEPTION 'Terms and refund audit data must remain private';
+  END IF;
   IF has_function_privilege(
     'authenticated', 'public.get_bank_transfer_instructions(uuid)', 'EXECUTE'
   ) OR has_function_privilege(
@@ -274,6 +285,7 @@ SET LOCAL "request.jwt.claim.role" = 'service_role';
 DO $$
 DECLARE
   v_payment jsonb;
+  v_refund jsonb;
   v_ticket_count integer;
 BEGIN
   v_payment := public.apply_order_payment(
@@ -316,6 +328,69 @@ BEGIN
   ) <> 2 THEN
     RAISE EXCEPTION 'Duplicate confirmation created duplicate tickets';
   END IF;
+
+  v_refund := public.apply_order_refund(
+    '30000000-0000-4000-8000-000000000006',
+    'offline',
+    'refund-partial-test',
+    'bank_transfer:30000000-0000-4000-8000-000000000006',
+    2500,
+    'EUR',
+    'succeeded',
+    '{}'::jsonb
+  );
+  IF (v_refund->>'fully_refunded')::boolean
+     OR (v_refund->>'remaining_paid_cents')::integer <> 2500
+     OR (
+       SELECT status FROM public.orders
+       WHERE id = '30000000-0000-4000-8000-000000000006'
+     ) <> 'partially_paid'
+     OR EXISTS (
+       SELECT 1 FROM public.tickets
+       WHERE order_id = '30000000-0000-4000-8000-000000000006'
+         AND status <> 'valid'
+     ) THEN
+    RAISE EXCEPTION 'Partial refund incorrectly invalidated the reservation';
+  END IF;
+
+  v_refund := public.apply_order_refund(
+    '30000000-0000-4000-8000-000000000006',
+    'offline',
+    'refund-partial-test',
+    'bank_transfer:30000000-0000-4000-8000-000000000006',
+    2500,
+    'EUR',
+    'succeeded',
+    '{}'::jsonb
+  );
+  IF (v_refund->>'idempotent')::boolean IS DISTINCT FROM true
+     OR (v_refund->>'remaining_paid_cents')::integer <> 2500 THEN
+    RAISE EXCEPTION 'Duplicate refund was not idempotent';
+  END IF;
+
+  v_refund := public.apply_order_refund(
+    '30000000-0000-4000-8000-000000000006',
+    'offline',
+    'refund-final-test',
+    'bank_transfer:30000000-0000-4000-8000-000000000006',
+    2500,
+    'EUR',
+    'succeeded',
+    '{}'::jsonb
+  );
+  IF (v_refund->>'fully_refunded')::boolean IS DISTINCT FROM true
+     OR (v_refund->>'remaining_paid_cents')::integer <> 0
+     OR (
+       SELECT status FROM public.orders
+       WHERE id = '30000000-0000-4000-8000-000000000006'
+     ) <> 'refunded'
+     OR EXISTS (
+       SELECT 1 FROM public.tickets
+       WHERE order_id = '30000000-0000-4000-8000-000000000006'
+         AND status <> 'refunded'
+     ) THEN
+    RAISE EXCEPTION 'Full refund did not invalidate the reservation exactly once';
+  END IF;
 END $$;
 
 RESET ROLE;
@@ -349,7 +424,7 @@ BEGIN
      OR (
        SELECT status FROM public.orders
        WHERE id = '30000000-0000-4000-8000-000000000006'
-     ) IS DISTINCT FROM 'paid'
+     ) IS DISTINCT FROM 'refunded'
      OR (
        SELECT reserved_qty FROM public.event_products
        WHERE id = '30000000-0000-4000-8000-000000000004'
@@ -357,7 +432,7 @@ BEGIN
      OR (
        SELECT sold_qty FROM public.event_products
        WHERE id = '30000000-0000-4000-8000-000000000004'
-     ) <> 2 THEN
+     ) <> 0 THEN
     RAISE EXCEPTION 'Bank-transfer stock or final statuses are inconsistent';
   END IF;
 END $$;
@@ -407,6 +482,40 @@ VALUES (
   'owner'
 );
 
+INSERT INTO public.organization_profile (
+  org_id, slug, display_name, public_email
+) VALUES (
+  '20000000-0000-4000-8000-000000000002',
+  'stripe-gate-test',
+  'Stripe Gate Test',
+  'stripe-gate@example.test'
+);
+
+INSERT INTO public.events (id, org_id, slug, title, is_published)
+VALUES (
+  '20000000-0000-4000-8000-000000000004',
+  '20000000-0000-4000-8000-000000000002',
+  'stripe-terms-test',
+  'Stripe Terms Test Event',
+  true
+);
+
+INSERT INTO public.orders (
+  id, org_id, event_id, currency, total_cents, paid_cents, buyer_email,
+  booking_token, status, expires_at
+) VALUES (
+  '20000000-0000-4000-8000-000000000005',
+  '20000000-0000-4000-8000-000000000002',
+  '20000000-0000-4000-8000-000000000004',
+  'EUR', 2500, 0, 'buyer@example.test',
+  'stripe-terms-token-0123456789abcdefghijklmnop',
+  'awaiting_payment', now() + interval '20 minutes'
+);
+
+UPDATE public.organizations
+SET stripe_connected_account_id = 'acct_express_legacy'
+WHERE id = '20000000-0000-4000-8000-000000000002';
+
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claim.role" = 'authenticated';
 SET LOCAL "request.jwt.claim.sub" = '20000000-0000-4000-8000-000000000001';
@@ -419,15 +528,15 @@ BEGIN
     SELECT payments_provider
     FROM public.organizations
     WHERE id = '20000000-0000-4000-8000-000000000002'
-  ) IS DISTINCT FROM 'bank_transfer' THEN
-    RAISE EXCEPTION 'A non-allowlisted user must start on bank transfer';
+  ) IS DISTINCT FROM 'stripe' THEN
+    RAISE EXCEPTION 'Every organizer must start on Stripe';
   END IF;
 
   BEGIN
     UPDATE public.user_profile
-    SET stripe_connect_allowed = true
+    SET stripe_connect_allowed = false
     WHERE user_id = '20000000-0000-4000-8000-000000000001';
-    RAISE EXCEPTION 'An authenticated user changed their own Stripe allowlist flag';
+    RAISE EXCEPTION 'An authenticated user changed their own Stripe rollout flag';
   EXCEPTION
     WHEN OTHERS THEN
       IF SQLERRM NOT LIKE '%FORBIDDEN%' THEN
@@ -435,41 +544,15 @@ BEGIN
       END IF;
   END;
 
-  BEGIN
-    PERFORM public.update_organization_payment_settings(
-      '20000000-0000-4000-8000-000000000002',
-      'stripe',
-      NULL,
-      NULL
-    );
-    RAISE EXCEPTION 'A non-allowlisted user selected Stripe through the RPC';
-  EXCEPTION
-    WHEN OTHERS THEN
-      IF SQLERRM NOT LIKE '%STRIPE_CONNECT_NOT_ALLOWED%' THEN
-        RAISE;
-      END IF;
-  END;
-
   v_result := public.update_organization_payment_settings(
     '20000000-0000-4000-8000-000000000002',
-    'bank_transfer',
-    'Stripe Gate Test ASBL',
-    'BE51732081025262'
+    'stripe',
+    NULL,
+    NULL
   );
 
-  IF v_result->>'paymentsProvider' IS DISTINCT FROM 'bank_transfer' THEN
-    RAISE EXCEPTION 'The bank-transfer fallback could not be configured';
-  END IF;
-
-  IF v_result->>'bankTransferIban' IS DISTINCT FROM 'BE51732081025262' THEN
-    RAISE EXCEPTION 'The bank-transfer IBAN was not normalized';
-  END IF;
-  IF v_result->>'bankTransferIbanMasked' NOT LIKE 'BE%5262'
-     OR v_result->>'bankTransferIbanMasked' LIKE '%5173208102%' THEN
-    RAISE EXCEPTION 'The bank-transfer IBAN was not masked';
-  END IF;
-  IF (v_result->>'bankTransferIbanChanged')::boolean IS DISTINCT FROM true THEN
-    RAISE EXCEPTION 'The bank-transfer IBAN change was not audited';
+  IF v_result->>'paymentsProvider' IS DISTINCT FROM 'stripe' THEN
+    RAISE EXCEPTION 'Stripe could not be selected';
   END IF;
 
   BEGIN
@@ -477,15 +560,29 @@ BEGIN
       '20000000-0000-4000-8000-000000000002',
       'bank_transfer',
       'Stripe Gate Test ASBL',
-      'BE51732081025263'
+      'BE51732081025262'
     );
-    RAISE EXCEPTION 'An invalid IBAN checksum was accepted';
+    RAISE EXCEPTION 'Bank transfer was enabled despite the global kill switch';
   EXCEPTION
     WHEN OTHERS THEN
-      IF SQLERRM NOT LIKE '%invalid IBAN checksum%' THEN
+      IF SQLERRM NOT LIKE '%BANK_TRANSFER_DISABLED%' THEN
         RAISE;
       END IF;
   END;
+
+  v_result := public.accept_organization_sales_terms(
+    '20000000-0000-4000-8000-000000000002',
+    (
+      SELECT sales_terms
+      FROM public.organization_profile
+      WHERE org_id = '20000000-0000-4000-8000-000000000002'
+    )
+  );
+  IF (v_result->>'salesTermsCurrent')::boolean IS DISTINCT FROM true
+     OR v_result->>'salesTermsAcceptedBy'
+        IS DISTINCT FROM '20000000-0000-4000-8000-000000000001' THEN
+    RAISE EXCEPTION 'Organizer terms acceptance was not recorded';
+  END IF;
 
   PERFORM set_config(
     'request.jwt.claim.sub',
@@ -495,11 +592,28 @@ BEGIN
   BEGIN
     PERFORM public.update_organization_payment_settings(
       '20000000-0000-4000-8000-000000000002',
-      'bank_transfer',
-      'Attacker',
-      'BE51732081025262'
+      'stripe',
+      NULL,
+      NULL
     );
-    RAISE EXCEPTION 'Another organization user changed the bank account';
+    RAISE EXCEPTION 'Another organization user changed payment settings';
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF SQLERRM NOT LIKE '%FORBIDDEN%' THEN
+        RAISE;
+      END IF;
+  END;
+
+  BEGIN
+    PERFORM public.accept_organization_sales_terms(
+      '20000000-0000-4000-8000-000000000002',
+      (
+        SELECT sales_terms
+        FROM public.organization_profile
+        WHERE org_id = '20000000-0000-4000-8000-000000000002'
+      )
+    );
+    RAISE EXCEPTION 'Another organization user accepted organizer terms';
   EXCEPTION
     WHEN OTHERS THEN
       IF SQLERRM NOT LIKE '%FORBIDDEN%' THEN
@@ -509,28 +623,49 @@ BEGIN
 END $$;
 
 RESET ROLE;
+SET LOCAL ROLE service_role;
+SET LOCAL "request.jwt.claim.role" = 'service_role';
+
+SELECT public.record_order_terms_acceptance(
+  '20000000-0000-4000-8000-000000000005',
+  'database-baseline-v1'
+);
+SELECT public.replace_stripe_account_for_standard_migration(
+  '20000000-0000-4000-8000-000000000002',
+  'acct_express_legacy',
+  'acct_standard_replacement'
+);
+
+RESET ROLE;
 
 DO $$
 BEGIN
   IF (
     SELECT count(*)
-    FROM private.organization_bank_account_audit
+    FROM private.organization_sales_terms_acceptances
     WHERE org_id = '20000000-0000-4000-8000-000000000002'
-      AND changed_by = '20000000-0000-4000-8000-000000000001'
-      AND old_iban_masked IS NULL
-      AND new_iban_masked LIKE 'BE%5262'
-      AND new_iban_masked NOT LIKE '%5173208102%'
+      AND accepted_by = '20000000-0000-4000-8000-000000000001'
   ) <> 1 THEN
-    RAISE EXCEPTION 'The masked bank-account audit entry is missing';
+    RAISE EXCEPTION 'Organizer terms acceptance history is missing';
   END IF;
-
-  IF EXISTS (
-    SELECT 1
-    FROM private.organization_bank_account_audit
-    WHERE coalesce(old_iban_masked, '') LIKE '%BE51732081025262%'
-       OR coalesce(new_iban_masked, '') LIKE '%BE51732081025262%'
-  ) THEN
-    RAISE EXCEPTION 'A full IBAN was written to the bank-account audit';
+  IF (
+    SELECT terms_accepted_at IS NOT NULL
+       AND platform_terms_version = 'database-baseline-v1'
+       AND organizer_sales_terms_version IS NOT NULL
+       AND char_length(organizer_sales_terms_snapshot) >= 200
+       AND organizer_display_name_snapshot IS NOT NULL
+    FROM public.orders
+    WHERE id = '20000000-0000-4000-8000-000000000005'
+  ) IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'Buyer terms acceptance snapshot is missing';
+  END IF;
+  IF (
+    SELECT stripe_connected_account_id = 'acct_standard_replacement'
+       AND stripe_legacy_account_ids ? 'acct_express_legacy'
+    FROM public.organizations
+    WHERE id = '20000000-0000-4000-8000-000000000002'
+  ) IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'Express-to-Standard migration did not preserve the legacy account id';
   END IF;
 END $$;
 
@@ -661,9 +796,9 @@ BEGIN
       AND table_name = 'user_profile'
       AND column_name = 'stripe_connect_allowed'
       AND data_type = 'boolean'
-      AND column_default = 'false'
+      AND column_default = 'true'
   ) THEN
-    RAISE EXCEPTION 'The server-managed Stripe Connect user allowlist is missing';
+    RAISE EXCEPTION 'The global Stripe Connect rollout default is missing';
   END IF;
 
   IF NOT EXISTS (
@@ -676,7 +811,31 @@ BEGIN
       AND t.tgname = 'trg_protect_stripe_connect_allowlist'
       AND NOT t.tgisinternal
   ) THEN
-    RAISE EXCEPTION 'Stripe Connect allowlist changes are not protected server-side';
+    RAISE EXCEPTION 'Stripe Connect rollout changes are not protected server-side';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'organizations'
+      AND column_name = 'stripe_compliance_verified'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'organizations'
+      AND column_name = 'stripe_legacy_account_ids'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'payments'
+      AND column_name = 'checkout_expires_at'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'orders'
+      AND column_name = 'organizer_sales_terms_snapshot'
+  ) THEN
+    RAISE EXCEPTION 'Stripe compliance columns are missing';
   END IF;
 
   IF NOT EXISTS (

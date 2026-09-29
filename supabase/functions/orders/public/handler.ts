@@ -10,7 +10,11 @@ import { serializeError } from "../../_shared/modules/logger/mod.ts";
 import { parseRegisterPayload } from "./validation.ts";
 import { toCreateOrderIntentArgs } from "./registerTickets.contracts.ts";
 import { resolveRuntimeConfig } from "./config.ts";
-import { getEventPaymentContextOrThrow } from "./db.ts";
+import {
+  getEventPaymentContextOrThrow,
+  recordOrderTermsAcceptanceOrThrow,
+} from "./db.ts";
+import { getAcceptedOrganizationSalesTerms } from "../../_shared/payments/organization-sales-terms.ts";
 import { createOrderIntentOrThrow } from "./order-intent-repository.ts";
 import { buildBuyer } from "./buyer.ts";
 import { verifyCaptchaOrThrow } from "./turnstile.ts";
@@ -108,6 +112,11 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
     const buyer = buildBuyer(body);
     if (!buyer.email) throw badRequest("BUYER_EMAIL_REQUIRED");
 
+    const { orgId, eventTitle } = await getEventPaymentContextOrThrow(
+      admin,
+      body.eventId,
+    );
+
     const order = await createOrderIntentOrThrow({
       admin,
       args: {
@@ -125,10 +134,10 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       currency: order.currency,
     });
 
-    const { orgId, eventTitle } = await getEventPaymentContextOrThrow(
-      admin,
-      body.eventId,
-    );
+    if (order.paymentRequired && order.dueNowCents > 0) {
+      await getAcceptedOrganizationSalesTerms(admin, orgId);
+      await recordOrderTermsAcceptanceOrThrow(admin, order.orderId);
+    }
 
     logger.info("payment_context_loaded", {
       orderId: order.orderId,
