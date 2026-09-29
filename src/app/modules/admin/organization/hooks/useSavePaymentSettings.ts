@@ -37,10 +37,26 @@ export function useSavePaymentSettings(input: { supabase: SupabaseClient }) {
     }
   }
 
+  async function read(orgId: string) {
+    try {
+      setLoading(true);
+      setError(null);
+      return await repo.read(orgId);
+    } catch (caught) {
+      setError(
+        normalizeError(caught, "Impossible d’afficher les coordonnées bancaires")
+          .message,
+      );
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function reset() {
     setError(null);
     setUpdated(null);
   }
 
-  return { loading, error, updated, save, reset };
+  return { loading, error, updated, save, read, reset };
 }

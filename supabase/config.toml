@@ -395,6 +395,10 @@ import_map = "./functions/import_map.json"
 verify_jwt = false
 import_map = "./functions/import_map.json"
 
+[functions.organization-payment-settings]
+verify_jwt = false
+import_map = "./functions/import_map.json"
+
 [functions.subscriptions]
 verify_jwt = false
 import_map = "./functions/import_map.json"

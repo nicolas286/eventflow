@@ -89,6 +89,8 @@ export async function sendBankTransferInstructions(
     amountCents: number;
     currency: string;
     communication: string;
+    internalReference: string;
+    paymentDueAt: string | null;
   },
 ) {
   const config = resolveRuntimeConfig();
@@ -118,6 +120,8 @@ export async function sendBankTransferInstructions(
       beneficiary: input.beneficiary,
       iban: input.iban,
       communication: input.communication,
+      internalReference: input.internalReference,
+      paymentDueAt: input.paymentDueAt,
     }),
     tags: {
       kind: "bank_transfer_instructions",
@@ -125,6 +129,7 @@ export async function sendBankTransferInstructions(
       orderId: input.orderId,
       eventId: order.eventId,
     },
+    idempotencyKey: `bank-transfer-instructions:${input.orderId}`,
   });
 
   return { ok: true, sent: true };

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabaseSafe } from "@gateways/supabase/supabaseSafe";
+import { edgeSafe } from "@shared/gateways/supabase/supabaseEdgeSafe";
 import {
   type UpdatePaymentSettingsInput,
   type UpdatePaymentSettingsResult,
@@ -13,12 +13,23 @@ export function updatePaymentSettingsRepo(supabase: SupabaseClient) {
       input: UpdatePaymentSettingsInput,
     ): Promise<UpdatePaymentSettingsResult> {
       const parsed = updatePaymentSettingsInputSchema.parse(input);
-      const raw = await supabaseSafe(() =>
-        supabase.rpc("update_organization_payment_settings", {
-          p_org_id: parsed.orgId,
-          p_provider: parsed.paymentsProvider,
-          p_bank_transfer_beneficiary: parsed.bankTransferBeneficiary,
-          p_bank_transfer_iban: parsed.bankTransferIban,
+      const raw = await edgeSafe<unknown>(() =>
+        supabase.functions.invoke("organization-payment-settings", {
+          body: {
+            action: "update",
+            orgId: parsed.orgId,
+            paymentsProvider: parsed.paymentsProvider,
+            bankTransferBeneficiary: parsed.bankTransferBeneficiary,
+            bankTransferIban: parsed.bankTransferIban,
+          },
+        }),
+      );
+      return updatePaymentSettingsResultSchema.parse(raw);
+    },
+    async read(orgId: string): Promise<UpdatePaymentSettingsResult> {
+      const raw = await edgeSafe<unknown>(() =>
+        supabase.functions.invoke("organization-payment-settings", {
+          body: { action: "read", orgId },
         }),
       );
       return updatePaymentSettingsResultSchema.parse(raw);

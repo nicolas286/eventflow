@@ -9,6 +9,15 @@ const base = {
   eventId, items: [{ eventProductId, quantity: 1 }],
   attendees: [{ eventProductId, answers: [] }], buyer: { email: "qa@example.com" },
 };
+const bankTransfer = {
+  internalReference: "EF-11111111111141118111111111111111",
+  communication: "EVENTFLOW | Concert | qa@example.com | EF-11111111111141118111111111111111",
+  beneficiary: "Eventflow ASBL",
+  iban: "BE51732081025262",
+  amountCents: 2000,
+  currency: "EUR",
+  paymentDueAt: null,
+};
 
 describe("shared order boundary contracts", () => {
   it.each(["pending", "awaiting_payment", "partially_paid", "paid", "cancelled", "expired"])("preserves SQL order status %s", (status) => {
@@ -37,7 +46,8 @@ describe("shared order boundary contracts", () => {
   it("distinguishes Stripe checkout from bank-transfer reservations", () => {
     const shared = { ok: true, orderId: eventId, status: "awaiting_payment", amountDueNowCents: 2000, totalCents: 2000, bookingToken: "booking-token" } as const;
     expect(registerResponseSchema.safeParse({ ...shared, paymentMethod: "stripe", checkoutUrl: "https://checkout.stripe.com/example" }).success).toBe(true);
-    expect(registerResponseSchema.safeParse({ ...shared, paymentMethod: "bank_transfer" }).success).toBe(true);
+    expect(registerResponseSchema.safeParse({ ...shared, paymentMethod: "bank_transfer", bankTransfer }).success).toBe(true);
+    expect(registerResponseSchema.safeParse({ ...shared, paymentMethod: "bank_transfer" }).success).toBe(false);
     expect(registerResponseSchema.safeParse({ ...shared, paymentMethod: "bank_transfer", checkoutUrl: "https://checkout.stripe.com/example" }).success).toBe(false);
   });
 });

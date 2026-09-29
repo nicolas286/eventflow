@@ -115,6 +115,18 @@ export const handleMarkBankTransferPaidRequest = createEdgeHandler(
       throw conflict("BANK_TRANSFER_PAYMENT_APPLY_FAILED");
     }
 
+    const { error: confirmationAuditError } = await admin.rpc(
+      "mark_bank_transfer_manually_confirmed",
+      {
+        p_order_id: order.id,
+        p_confirmed_by: user.id,
+      },
+    );
+    if (confirmationAuditError) {
+      logger.error("bank_transfer_confirmation_audit_failed", { orderId });
+      throw internal("BANK_TRANSFER_CONFIRMATION_AUDIT_FAILED");
+    }
+
     const { error: ticketError } = await admin.rpc("issue_order_tickets", {
       p_order_id: order.id,
     });

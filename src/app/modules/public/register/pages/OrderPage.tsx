@@ -11,6 +11,7 @@ import Button from "@ui/components/button/Button";
 
 import { PublicEventHeader } from "../components/PublicEventHeader";
 import { formatMoney } from "@helpers/normalize";
+import type { BankTransferInstructions } from "@contracts/bank-transfer";
 
 import "@app/layouts/publicCheckoutBase.desktop.css";
 import "./orderReturnPage.desktop.css";
@@ -41,6 +42,7 @@ export type OrderPublic = {
   totalCents?: number;
   currency?: string;
   paymentMethod?: "stripe" | "bank_transfer" | null;
+  bankTransfer?: BankTransferInstructions | null;
 
   orgSlug?: string;
   eventSlug?: string;
@@ -93,6 +95,7 @@ async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> 
     totalCents: j.totalCents,
     currency: j.currency,
     paymentMethod: j.paymentMethod,
+    bankTransfer: j.bankTransfer ?? null,
 
   };
 }
@@ -465,6 +468,46 @@ export function OrderPage() {
               </div>
 
               {/* --------- Articles --------- */}
+              {order.paymentMethod === "bank_transfer" &&
+              order.status === "awaiting_payment" &&
+              order.bankTransfer ? (
+                <div className="orderReturnSection">
+                  <div className="orderReturnSectionTitle">Instructions de virement</div>
+                  <p className="orderReturnSubtitle">
+                    Votre réservation est enregistrée et reste en attente de paiement.
+                  </p>
+                  <div className="orderReturnMeta">
+                    <div>
+                      <span className="orderReturnLabel">Montant :</span>
+                      <span className="orderReturnStrong">
+                        {formatMoney(order.bankTransfer.amountCents, order.bankTransfer.currency)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="orderReturnLabel">Bénéficiaire :</span>
+                      <span className="orderReturnStrong">{order.bankTransfer.beneficiary}</span>
+                    </div>
+                    <div>
+                      <span className="orderReturnLabel">IBAN :</span>
+                      <span className="orderReturnStrong">{order.bankTransfer.iban}</span>
+                    </div>
+                    <div>
+                      <span className="orderReturnLabel">Communication :</span>
+                      <span className="orderReturnStrong">{order.bankTransfer.communication}</span>
+                    </div>
+                    <div>
+                      <span className="orderReturnLabel">Référence Eventflow :</span>
+                      <span className="orderReturnStrong">
+                        {order.bankTransfer.internalReference}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="orderReturnSubtitle">
+                    Votre place sera définitivement confirmée après réception du paiement.
+                  </p>
+                </div>
+              ) : null}
+
               {order.items?.length ? (
                 <div className="orderReturnSection">
                   <div className="orderReturnSectionTitle">Articles</div>

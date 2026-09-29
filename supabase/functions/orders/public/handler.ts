@@ -4,7 +4,7 @@ import { createEdgeHandler } from "../../_shared/app/edge-handler/mod.ts";
 import { json as baseJson } from "../../_shared/app/http.ts";
 import { resolveRequestClientIp } from "../../_shared/app/client-ip.ts";
 import { consumeRequestRateLimit } from "../../_shared/app/rate-limit/mod.ts";
-import { ResponseError } from "../../_shared/errors.ts";
+import { badRequest, ResponseError } from "../../_shared/errors.ts";
 import { serializeError } from "../../_shared/modules/logger/mod.ts";
 
 import { parseRegisterPayload } from "./validation.ts";
@@ -106,6 +106,7 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
     });
 
     const buyer = buildBuyer(body);
+    if (!buyer.email) throw badRequest("BUYER_EMAIL_REQUIRED");
 
     const order = await createOrderIntentOrThrow({
       admin,
@@ -167,7 +168,7 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
     });
 
     if (paymentMethod.kind === "bank_transfer") {
-      await createBankTransferPaymentOrThrow({
+      const bankTransfer = await createBankTransferPaymentOrThrow({
         admin,
         logger,
         orderId: order.orderId,
@@ -175,6 +176,8 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
         currency: order.currency,
         beneficiary: paymentMethod.beneficiary,
         iban: paymentMethod.iban,
+        eventTitle,
+        buyerEmail: buyer.email,
       });
 
       logger.info("completed_awaiting_bank_transfer", {
@@ -190,6 +193,7 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
         totalCents: order.totalCents,
         bookingToken: order.bookingToken,
         discountCents: order.discountCents,
+        bankTransfer,
       });
     }
 

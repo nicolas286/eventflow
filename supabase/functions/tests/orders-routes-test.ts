@@ -137,6 +137,48 @@ Deno.test("public order lookup matches both order id and booking token", () => w
     assertEquals(urls.length, 1);
     assertStringIncludes(urls[0], `id=eq.${orderId}`);
     assertStringIncludes(urls[0], "booking_token=eq.wrong-token");
+    assertEquals(urls.some((url) => url.includes("/payments?")), false);
+    assertEquals(urls.some((url) => url.includes("get_bank_transfer_instructions")), false);
+  } finally { globalThis.fetch = previous; }
+}));
+
+Deno.test("public bank-transfer instructions require the matching booking token", () => withRuntime(async () => {
+  const previous = globalThis.fetch;
+  globalThis.fetch = (input) => {
+    const url = String(input);
+    const data = url.includes("/orders?")
+      ? { id: orderId, status: "awaiting_payment", total_cents: 2599, currency: "EUR" }
+      : url.includes("/payments?")
+      ? {
+        provider: "offline",
+        provider_payment_id: `bank_transfer:${orderId}`,
+        status: "open",
+        amount_cents: 2599,
+        currency: "EUR",
+        raw: { method: "bank_transfer" },
+      }
+      : url.includes("/rpc/get_bank_transfer_instructions")
+      ? {
+        internalReference: "EF-11111111111141118111111111111111",
+        communication: "EVENTFLOW | Concert | participant@example.com | EF-11111111111141118111111111111111",
+        beneficiary: "Eventflow ASBL",
+        iban: "BE51732081025262",
+        amountCents: 2599,
+        currency: "EUR",
+        paymentDueAt: null,
+      }
+      : null;
+    return Promise.resolve(Response.json(data));
+  };
+  try {
+    const response = await handleOrdersRequest(new Request(
+      `https://edge.test/orders/${orderId}?token=matching-token`,
+    ));
+    assertEquals(response.status, 200);
+    const body = await response.json();
+    assertEquals(body.status, "awaiting_payment");
+    assertEquals(body.bankTransfer.iban, "BE51732081025262");
+    assertEquals(body.bankTransfer.amountCents, 2599);
   } finally { globalThis.fetch = previous; }
 }));
 
@@ -152,7 +194,7 @@ Deno.test("public order read preserves the database cancelled spelling", () => w
     const response = await handleOrdersRequest(new Request(`https://edge.test/orders/${orderId}?token=fixture-booking-token`));
     assertEquals(response.status, 200);
     assertEquals(await response.json(), {
-      id: orderId, status: "cancelled", totalCents: 2000, currency: "EUR", paymentStatus: "open", paymentMethod: "bank_transfer",
+      id: orderId, status: "cancelled", totalCents: 2000, currency: "EUR", paymentStatus: "open", paymentMethod: "bank_transfer", bankTransfer: null,
     });
   } finally { globalThis.fetch = previous; }
 }));

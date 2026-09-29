@@ -11,6 +11,8 @@ export function buildBankTransferInstructionsHtml(input: {
   beneficiary: string;
   iban: string;
   communication: string;
+  internalReference: string;
+  paymentDueAt: string | null;
 }) {
   const when = formatDateTimeBrussels(input.startsAt);
   const amount = formatMoney(input.amountCents, input.currency);
@@ -50,6 +52,14 @@ export function buildBankTransferInstructionsHtml(input: {
         <div><strong>Communication :</strong> ${
     escapeHtml(input.communication)
   }</div>
+        <div><strong>Référence de réservation :</strong> ${
+    escapeHtml(input.internalReference)
+  }</div>
+        ${
+    input.paymentDueAt
+      ? `<div><strong>Date limite :</strong> ${escapeHtml(formatDateTimeBrussels(input.paymentDueAt) ?? input.paymentDueAt)}</div>`
+      : ""
+  }
       </div>
 
       <p style="margin:0 0 14px;color:#333">

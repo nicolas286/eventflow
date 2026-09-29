@@ -7,8 +7,25 @@ export function bankTransferPaymentId(orderId: string) {
   return `bank_transfer:${orderId}`;
 }
 
-export function bankTransferCommunication(orderId: string) {
-  return `EVENTFLOW ${orderId.slice(0, 8).toUpperCase()}`;
+export function bankTransferInternalReference(orderId: string) {
+  return `EF-${orderId.replaceAll("-", "").toUpperCase()}`;
+}
+
+function compactCommunicationPart(value: string, maxLength: number) {
+  return value.replace(/\s+/gu, " ").trim().slice(0, maxLength);
+}
+
+export function bankTransferCommunication(input: {
+  orderId: string;
+  eventTitle: string;
+  buyerEmail: string;
+}) {
+  return [
+    "EVENTFLOW",
+    compactCommunicationPart(input.eventTitle, 120),
+    compactCommunicationPart(input.buyerEmail.toLowerCase(), 254),
+    bankTransferInternalReference(input.orderId),
+  ].join(" | ");
 }
 
 export async function createBankTransferPaymentOrThrow(input: {
@@ -19,51 +36,51 @@ export async function createBankTransferPaymentOrThrow(input: {
   currency: string;
   beneficiary: string;
   iban: string;
+  eventTitle: string;
+  buyerEmail: string;
 }) {
-  const providerPaymentId = bankTransferPaymentId(input.orderId);
-  const communication = bankTransferCommunication(input.orderId);
-  const now = new Date().toISOString();
-
-  const { error } = await input.admin.from("payments").insert({
-    order_id: input.orderId,
-    provider: "offline",
-    provider_payment_id: providerPaymentId,
-    provider_account_id: null,
-    provider_checkout_session_id: null,
-    amount_cents: input.amountCents,
-    currency: input.currency,
-    status: "open",
-    is_refund: false,
-    created_at: now,
-    updated_at: now,
-    processed_at: null,
-    raw: {
-      method: "bank_transfer",
-      beneficiary: input.beneficiary,
-      iban: input.iban,
-      communication,
-    },
-    type: "payment",
-    parent_payment_id: null,
+  const internalReference = bankTransferInternalReference(input.orderId);
+  const communication = bankTransferCommunication({
+    orderId: input.orderId,
+    eventTitle: input.eventTitle,
+    buyerEmail: input.buyerEmail,
   });
 
+  const { data: stored, error } = await input.admin.rpc(
+    "create_bank_transfer_payment",
+    {
+      p_order_id: input.orderId,
+      p_amount_cents: input.amountCents,
+      p_currency: input.currency,
+      p_beneficiary: input.beneficiary,
+      p_iban: input.iban,
+      p_communication: communication,
+      p_internal_reference: internalReference,
+    },
+  );
+
   if (error) throw internal("BANK_TRANSFER_PAYMENT_DB_INSERT_FAILED");
+
+  const instructions = {
+    internalReference: String(stored?.internalReference ?? internalReference),
+    communication: String(stored?.communication ?? communication),
+    beneficiary: String(stored?.beneficiary ?? input.beneficiary),
+    iban: String(stored?.iban ?? input.iban),
+    amountCents: Number(stored?.amountCents ?? input.amountCents),
+    currency: String(stored?.currency ?? input.currency),
+    paymentDueAt: null,
+  };
 
   try {
     await sendBankTransferInstructions(input.admin, input.logger, {
       orderId: input.orderId,
-      beneficiary: input.beneficiary,
-      iban: input.iban,
-      amountCents: input.amountCents,
-      currency: input.currency,
-      communication,
+      ...instructions,
     });
-  } catch (emailError) {
+  } catch {
     input.logger.error("bank_transfer_instructions_email_failed", {
       orderId: input.orderId,
-      error: emailError,
     });
   }
 
-  return { providerPaymentId, communication };
+  return instructions;
 }

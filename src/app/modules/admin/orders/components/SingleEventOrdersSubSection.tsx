@@ -14,6 +14,7 @@ import { OrdersPeopleList } from "./OrdersPeopleList";
 import { useAdminUpdateOrderAttendee } from "../hooks/useUpdateOrderAttendeeAnswers";
 import { useDeleteOrder } from "../hooks/useDeleteOrder";
 import { useMarkBankTransferPaid } from "../hooks/useMarkBankTransferPaid";
+import { useBankTransferAdmin } from "../hooks/useBankTransferAdmin";
 import { useParticipantsViewModel,
   buildParticipantsViewModel
  } from "../hooks/useParticipantsViewModel";
@@ -99,6 +100,7 @@ export function SingleEventOrdersSubSection(props: {
   const [confirmDeleteOrderOpen, setConfirmDeleteOrderOpen] = useState(false);
   const [targetOrderId, setTargetOrderId] = useState<string | null>(null);
   const [confirmPaidOrderId, setConfirmPaidOrderId] = useState<string | null>(null);
+  const [confirmExpireOrderId, setConfirmExpireOrderId] = useState<string | null>(null);
 
   const regFields = useMemo(() => toRows<EventFormField>(formFields), [formFields]);
 
@@ -106,6 +108,11 @@ export function SingleEventOrdersSubSection(props: {
   const isSearchMode = trimmedQuery.length > 0;
   const eventSlug = event.slug ?? null;
   const eventId = event.id ?? "";
+  const bankTransferAdmin = useBankTransferAdmin({ supabase, eventId });
+  const bankTransferSummaryByOrderId = useMemo(
+    () => new Map(bankTransferAdmin.summaries.map((summary) => [summary.orderId, summary])),
+    [bankTransferAdmin.summaries],
+  );
 
   const searchView = useSearchEventAdminOrdersViewData({
     supabase,
@@ -373,8 +380,19 @@ export function SingleEventOrdersSubSection(props: {
     const result = await markBankTransferPaid.markPaid(confirmPaidOrderId);
     if (!result) return;
     setConfirmPaidOrderId(null);
+    await Promise.all([
+      onChanged?.().catch(() => {}),
+      bankTransferAdmin.refresh(),
+    ]);
+  }, [bankTransferAdmin, confirmPaidOrderId, markBankTransferPaid, onChanged]);
+
+  const confirmBankTransferExpiration = useCallback(async () => {
+    if (!confirmExpireOrderId) return;
+    const result = await bankTransferAdmin.expire(confirmExpireOrderId);
+    if (!result) return;
+    setConfirmExpireOrderId(null);
     await onChanged?.().catch(() => {});
-  }, [confirmPaidOrderId, markBankTransferPaid, onChanged]);
+  }, [bankTransferAdmin, confirmExpireOrderId, onChanged]);
 
   const inlineEditorProps = useMemo((): InlineEditorProps => {
     return {
@@ -417,10 +435,16 @@ export function SingleEventOrdersSubSection(props: {
       deleteOrderLoading={deleteOrder.loading}
       onRequestDeleteOrder={requestDeleteOrder}
       bankTransferOrderIds={bankTransferOrderIds}
+      bankTransferSummaryByOrderId={bankTransferSummaryByOrderId}
       markPaidLoadingOrderId={markBankTransferPaid.loading ? confirmPaidOrderId : null}
       onRequestMarkPaid={(orderId) => {
         markBankTransferPaid.reset();
         setConfirmPaidOrderId(orderId);
+      }}
+      expireLoadingOrderId={bankTransferAdmin.expiringOrderId}
+      onRequestExpire={(orderId) => {
+        bankTransferAdmin.resetError();
+        setConfirmExpireOrderId(orderId);
       }}
       editorOpen={attendeeEditorOpen}
       editingAttendeeId={editingAttendeeId}
@@ -573,6 +597,24 @@ export function SingleEventOrdersSubSection(props: {
         onConfirm={confirmBankTransferPaid}
       >
         Cette action confirme le paiement, émet les billets et envoie l’e-mail de confirmation à l’acheteur.
+      </ConfirmModal>
+
+      <ConfirmModal
+        isOpen={Boolean(confirmExpireOrderId)}
+        title="Expirer cette réservation par virement ?"
+        intent="danger"
+        confirmLabel="Expirer la réservation"
+        confirmLoadingLabel="Expiration…"
+        loading={Boolean(bankTransferAdmin.expiringOrderId)}
+        error={bankTransferAdmin.error}
+        onCancel={() => {
+          if (bankTransferAdmin.expiringOrderId) return;
+          setConfirmExpireOrderId(null);
+          bankTransferAdmin.resetError();
+        }}
+        onConfirm={confirmBankTransferExpiration}
+      >
+        La place sera libérée. La réservation restera conservée avec le statut expiré.
       </ConfirmModal>
 
       <ConfirmModal

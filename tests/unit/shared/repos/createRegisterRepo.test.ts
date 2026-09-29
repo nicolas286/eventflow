@@ -95,6 +95,15 @@ describe("createRegisterRepo", () => {
         amountDueNowCents: 1599,
         totalCents: 1599,
         bookingToken: "booking-token",
+        bankTransfer: {
+          internalReference: "EF-33333333333343338333333333333333",
+          communication: "EVENTFLOW | Concert | jean@example.com | EF-33333333333343338333333333333333",
+          beneficiary: "Eventflow ASBL",
+          iban: "BE51732081025262",
+          amountCents: 1599,
+          currency: "EUR",
+          paymentDueAt: null,
+        },
       },
       error: null,
     });

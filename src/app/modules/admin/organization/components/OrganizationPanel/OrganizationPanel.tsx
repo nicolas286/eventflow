@@ -137,6 +137,12 @@ export default function StructurePanel({
   );
   const [paymentForm, setPaymentForm] =
     useState<PaymentForm>(initialPaymentForm);
+  const [hasStoredBankTransferIban, setHasStoredBankTransferIban] = useState(
+    Boolean(orgInfo?.bankTransferIban),
+  );
+  const [paymentDetailsRevealed, setPaymentDetailsRevealed] = useState(
+    !hasStoredBankTransferIban,
+  );
 
   // resync quand bootstrap/refetch modifie org
   useEffect(() => {
@@ -145,7 +151,9 @@ export default function StructurePanel({
 
   useEffect(() => {
     setPaymentForm(initialPaymentForm);
-  }, [initialPaymentForm]);
+    setHasStoredBankTransferIban(Boolean(orgInfo?.bankTransferIban));
+    setPaymentDetailsRevealed(!orgInfo?.bankTransferIban);
+  }, [initialPaymentForm, orgInfo?.bankTransferIban]);
 
   const dirty = hasChanges(initial, form);
   const paymentDirty =
@@ -252,13 +260,42 @@ export default function StructurePanel({
   }
 
   async function handlePaymentSettingsSave() {
+    if (
+      paymentForm.provider === "bank_transfer" &&
+      hasStoredBankTransferIban &&
+      !paymentDetailsRevealed
+    ) {
+      return;
+    }
+
     paymentSettings.reset();
     const result = await paymentSettings.save({
       orgId,
       paymentsProvider: paymentForm.provider,
-      bankTransferBeneficiary: paymentForm.beneficiary || null,
-      bankTransferIban: paymentForm.iban || null,
+      bankTransferBeneficiary:
+        paymentForm.provider === "bank_transfer"
+          ? paymentForm.beneficiary || null
+          : null,
+      bankTransferIban:
+        paymentForm.provider === "bank_transfer"
+          ? paymentForm.iban || null
+          : null,
     });
+    if (!result) return;
+
+    setPaymentForm({
+      provider: result.paymentsProvider,
+      beneficiary: result.bankTransferBeneficiary ?? "",
+      iban: result.bankTransferIbanMasked ?? "",
+    });
+    setHasStoredBankTransferIban(Boolean(result.bankTransferIbanMasked));
+    setPaymentDetailsRevealed(false);
+    await onSaved();
+  }
+
+  async function handleRevealPaymentSettings() {
+    paymentSettings.reset();
+    const result = await paymentSettings.read(orgId);
     if (!result) return;
 
     setPaymentForm({
@@ -266,7 +303,7 @@ export default function StructurePanel({
       beneficiary: result.bankTransferBeneficiary ?? "",
       iban: result.bankTransferIban ?? "",
     });
-    await onSaved();
+    setPaymentDetailsRevealed(true);
   }
 
   /* -------- render -------- */
@@ -463,30 +500,45 @@ export default function StructurePanel({
         </div>
 
         {paymentForm.provider === "bank_transfer" ? (
-          <div className="structurePanel__grid2Inner">
-            <Input
-              label="Nom du bénéficiaire"
-              value={paymentForm.beneficiary}
-              onChange={(event) =>
-                setPaymentForm((current) => ({
-                  ...current,
-                  beneficiary: event.target.value,
-                }))
-              }
-              placeholder="Nom ou raison sociale"
-            />
-            <Input
-              label="IBAN"
-              value={paymentForm.iban}
-              onChange={(event) =>
-                setPaymentForm((current) => ({
-                  ...current,
-                  iban: event.target.value.toUpperCase(),
-                }))
-              }
-              placeholder="BE00 0000 0000 0000"
-            />
-          </div>
+          <>
+            <div className="structurePanel__grid2Inner">
+              <Input
+                label="Nom du bénéficiaire"
+                value={paymentForm.beneficiary}
+                readOnly={hasStoredBankTransferIban && !paymentDetailsRevealed}
+                onChange={(event) =>
+                  setPaymentForm((current) => ({
+                    ...current,
+                    beneficiary: event.target.value,
+                  }))
+                }
+                placeholder="Nom ou raison sociale"
+              />
+              <Input
+                label="IBAN"
+                value={paymentForm.iban}
+                readOnly={hasStoredBankTransferIban && !paymentDetailsRevealed}
+                onChange={(event) =>
+                  setPaymentForm((current) => ({
+                    ...current,
+                    iban: event.target.value.toUpperCase(),
+                  }))
+                }
+                placeholder="BE00 0000 0000 0000"
+              />
+            </div>
+            {hasStoredBankTransferIban && !paymentDetailsRevealed ? (
+              <div className="structurePanel__actions">
+                <Button
+                  variant="secondary"
+                  onClick={handleRevealPaymentSettings}
+                  disabled={paymentSettings.loading}
+                >
+                  Modifier les coordonnées bancaires
+                </Button>
+              </div>
+            ) : null}
+          </>
         ) : null}
 
         <div className="structurePanel__actionsBar">
@@ -509,7 +561,13 @@ export default function StructurePanel({
                   : "Enregistrer le mode"
               }
               onClick={handlePaymentSettingsSave}
-              disabled={!paymentDirty || paymentSettings.loading}
+              disabled={
+                !paymentDirty ||
+                paymentSettings.loading ||
+                (paymentForm.provider === "bank_transfer" &&
+                  hasStoredBankTransferIban &&
+                  !paymentDetailsRevealed)
+              }
             />
           </div>
 
@@ -536,6 +594,12 @@ export default function StructurePanel({
             {paymentSettings.updated ? (
               <div className="structurePanel__success">
                 Mode de paiement enregistré
+              </div>
+            ) : null}
+            {paymentSettings.updated?.bankTransferIbanChanged &&
+            !paymentSettings.updated.securityEmailSent ? (
+              <div className="structurePanel__error">
+                Les coordonnées ont été enregistrées, mais l’e-mail de sécurité n’a pas pu être envoyé.
               </div>
             ) : null}
           </div>

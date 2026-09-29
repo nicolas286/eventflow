@@ -11,6 +11,7 @@ import "./WidgetConfirmationPage.css";
 import { useWidgetAutoResize } from "../hooks/useWidgetAutoResize";
 import { WidgetFooter } from "../components/WidgetFooter/WidgetFooter";
 import { WidgetRoot } from "../components/WidgetRoot/WidgetRoot";
+import type { BankTransferInstructions } from "@contracts/bank-transfer";
 
 type WidgetConfirmationData = {
   orderId: string;
@@ -22,6 +23,7 @@ type WidgetConfirmationData = {
   bookingToken?: string | null;
   status?: string | null;
   paymentMethod?: "stripe" | "bank_transfer" | null;
+  bankTransfer?: BankTransferInstructions | null;
   items?: Array<{
     name: string;
     quantity: number;
@@ -57,6 +59,7 @@ type OrderPublic = {
   buyerEmail?: string;
   items?: OrderItemPublic[];
   paymentMethod?: "stripe" | "bank_transfer" | null;
+  bankTransfer?: BankTransferInstructions | null;
 };
 
 async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> {
@@ -85,6 +88,7 @@ async function fetchOrder(orderId: string, token: string): Promise<OrderPublic> 
     totalCents: j.totalCents,
     currency: j.currency,
     paymentMethod: j.paymentMethod,
+    bankTransfer: j.bankTransfer ?? null,
   };
 }
 
@@ -181,6 +185,7 @@ export function WidgetConfirmationPage() {
           eventTitle: resolvedTitle,
           status: remoteOrder.status,
           paymentMethod: remoteOrder.paymentMethod,
+          bankTransfer: remoteOrder.bankTransfer ?? null,
           items: (remoteOrder.items ?? []).map((it) => ({
             name: it.name ?? "Billet",
             quantity: Number(it.quantity ?? 1),
@@ -264,6 +269,41 @@ export function WidgetConfirmationPage() {
           <MessageBox variant="info">
             Les coordonnées de paiement ont été envoyées par e-mail. Vos billets seront émis après confirmation du virement par l’organisateur.
           </MessageBox>
+        ) : null}
+
+        {resolvedData.paymentMethod === "bank_transfer" &&
+        !isSuccess &&
+        resolvedData.bankTransfer ? (
+          <div className="widgetConfirmationSection">
+            <div className="widgetSectionTitle">Instructions de virement</div>
+            <div className="widgetPaymentInfos">
+              <div>
+                Montant :{" "}
+                <strong>
+                  {formatMoney(
+                    resolvedData.bankTransfer.amountCents,
+                    resolvedData.bankTransfer.currency,
+                  )}
+                </strong>
+              </div>
+              <div>
+                Bénéficiaire : <strong>{resolvedData.bankTransfer.beneficiary}</strong>
+              </div>
+              <div>
+                IBAN : <strong>{resolvedData.bankTransfer.iban}</strong>
+              </div>
+              <div>
+                Communication : <strong>{resolvedData.bankTransfer.communication}</strong>
+              </div>
+              <div>
+                Référence Eventflow :{" "}
+                <strong>{resolvedData.bankTransfer.internalReference}</strong>
+              </div>
+            </div>
+            <p className="widgetConfirmationSubtitle">
+              Votre place sera définitivement confirmée après réception du paiement.
+            </p>
+          </div>
         ) : null}
 
         {resolvedData.buyerEmail ? (

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { bankTransferInstructionsSchema } from "./bank-transfer.ts";
 
 /* ------------------------- Primitives ------------------------- */
 
@@ -155,6 +156,7 @@ export const registerSuccessBankTransferSchema = z
     totalCents: z.number().int().min(0),
     discountCents: z.number().int().min(0).optional(),
     bookingToken: z.string(),
+    bankTransfer: bankTransferInstructionsSchema,
   })
   .strict();
 

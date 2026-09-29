@@ -17,7 +17,7 @@ export const handleReadOrderRequest = createEdgeHandler({
   if (error) return json(req, { error: "DB_ERROR", details: error.message }, 500);
   if (!order) return json(req, { error: "NOT_FOUND" }, 404);
   const { data: payment } = await admin.from("payments")
-    .select("provider, provider_payment_id, status")
+    .select("provider, provider_payment_id, status, amount_cents, currency, raw")
     .eq("order_id", orderId).eq("is_refund", false)
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
   const paymentMethod = payment?.provider === "stripe"
@@ -26,9 +26,31 @@ export const handleReadOrderRequest = createEdgeHandler({
         String(payment.provider_payment_id ?? "").startsWith("bank_transfer:")
     ? "bank_transfer"
     : null;
+  let bankTransfer = null;
+  if (paymentMethod === "bank_transfer" && order.status === "awaiting_payment") {
+    const { data: stored } = await admin.rpc("get_bank_transfer_instructions", {
+      p_order_id: orderId,
+    });
+    const raw = payment?.raw && typeof payment.raw === "object"
+      ? payment.raw as Record<string, unknown>
+      : {};
+
+    if (stored?.iban || raw.iban) {
+      bankTransfer = {
+        internalReference: String(stored?.internalReference ?? order.id),
+        communication: String(stored?.communication ?? raw.communication ?? ""),
+        beneficiary: String(stored?.beneficiary ?? raw.beneficiary ?? ""),
+        iban: String(stored?.iban ?? raw.iban ?? ""),
+        amountCents: Number(stored?.amountCents ?? payment?.amount_cents ?? 0),
+        currency: String(stored?.currency ?? payment?.currency ?? order.currency ?? "EUR"),
+        paymentDueAt: null,
+      };
+    }
+  }
   return json(req, orderPublicSchema.parse({
     id: order.id, status: order.status, totalCents: order.total_cents ?? null,
     currency: order.currency ?? null, paymentStatus: payment?.status ?? null,
     paymentMethod,
+    bankTransfer,
   }));
 });

@@ -281,6 +281,7 @@ export function WidgetPaymentPage() {
           bookingToken,
           status,
           paymentMethod: "bank_transfer",
+          bankTransfer: r.bankTransfer,
           items: picked.map(({ p, qty }) => ({
             name: p.name,
             quantity: qty,
