@@ -50,7 +50,6 @@ export class StripeEventPaymentProvider implements EventPaymentProvider {
           expires_at: expiresAt,
           ui_mode: "hosted_page",
           mode: "payment",
-          "payment_method_types[0]": "bancontact",
           billing_address_collection: "auto",
           "phone_number_collection[enabled]": false,
           "automatic_tax[enabled]": false,
