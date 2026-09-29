@@ -23,14 +23,12 @@ Ce fichier est la source de vérité pour terminer la configuration de la billet
 | --------------------------------- | ----------------------------------------------- |
 | `ui_mode`                         | `hosted_page`                                   |
 | `mode`                            | `payment`                                       |
-| `payment_method_types[0]`         | `bancontact`                                    |
+| Moyens de paiement                | Configuration dynamique Stripe Connect          |
 | `billing_address_collection`      | `auto`                                          |
 | `phone_number_collection.enabled` | `false`                                         |
 | `automatic_tax.enabled`           | `false`                                         |
 | `allow_promotion_codes`           | `false`                                         |
 | `submit_type`                     | `auto`                                          |
-| `integration_identifier`          | `hosted_web_0001`                               |
-| `origin_context`                  | `web`                                           |
 | `success_url`                     | URL réelle de retour de la commande             |
 | `cancel_url`                      | URL réelle de retour avec annulation            |
 | `line_items`                      | `price_data` dynamique de la commande Eventflow |
