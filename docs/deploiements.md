@@ -44,6 +44,8 @@ Les environnements GitHub `staging` et `production` limitent l'accès aux secret
 
 Le CLI Supabase utilise son jeton d'accès et un rôle de connexion temporaire ; le pipeline ne réinitialise pas le mot de passe de production. Les secrets serveur Stripe Connect, les références historiques Mollie, la messagerie et Billit restent dans chaque projet Supabase. Ils ne sont pas publiés dans le front ni synchronisés automatiquement entre projets. Les abonnements Eventflow sont facturés en interne, sans Stripe Billing. Voir [la procédure Stripe](stripe-migration.md).
 
+Le pipeline vérifie les jobs cron via la connexion Postgres temporaire du CLI, après les migrations et le déploiement des fonctions. Le secret `SUPABASE_SERVICE_ROLE_KEY` n'est donc pas requis en production pour ce contrôle ; lorsqu'il est disponible sur staging, le contrôle HTTP effectue en plus la même vérification via le RPC réservé au service role.
+
 Les variables de dépôt `STAGING_DEPLOY_ENABLED` et `PRODUCTION_DEPLOY_ENABLED` contrôlent les workflows. La propriété `deploymentEnabled` du manifeste est un second contrôle. Un déploiement demande les deux contrôles actifs. L'activation production ne publie rien à elle seule : un push dans `main`, normalement issu d'une PR approuvée, déclenche la publication.
 
 Après le déploiement des fonctions staging, le test d'intégration `accounts` s'exécute uniquement si son API, son transport partagé, son contrat ou ses tests ont changé. Il crée des données synthétiques, vérifie la suppression du compte et nettoie l'organisation restante même en cas d'échec.
