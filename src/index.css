@@ -1,5 +1,5 @@
 :root {
-  --primary: 228 156 33;            /* #e49c21 */
+  --primary: 228 156 33; /* #e49c21 */
   --primary-contrast: 0 0 0;
   --primary-bg: 228 156 33;
   --radius: 16px;
@@ -13,9 +13,32 @@
 
   --ghost-fg: 255 255 255;
   --ghost-border: 173 59 173;
+
+  --ef-bg-app: #f5f7fb;
+  --ef-bg-surface: #ffffff;
+  --ef-bg-subtle: #f8fafc;
+  --ef-bg-muted: #eef2f7;
+  --ef-text-primary: #172033;
+  --ef-text-secondary: #455268;
+  --ef-text-muted: #718096;
+  --ef-border-default: #e1e7ef;
+  --ef-border-strong: #cbd5e1;
+  --ef-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --ef-shadow-sm: 0 8px 24px rgba(15, 23, 42, 0.07);
+  --ef-shadow-md: 0 18px 48px rgba(15, 23, 42, 0.1);
+  --ef-radius-sm: 8px;
+  --ef-radius-md: 12px;
+  --ef-radius-lg: 16px;
+  --ef-radius-xl: 22px;
+  --ef-success: #15803d;
+  --ef-warning: #b45309;
+  --ef-danger: #b91c1c;
+  --ef-info: #1d4ed8;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   width: 100%;
   max-width: 100%;
   font-family: "Inter", sans-serif;
@@ -25,7 +48,10 @@ html, body, #root {
   box-sizing: border-box;
 }
 
-img, svg, video, canvas {
+img,
+svg,
+video,
+canvas {
   max-width: 100%;
 }
 
@@ -47,7 +73,7 @@ body {
     ),
     radial-gradient(
       900px 600px at 92% 42%,
-      rgb(var(--primary-bg) / 0.10),
+      rgb(var(--primary-bg) / 0.1),
       transparent 62%
     );
 
@@ -68,16 +94,14 @@ body::before {
   opacity: 0.22;
   mix-blend-mode: multiply;
 
-  background-image:
-    repeating-linear-gradient(
-      0deg,
-      rgba(0,0,0,0.045) 0px,
-      rgba(0,0,0,0.045) 1px,
-      transparent 1px,
-      transparent 5px
-    );
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.045) 0px,
+    rgba(0, 0, 0, 0.045) 1px,
+    transparent 1px,
+    transparent 5px
+  );
   overflow-x: hidden;
-
 }
 
 /* ---------------------------------------------------
@@ -93,14 +117,13 @@ body::after {
   opacity: 0.08;
   mix-blend-mode: overlay;
 
-  background-image:
-    repeating-linear-gradient(
-      90deg,
-      rgba(0,0,0,0.035) 0px,
-      rgba(0,0,0,0.035) 1px,
-      transparent 1px,
-      transparent 3px
-    );
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.035) 0px,
+    rgba(0, 0, 0, 0.035) 1px,
+    transparent 1px,
+    transparent 3px
+  );
 }
 
 /* ---------------------------------------------------
@@ -116,14 +139,13 @@ body::after {
   opacity: 0.06;
   mix-blend-mode: multiply;
 
-  background-image:
-    repeating-linear-gradient(
-      45deg,
-      rgba(0,0,0,0.03) 0px,
-      rgba(0,0,0,0.03) 1px,
-      transparent 1px,
-      transparent 6px
-    );
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.03) 0px,
+    rgba(0, 0, 0, 0.03) 1px,
+    transparent 1px,
+    transparent 6px
+  );
 }
 
 /* App au-dessus */
@@ -151,13 +173,22 @@ body::after {
    TYPO
 --------------------------------------------------- */
 
-h1, h2, h3, h4, h5, h6, .heading {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.heading {
   font-family: "Poppins", sans-serif;
   font-weight: 600 !important;
   letter-spacing: -0.01em;
 }
 
-input, textarea, select, button {
+input,
+textarea,
+select,
+button {
   font: inherit;
 }
 
@@ -173,11 +204,13 @@ a {
   text-decoration-thickness: 1.5px;
   text-underline-offset: 3px;
 
-  transition: color 0.2s ease, opacity 0.2s ease;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease;
 }
 
-a:hover{
-   color: #2563eb !important;
+a:hover {
+  color: rgb(var(--primary-strong));
 }
 
 a svg {

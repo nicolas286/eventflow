@@ -1,5 +1,7 @@
 @media (max-width: 1000px) {
-  .adminPageRight { padding: 0px; }
+  .adminPageRight {
+    padding: 20px 16px 40px;
+  }
 }
 
 @media (max-width: 768px) {

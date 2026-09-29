@@ -1,0 +1,487 @@
+.adminAppShell {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  background: var(--ef-bg-app);
+  color: var(--ef-text-primary);
+}
+
+.adminAppShell__desktopSidebar {
+  position: relative;
+  z-index: 90;
+}
+
+.adminSidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  width: 264px;
+  height: 100dvh;
+  min-height: 0;
+  padding: 18px 14px 14px;
+  color: #d7deea;
+  background:
+    radial-gradient(
+      circle at 15% 0%,
+      rgb(var(--primary) / 0.16),
+      transparent 34%
+    ),
+    #111827;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 18px 0 46px rgba(15, 23, 42, 0.08);
+}
+
+.adminSidebar__mobileHeader {
+  display: none;
+}
+
+.adminSidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 62px;
+  padding: 8px 8px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.adminSidebar__logo,
+.adminSidebar__logoFallback {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+.adminSidebar__logo {
+  object-fit: contain;
+  padding: 4px;
+}
+
+.adminSidebar__logoFallback {
+  display: grid;
+  place-items: center;
+  color: #111827;
+  font-weight: 800;
+}
+
+.adminSidebar__brandCopy,
+.adminSidebar__userCopy,
+.adminSidebar__publicCard > div:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.adminSidebar__brandCopy strong,
+.adminSidebar__userCopy strong {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminSidebar__brandCopy span,
+.adminSidebar__userCopy span {
+  margin-top: 2px;
+  color: #8f9bad;
+  font-size: 11px;
+}
+
+.adminSidebar__body {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.adminSidebar__group + .adminSidebar__group {
+  margin-top: 18px;
+}
+
+.adminSidebar__groupLabel {
+  padding: 0 10px 7px;
+  color: #768398;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.adminSidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.adminSidebar__navLink {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 11px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: #b8c2d1;
+  font-size: 13px;
+  font-weight: 560;
+  line-height: 1.25;
+  text-decoration: none;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.adminSidebar__navLink:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.adminSidebar__navLink.isActive {
+  color: #ffffff;
+  border-color: rgb(var(--primary) / 0.22);
+  background: rgb(var(--primary) / 0.17);
+  font-weight: 680;
+}
+
+.adminSidebar__navLink.isActive::before {
+  position: absolute;
+  top: 11px;
+  bottom: 11px;
+  left: -4px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgb(var(--primary-strong));
+  content: "";
+}
+
+.adminSidebar__navIcon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.88;
+}
+
+.adminSidebar__navIcon svg,
+.adminSidebar__logout svg,
+.adminSidebar__iconButton svg,
+.adminAppShell__publicLink svg {
+  width: 18px;
+  height: 18px;
+}
+
+.adminSidebar__publicCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 20px 2px 0;
+  padding: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.adminSidebar__publicCard strong {
+  color: #f8fafc;
+  font-size: 12px;
+}
+
+.adminSidebar__publicCard span {
+  margin-top: 4px;
+  color: #8f9bad;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.adminSidebar__publicActions {
+  display: flex;
+  gap: 7px;
+}
+
+.adminSidebar__publicActions a,
+.adminSidebar__publicActions button {
+  min-height: 32px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #dbe4f0;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.adminSidebar__publicActions a:hover,
+.adminSidebar__publicActions button:hover {
+  color: #ffffff !important;
+  border-color: rgb(var(--primary) / 0.4);
+  background: rgb(var(--primary) / 0.14);
+}
+
+.adminSidebar__footer {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 8px 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.adminSidebar__avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid rgb(var(--primary) / 0.34);
+  border-radius: 10px;
+  background: rgb(var(--primary) / 0.17);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.adminSidebar__logout,
+.adminSidebar__iconButton {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: #8f9bad;
+  cursor: pointer;
+}
+
+.adminSidebar__logout:hover,
+.adminSidebar__iconButton:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.adminSidebar__logout:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.adminAppShell__main {
+  min-width: 0;
+}
+
+.adminAppShell__topbar {
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 32px;
+  border-bottom: 1px solid var(--ef-border-default);
+  background: rgb(248 250 252 / 0.86);
+  backdrop-filter: blur(16px);
+}
+
+.adminAppShell__topbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.adminAppShell__topbarLeft > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.adminAppShell__topbarLeft strong {
+  color: var(--ef-text-primary);
+  font-family: "Poppins", sans-serif;
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.adminAppShell__eyebrow {
+  color: var(--ef-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.adminAppShell__menuButton {
+  display: none;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  padding: 10px;
+  border: 1px solid var(--ef-border-default);
+  border-radius: 11px;
+  background: var(--ef-bg-surface);
+  cursor: pointer;
+}
+
+.adminAppShell__menuButton span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  margin: 2px auto;
+  border-radius: 999px;
+  background: var(--ef-text-primary);
+}
+
+.adminAppShell__publicLink {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--ef-border-default);
+  border-radius: 10px;
+  background: var(--ef-bg-surface);
+  color: var(--ef-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+  box-shadow: var(--ef-shadow-xs);
+}
+
+.adminAppShell__publicLink:hover {
+  color: rgb(var(--primary-strong)) !important;
+  border-color: rgb(var(--primary) / 0.3);
+  background: rgb(var(--primary) / 0.055);
+}
+
+.adminAppShell__content {
+  min-width: 0;
+}
+
+.adminAppShell__mobileLayer {
+  display: none;
+}
+
+@media (max-width: 1040px) {
+  .adminAppShell {
+    display: block;
+  }
+
+  .adminAppShell__desktopSidebar {
+    display: none;
+  }
+
+  .adminAppShell__menuButton {
+    display: grid;
+  }
+
+  .adminAppShell__topbar {
+    min-height: 66px;
+    padding: 10px 16px;
+  }
+
+  .adminAppShell__publicLink {
+    width: 42px;
+    height: 42px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .adminAppShell__publicLink span {
+    display: none;
+  }
+
+  .adminAppShell__mobileLayer {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: block;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .adminAppShell__mobileLayer.isOpen {
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .adminAppShell__backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: rgba(15, 23, 42, 0.48);
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity 180ms ease;
+  }
+
+  .adminAppShell__mobileLayer.isOpen .adminAppShell__backdrop {
+    opacity: 1;
+  }
+
+  .adminAppShell__mobileSidebar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: min(320px, 88vw);
+    transform: translateX(-100%);
+    transition: transform 220ms ease;
+  }
+
+  .adminAppShell__mobileLayer.isOpen .adminAppShell__mobileSidebar {
+    transform: translateX(0);
+  }
+
+  .adminAppShell__mobileSidebar .adminSidebar {
+    position: static;
+    width: 100%;
+  }
+
+  .adminSidebar__mobileHeader {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px 10px 10px;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+  }
+}
+
+@media (max-width: 560px) {
+  .adminAppShell__topbarLeft strong {
+    font-size: 15px;
+  }
+
+  .adminAppShell__eyebrow {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adminSidebar__navLink,
+  .adminAppShell__backdrop,
+  .adminAppShell__mobileSidebar {
+    transition: none;
+  }
+}

@@ -4,61 +4,69 @@ import { Button } from "@shared/ui/components";
 import "./WidgetTicketCard.css";
 
 type Props = {
-    product: PublicEventProduct;
-    soldOut: boolean;
-    unavailable?: boolean;
-    currency: string;
-    qty: number;
-    maxQty: number;
-    updateQty: (productId: string, qty: number) => void;
-}
+  product: PublicEventProduct;
+  soldOut: boolean;
+  unavailable?: boolean;
+  currency: string;
+  qty: number;
+  maxQty: number;
+  updateQty: (productId: string, qty: number) => void;
+};
 
-export function WidgetTicketCard({product, soldOut, unavailable = false, currency, qty, maxQty, updateQty} : Props){
-    return (
+export function WidgetTicketCard({
+  product,
+  soldOut,
+  unavailable = false,
+  currency,
+  qty,
+  maxQty,
+  updateQty,
+}: Props) {
+  return (
     <div
-    key={product.id}
-    className={`widgetEventCard ${soldOut || unavailable ? "isSoldOut" : ""}`}
+      key={product.id}
+      className={`widgetTicketCard ${soldOut || unavailable ? "isSoldOut" : ""}`}
     >
-        <div className="widgetEventTitle">{product.name}</div>
+      <div className="widgetTicketTitle">{product.name}</div>
 
-        <div style={{ fontSize: 13, opacity: 0.7 }}>
+      <div style={{ fontSize: 13, opacity: 0.7 }}>
         {formatMoney(product.priceCents, currency)}
-        </div>
+      </div>
 
-        {unavailable ? (
-          <div className="widgetTicketDesc">Paiement temporairement indisponible</div>
-        ) : null}
-
-        {product.description && (
+      {unavailable ? (
         <div className="widgetTicketDesc">
-            {product.description}
+          Paiement temporairement indisponible
         </div>
-        )}
+      ) : null}
 
-        <div className="widgetQtyBlock">
-            <Button
-            className="widgetButton"
-                label="−"
-                onClick={() => updateQty(product.id, qty - 1)}
-                disabled={qty <= 0}
-            />
+      {product.description && (
+        <div className="widgetTicketDesc">{product.description}</div>
+      )}
 
-            <input
-                type="number"
-                min={0}
-                max={unavailable ? qty : maxQty}
-                value={qty}
-                onChange={(e) => updateQty(product.id, Number(e.target.value))}
-                disabled={soldOut}
-            />
+      <div className="widgetQtyBlock">
+        <Button
+          className="widgetButton"
+          label="−"
+          onClick={() => updateQty(product.id, qty - 1)}
+          disabled={qty <= 0}
+        />
 
-            <Button
-            className="widgetButton"
-                label="+"
-                onClick={() => updateQty(product.id, qty + 1)}
-                disabled={soldOut || unavailable || qty >= maxQty}
-            />
-        </div>
+        <input
+          type="number"
+          min={0}
+          max={unavailable ? qty : maxQty}
+          value={qty}
+          onChange={(e) => updateQty(product.id, Number(e.target.value))}
+          disabled={soldOut}
+        />
+
+        <Button
+          className="widgetButton"
+          label="+"
+          onClick={() => updateQty(product.id, qty + 1)}
+          disabled={soldOut || unavailable || qty >= maxQty}
+        />
+      </div>
     </div>
-    )
+  );
 }

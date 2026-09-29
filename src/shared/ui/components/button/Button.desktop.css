@@ -5,7 +5,7 @@
   gap: 0.5rem;
 
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: var(--ef-radius-md, 12px);
   font-size: 14px;
   font-weight: 650;
 
@@ -99,7 +99,7 @@ html.theme--primaryLight .ui-button--ghost:hover {
 /* ========================= */
 
 .ui-button--danger {
-  background: rgb(239 68 68 / 0.10);
+  background: rgb(239 68 68 / 0.1);
   border-color: rgb(239 68 68 / 0.25);
   color: rgb(185 28 28);
   border: 1px solid rgb(185 28 28 / 0.55);

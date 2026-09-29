@@ -1,6 +1,5 @@
 .adminPage {
-  display: grid;
-  gap: 16px;
+  min-height: 100dvh;
 }
 
 .adminPageGrid {
@@ -13,7 +12,9 @@
   display: grid;
   gap: 16px;
   width: 100%;
-  padding: 24px 32px;
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 28px 32px 48px;
   position: relative;
   z-index: 5;
 }
@@ -31,8 +32,8 @@
   gap: 12px;
   padding: 12px 14px;
   border-radius: 12px;
-  background: rgba(0,0,0,0.03);
-  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .adminNoticeTitle {
@@ -51,7 +52,7 @@
   font-weight: 700;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.12);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   background: white;
 }
 
@@ -63,4 +64,3 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-

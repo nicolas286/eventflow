@@ -13,6 +13,7 @@ import type { EventOverviewRow } from "../../events/schemas/admin.eventsOverview
 import type { DashboardBootstrap } from "../schemas/admin.dashboardBootstrap.schema";
 import { normalizeError } from "@shared/errors/errors";
 import { StripeMigrationNotice } from "../../notices/components/StripeMigrationNotice";
+import { AdminAppShell } from "./AdminAppShell/AdminAppShell";
 
 export type AdminOutletContext = {
   org: OrgInfo | null;
@@ -40,6 +41,11 @@ export default function AdminDashboard() {
     : null;
 
   const primaryHex = bootstrap?.organizationProfile?.primaryColor ?? "#2563eb";
+  const userName = bootstrap?.profile
+    ? [bootstrap.profile.firstName, bootstrap.profile.lastName]
+        .filter(Boolean)
+        .join(" ")
+    : null;
 
   if (loading && !bootstrap) {
     return (
@@ -90,29 +96,35 @@ export default function AdminDashboard() {
     return <Navigate to="/admin/onboarding" replace />;
   }
 
+  const content = (
+    <div className="adminPageRight">
+      {!isOnboarding && bootstrap.organization ? (
+        <StripeMigrationNotice bootstrap={bootstrap} />
+      ) : null}
+      <Outlet
+        context={
+          {
+            org: topNavOrg,
+            orgId: orgId ?? "", // ✅ onboarding: "" (pas utilisé)
+            bootstrap,
+            events,
+            refetch,
+          } satisfies AdminOutletContext
+        }
+      />
+    </div>
+  );
+
   return (
     <div className="adminPage">
       <OrgThemeSync primaryColor={primaryHex} />
-      {!isOnboarding && <TopNav mode="admin" org={topNavOrg} />}
-
-      <div className="adminPageGrid">
-        <div className="adminPageRight">
-          {!isOnboarding && bootstrap.organization ? (
-            <StripeMigrationNotice bootstrap={bootstrap} />
-          ) : null}
-          <Outlet
-            context={
-              {
-                org: topNavOrg,
-                orgId: orgId ?? "", // ✅ onboarding: "" (pas utilisé)
-                bootstrap,
-                events,
-                refetch,
-              } satisfies AdminOutletContext
-            }
-          />
-        </div>
-      </div>
+      {isOnboarding ? (
+        content
+      ) : (
+        <AdminAppShell org={topNavOrg} userName={userName}>
+          {content}
+        </AdminAppShell>
+      )}
     </div>
   );
 }
