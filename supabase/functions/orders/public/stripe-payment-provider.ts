@@ -16,8 +16,7 @@ type StripeCheckoutSession = StripeRecord & {
   expires_at?: number | null;
 };
 
-export const STRIPE_CHECKOUT_LIFETIME_SECONDS = 31 * 60;
-export const ORDER_EXPIRY_GRACE_SECONDS = 2 * 60;
+export const STRIPE_CHECKOUT_LIFETIME_SECONDS = 35 * 60;
 
 export class StripeEventPaymentProvider implements EventPaymentProvider {
   readonly name = "stripe" as const;
@@ -31,10 +30,11 @@ export class StripeEventPaymentProvider implements EventPaymentProvider {
     input: CreateEventPaymentInput,
   ): Promise<CreatedEventPayment> {
     const productName = input.eventTitle?.trim() || "Billet Eventflow";
-    const requestedExpiresAt =
-      Math.floor(Date.now() / 1000) + STRIPE_CHECKOUT_LIFETIME_SECONDS;
     const cancelUrl = new URL(input.redirectUrl);
     cancelUrl.searchParams.set("payment", "cancelled");
+    const expiresAt =
+      input.checkoutExpiresAt ??
+      Math.floor(Date.now() / 1000) + STRIPE_CHECKOUT_LIFETIME_SECONDS;
 
     // Direct charge: the Checkout Session and PaymentIntent are created in the
     // organizer's connected account. No platform subscription/customer is used.
@@ -45,7 +45,9 @@ export class StripeEventPaymentProvider implements EventPaymentProvider {
         method: "POST",
         connectedAccountId: this.connectedAccountId,
         idempotencyKey: `eventflow-order-${input.orderId}`,
+        timeoutMs: 30_000,
         params: {
+          expires_at: expiresAt,
           ui_mode: "hosted_page",
           mode: "payment",
           "payment_method_types[0]": "bancontact",
@@ -58,7 +60,6 @@ export class StripeEventPaymentProvider implements EventPaymentProvider {
           origin_context: "web",
           success_url: input.redirectUrl,
           cancel_url: cancelUrl.toString(),
-          expires_at: requestedExpiresAt,
           client_reference_id: input.orderId,
           customer_email: input.buyerEmail,
           "line_items[0][quantity]": 1,
@@ -96,9 +97,7 @@ export class StripeEventPaymentProvider implements EventPaymentProvider {
     }
 
     const checkoutExpiresAt = new Date(session.expires_at * 1000).toISOString();
-    const orderExpiresAt = new Date(
-      (session.expires_at + ORDER_EXPIRY_GRACE_SECONDS) * 1000,
-    ).toISOString();
+    const orderExpiresAt = checkoutExpiresAt;
 
     return {
       provider: "stripe",

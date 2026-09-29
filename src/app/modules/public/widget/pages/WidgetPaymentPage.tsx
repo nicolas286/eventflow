@@ -315,7 +315,17 @@ export function WidgetPaymentPage() {
             })),
           }),
         );
-        navigate(`/widget/o/${orgSlug}/e/${eventSlug}/confirmation${search}`);
+        const confirmationSearch = new URLSearchParams(search);
+        for (const key of ["orderId", "token", "bookingToken"])
+          confirmationSearch.delete(key);
+        if (bookingToken) {
+          confirmationSearch.set("orderId", orderId);
+          confirmationSearch.set("token", bookingToken);
+        }
+        const query = confirmationSearch.toString();
+        navigate(
+          `/widget/o/${orgSlug}/e/${eventSlug}/confirmation${query ? `?${query}` : ""}`,
+        );
         return;
       }
 

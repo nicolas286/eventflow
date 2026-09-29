@@ -22,7 +22,7 @@ export async function findReusableProviderPayment(
   orderId: string,
   provider: PaymentProviderName,
 ) {
-  let query = admin
+  const query = admin
     .from("payments")
     .select(
       "provider_payment_id, provider_checkout_session_id, checkout_expires_at, raw, created_at",
@@ -33,13 +33,18 @@ export async function findReusableProviderPayment(
     .eq("is_refund", false)
     .order("created_at", { ascending: false });
 
-  if (provider === "stripe") {
-    query = query.gt("checkout_expires_at", new Date().toISOString());
-  }
-
   const { data, error } = await query.limit(1).maybeSingle();
 
   if (error || !data?.provider_payment_id) return null;
+  if (provider === "stripe") {
+    const raw = data.raw as { expires_at?: unknown } | null;
+    if (
+      typeof raw?.expires_at !== "number" ||
+      raw.expires_at <= Math.floor(Date.now() / 1000)
+    ) {
+      return null;
+    }
+  }
   const url = checkoutUrl(data.raw);
   if (!url) return null;
 
@@ -59,52 +64,37 @@ export async function insertProviderPaymentOrRollback(input: {
   amountCents: number;
   currency: string;
 }) {
-  if (
-    input.payment.provider === "stripe" &&
-    input.payment.providerAccountId &&
-    input.payment.providerCheckoutSessionId &&
-    input.payment.checkoutExpiresAt &&
-    input.payment.orderExpiresAt
-  ) {
-    const { error } = await input.admin.rpc("store_stripe_checkout_payment", {
-      p_order_id: input.orderId,
-      p_provider_payment_id: input.payment.providerPaymentId,
-      p_provider_account_id: input.payment.providerAccountId,
-      p_checkout_session_id: input.payment.providerCheckoutSessionId,
-      p_amount_cents: input.amountCents,
-      p_currency: input.currency,
-      p_checkout_expires_at: input.payment.checkoutExpiresAt,
-      p_order_expires_at: input.payment.orderExpiresAt,
-      p_raw: input.payment.raw,
-    });
-
-    if (!error) return;
-
-    await input.provider.rollbackPayment(
-      input.payment.providerCheckoutSessionId,
-    );
-    throw internal("PAYMENT_DB_INSERT_FAILED");
-  }
-
   const now = new Date().toISOString();
-  const { error } = await input.admin.from("payments").insert({
-    order_id: input.orderId,
-    provider: input.payment.provider,
-    provider_payment_id: input.payment.providerPaymentId,
-    provider_account_id: input.payment.providerAccountId,
-    provider_checkout_session_id: input.payment.providerCheckoutSessionId,
-    amount_cents: input.amountCents,
-    currency: input.currency,
-    status: "open",
-    is_refund: false,
-    created_at: now,
-    updated_at: now,
-    processed_at: null,
-    checkout_expires_at: input.payment.checkoutExpiresAt,
-    raw: input.payment.raw,
-    type: "payment",
-    parent_payment_id: null,
-  });
+  const { error } =
+    input.payment.provider === "stripe"
+      ? await input.admin.rpc("register_stripe_checkout_payment", {
+          p_order_id: input.orderId,
+          p_account_id: input.payment.providerAccountId,
+          p_session_id: input.payment.providerCheckoutSessionId,
+          p_payment_id: input.payment.providerPaymentId,
+          p_amount_cents: input.amountCents,
+          p_currency: input.currency,
+          p_expires_at: input.payment.raw.expires_at,
+          p_raw: input.payment.raw,
+        })
+      : await input.admin.from("payments").insert({
+          order_id: input.orderId,
+          provider: input.payment.provider,
+          provider_payment_id: input.payment.providerPaymentId,
+          provider_account_id: input.payment.providerAccountId,
+          provider_checkout_session_id: input.payment.providerCheckoutSessionId,
+          amount_cents: input.amountCents,
+          currency: input.currency,
+          status: "open",
+          is_refund: false,
+          created_at: now,
+          updated_at: now,
+          processed_at: null,
+          checkout_expires_at: input.payment.checkoutExpiresAt,
+          raw: input.payment.raw,
+          type: "payment",
+          parent_payment_id: null,
+        });
 
   if (!error) return;
 

@@ -26,6 +26,7 @@ export type CreateEventPaymentInput = {
   redirectUrl: string;
   eventTitle: string | null;
   buyerEmail: string | null;
+  checkoutExpiresAt?: number;
 };
 
 export type CreatedEventPayment = {
@@ -34,8 +35,8 @@ export type CreatedEventPayment = {
   providerAccountId: string | null;
   providerCheckoutSessionId: string | null;
   checkoutUrl: string;
-  checkoutExpiresAt: string | null;
-  orderExpiresAt: string | null;
+  checkoutExpiresAt?: string | null;
+  orderExpiresAt?: string | null;
   raw: Record<string, unknown>;
 };
 

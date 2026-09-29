@@ -502,7 +502,9 @@ function buildUblInvoice(
 
   <cac:PaymentMeans>
     <cbc:PaymentMeansCode name="Credit transfer">30</cbc:PaymentMeansCode>
-    <cbc:PaymentID>${escapeXml(invoice.payment_reference ?? `E-${invoice.number}`)}</cbc:PaymentID>
+    <cbc:PaymentID>${
+    escapeXml(invoice.payment_reference ?? `E-${invoice.number}`)
+  }</cbc:PaymentID>
     <cac:PayeeFinancialAccount>
       <cbc:ID>BE51732081025262</cbc:ID>
       <cbc:Name>Eventflow - Nicolas Manns</cbc:Name>
@@ -587,30 +589,28 @@ async function updatePeppolStatus(
     providerMessageId?: string | null;
 
     errorMessage?: string | null;
+    errorCode?: string | null;
   },
   logger: Logger,
+  claimToken: string,
 ): Promise<void> {
   const {
+    data: completed,
     error,
   } = await admin.rpc(
-    "rpc_update_invoice_peppol_status",
+    "complete_invoice_billit_delivery",
     {
-      p_input: {
-        invoice_id: invoiceId,
-
-        status: input.status,
-
-        provider_message_id: input.providerMessageId ??
-          null,
-
-        error_message: input.errorMessage ??
-          null,
-      },
+      p_invoice_id: invoiceId,
+      p_claim_token: claimToken,
+      p_status: input.status,
+      p_provider_message_id: input.providerMessageId ?? null,
+      p_error_code: input.errorCode ??
+        (input.status === "failed" ? "BILLIT_SEND_FAILED" : null),
     },
   );
 
   if (
-    error
+    error || !completed
   ) {
     logger.error(
       "peppol_status_update_failed",
@@ -619,7 +619,7 @@ async function updatePeppolStatus(
 
         status: input.status,
 
-        message: error.message,
+        message: error?.message ?? "DELIVERY_CLAIM_LOST",
       },
     );
 
@@ -642,6 +642,70 @@ export async function sendInvoiceToBillit(
   admin: SupabaseClient,
   invoiceId: string,
   options: { debug?: boolean; dryRun?: boolean } = {},
+) {
+  assertBillitEnabled();
+  if (options.debug || options.dryRun) {
+    return await sendClaimedInvoiceToBillit(admin, invoiceId, {
+      claimToken: "",
+      providerAttempted: false,
+    }, options);
+  }
+  const { data: claim, error } = await admin.rpc(
+    "claim_invoice_billit_delivery",
+    { p_invoice_id: invoiceId },
+  );
+  if (error) throw new Error("BILLIT_DELIVERY_CLAIM_FAILED");
+  if (!claim?.claimed) {
+    return json({
+      ok: true,
+      reused: true,
+      reason: claim?.reason ?? "in_progress",
+    }, 200);
+  }
+  if (typeof claim.claimToken !== "string" || !claim.claimToken) {
+    throw new Error("BILLIT_DELIVERY_CLAIM_INVALID");
+  }
+  const delivery = { claimToken: claim.claimToken, providerAttempted: false };
+  try {
+    const result = await sendClaimedInvoiceToBillit(
+      admin,
+      invoiceId,
+      delivery,
+      options,
+    );
+    // Errors before the provider request (query/validation) remain retryable.
+    if (result.error && !delivery.providerAttempted) {
+      await admin.rpc("complete_invoice_billit_delivery", {
+        p_invoice_id: invoiceId,
+        p_claim_token: delivery.claimToken,
+        p_status: "failed",
+        p_error_code: "BILLIT_PREPARATION_FAILED",
+      });
+    }
+    return result;
+  } catch {
+    const errorCode = delivery.providerAttempted
+      ? "BILLIT_DELIVERY_UNKNOWN"
+      : "BILLIT_PREPARATION_FAILED";
+    try {
+      await admin.rpc("complete_invoice_billit_delivery", {
+        p_invoice_id: invoiceId,
+        p_claim_token: delivery.claimToken,
+        p_status: "failed",
+        p_error_code: errorCode,
+      });
+    } catch {
+      /* A stale sending claim also requires reconciliation; it is never blindly retried. */
+    }
+    return json({ ok: false, error: errorCode }, 502);
+  }
+}
+
+async function sendClaimedInvoiceToBillit(
+  admin: SupabaseClient,
+  invoiceId: string,
+  delivery: { claimToken: string; providerAttempted: boolean },
+  options: { debug?: boolean; dryRun?: boolean },
 ) {
   const logger = createConsoleLogger("billit");
   const { debug = false, dryRun = false } = options;
@@ -1040,17 +1104,6 @@ export async function sendInvoiceToBillit(
     );
   }
 
-  await updatePeppolStatus(
-    admin,
-    invoiceId,
-    {
-      status: "sending",
-
-      errorMessage: null,
-    },
-    logger,
-  );
-
   if (
     !billitApiKey ||
     !billitPartyId
@@ -1075,11 +1128,13 @@ export async function sendInvoiceToBillit(
       invoiceId,
       {
         status: "skipped",
+        errorCode: "BILLIT_NOT_CONFIGURED",
 
         errorMessage:
           "Billit not configured (missing BILLIT_API_KEY or BILLIT_PARTY_ID)",
       },
       logger,
+      delivery.claimToken,
     );
 
     return json(
@@ -1133,11 +1188,13 @@ export async function sendInvoiceToBillit(
       invoiceId,
       {
         status: "skipped",
+        errorCode: "BILLIT_NOT_APPLICABLE",
 
         errorMessage:
           "Peppol not applicable (missing buyer legal/VAT/address data)",
       },
       logger,
+      delivery.claimToken,
     );
 
     return json(
@@ -1226,10 +1283,12 @@ export async function sendInvoiceToBillit(
     },
   );
 
+  delivery.providerAttempted = true;
   const response = await fetch(
     billitEndpoint,
     {
       method: "POST",
+      signal: AbortSignal.timeout(30_000),
 
       headers: {
         "Content-Type": "application/json",
@@ -1295,6 +1354,7 @@ export async function sendInvoiceToBillit(
         invoiceId,
         {
           status: "skipped",
+          errorCode: "BILLIT_NOT_APPLICABLE",
 
           errorMessage: safeStr(
             responseText,
@@ -1302,6 +1362,7 @@ export async function sendInvoiceToBillit(
           ),
         },
         logger,
+        delivery.claimToken,
       );
 
       return json(
@@ -1344,6 +1405,9 @@ export async function sendInvoiceToBillit(
       invoiceId,
       {
         status: "failed",
+        errorCode: response.status >= 500 || response.status === 408
+          ? "BILLIT_DELIVERY_UNKNOWN"
+          : "BILLIT_SEND_FAILED",
 
         errorMessage: safeStr(
           responseText ||
@@ -1352,13 +1416,16 @@ export async function sendInvoiceToBillit(
         ),
       },
       logger,
+      delivery.claimToken,
     );
 
     return json(
       {
         ok: false,
 
-        error: "billit_send_failed",
+        error: response.status >= 500 || response.status === 408
+          ? "BILLIT_DELIVERY_UNKNOWN"
+          : "billit_send_failed",
 
         status: response.status,
 
@@ -1408,6 +1475,7 @@ export async function sendInvoiceToBillit(
       errorMessage: null,
     },
     logger,
+    delivery.claimToken,
   );
 
   logger.info(

@@ -17,9 +17,25 @@ La route publique `orders` crée la commande puis une Checkout Session dans le C
 
 Les organisations anciennement onboardées avec Mollie, en test ou en live, reçoivent une alerte d’onboarding Stripe. Un événement payant reste bloqué tant que l’organisateur n’a pas validé ses conditions de vente et que le compte Stripe n’est pas Standard (ou équivalent avec Dashboard complet et responsabilité Stripe), sans exigence en attente, avec les indicateurs `details_submitted`, `charges_enabled` et `payouts_enabled` à `true`. Les inscriptions gratuites restent disponibles.
 
-Le webhook Connect vérifie la signature et le mode live/test, exige un événement lié à un Connected Account et utilise le journal privé des événements pour l’idempotence. Un remboursement total invalide les billets et libère la capacité une seule fois ; un e-mail de remboursement idempotent est envoyé.
+Le webhook Connect vérifie la signature et le mode live/test, exige un événement lié à un Connected Account et utilise le journal privé `private.payment_webhook_events` pour l’idempotence. Un remboursement total invalide les billets et libère la capacité une seule fois ; un e-mail de remboursement idempotent est envoyé.
 
-Le Checkout expire après environ 31 minutes et la commande deux minutes plus tard. Le virement bancaire de billetterie reste conservé pour l’historique mais est désactivé par le flag global.
+La réservation Stripe et la Checkout Session partagent une échéance persistée de
+35 minutes à la création. Les retries conservent cette échéance et la même clé
+d'idempotence. Le stock reste réservé tant que Stripe indique un paiement ouvert
+ou en cours de traitement, même après l'heure prévue. Le webhook d'expiration et
+le worker existant `/workers/reminders` rapprochent l'état réel de Stripe avant
+de libérer le stock. Le reçu SQL `processed_at` empêche de comptabiliser deux
+fois un acompte lors d'une reprise.
+
+Un paiement reçu pour une commande déjà expirée ou annulée ne recrée pas de
+réservation : il déclenche le remboursement du montant reçu, avec reprise du
+même remboursement en cas d'interruption. Le rapprochement vérifie le compte,
+le PaymentIntent, le montant et la devise. Un remboursement partiel ou ambigu
+demande une vérification et ne provoque pas un nouveau remboursement intégral.
+La planification du worker doit donc rester active ; une indisponibilité Stripe
+conserve prudemment le stock jusqu'au prochain rapprochement.
+
+Le virement bancaire de billetterie reste conservé pour l’historique mais est désactivé par le flag global.
 
 Les conditions organisateur par défaut sont créées pour toutes les organisations. Elles doivent être relues et validées par un owner ou admin avec un e-mail public avant onboarding. Leur version et leur snapshot accepté par l’acheteur sont conservés. Une réauthentification dédiée avant validation reste une amélioration future.
 
@@ -36,7 +52,21 @@ Lors d’une souscription ou d’un passage vers un plan supérieur :
 
 Un nouvel appel identique pendant la période active réutilise la facture existante. Les anciennes références Mollie sont copiées dans `mollie_legacy_snapshot` lors du premier passage volontaire à la facturation interne, sans être modifiées ni appelées.
 
-Le job PostgreSQL quotidien `eventflow-manual-subscription-renewals` crée de façon idempotente la facture de la période suivante pour les abonnements manuels arrivés à échéance. La facture devient immédiatement visible dans la notification d’accueil ; son PDF est généré à la demande s’il ne l’était pas encore.
+Le job PostgreSQL `eventflow-manual-subscription-renewals` passe toutes les cinq
+minutes et crée de façon idempotente la facture de la période suivante pour les
+abonnements manuels arrivés à échéance. Une grâce maximale d'une heure conserve
+les droits d'un abonnement manuel actif dont le plan et l'échéance correspondent
+à ceux de l'organisation. Pendant cette grâce, la période suivante part de
+l'échéance précédente. Après une interruption plus longue, elle repart au
+moment de la reprise, sans générer de factures rétroactives. Une résiliation
+désactive immédiatement cette grâce et remet l'organisation sur Free.
+
+La facture devient visible dans la notification d'accueil ; son PDF est généré
+à la demande s'il ne l'était pas encore. Un échec PDF/Billit après création ne
+fait plus échouer la souscription déjà validée : l'écran affiche l'avertissement
+et permet de reprendre les erreurs déterministes. Une réponse Billit incertaine
+demande un rapprochement préalable pour éviter un doublon. Les détails figurent
+dans [Reprise des livraisons de paiement](todo/payment-delivery.md).
 
 ## Variables Edge Functions
 

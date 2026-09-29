@@ -294,7 +294,7 @@ describe("Stripe provider boundaries", () => {
       "payment_method_types%5B0%5D=bancontact",
     );
     expect(String(init.body)).toContain("expires_at=");
-    expect(new Date(payment.orderExpiresAt).getTime()).toBeGreaterThan(
+    expect(new Date(payment.orderExpiresAt).getTime()).toBe(
       new Date(payment.checkoutExpiresAt).getTime(),
     );
     expect(String(init.body)).not.toContain("transfer_data");

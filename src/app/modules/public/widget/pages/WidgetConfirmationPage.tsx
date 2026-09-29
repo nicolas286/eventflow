@@ -1,109 +1,25 @@
-import { orderPublicSchema } from "@contracts/orders-read";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
+  useLocation,
   useNavigate,
   useParams,
-  useLocation,
   useSearchParams,
 } from "react-router-dom";
 
 import { Button } from "@shared/ui/components";
-import { useWidgetTheme } from "../hooks/useWidgetTheme";
-import { formatMoney } from "../../register/helpers/checkoutStore";
 import { MessageBox } from "@ui/components/message/MessageBox";
-
-import "./WidgetConfirmationPage.css";
-import { useWidgetAutoResize } from "../hooks/useWidgetAutoResize";
+import { formatMoney } from "../../register/helpers/checkoutStore";
 import { WidgetFooter } from "../components/WidgetFooter/WidgetFooter";
 import { WidgetRoot } from "../components/WidgetRoot/WidgetRoot";
-import type { BankTransferInstructions } from "@contracts/bank-transfer";
+import {
+  readCachedWidgetConfirmation,
+  resolveWidgetOrderCredentials,
+} from "../helpers/widgetConfirmation";
+import { useWidgetAutoResize } from "../hooks/useWidgetAutoResize";
+import { useWidgetConfirmationOrder } from "../hooks/useWidgetConfirmationOrder";
+import { useWidgetTheme } from "../hooks/useWidgetTheme";
 
-type WidgetConfirmationData = {
-  orderId: string;
-  buyerEmail: string;
-  totalCents: number;
-  currency: string;
-  totalTickets: number;
-  eventTitle: string;
-  bookingToken?: string | null;
-  status?: string | null;
-  paymentMethod?: "stripe" | "bank_transfer" | null;
-  bankTransfer?: BankTransferInstructions | null;
-  items?: Array<{
-    name: string;
-    quantity: number;
-    totalCents: number;
-    currency: string;
-  }>;
-};
-
-type OrderStatus =
-  | "open"
-  | "pending"
-  | "paid"
-  | "failed"
-  | "cancelled"
-  | "canceled"
-  | "expired"
-  | "awaiting_payment"
-  | "partially_paid"
-  | "refunded";
-
-type OrderItemPublic = {
-  name?: string;
-  quantity?: number;
-  unitPriceCents?: number;
-  totalCents?: number;
-  currency?: string;
-};
-
-type OrderPublic = {
-  id: string;
-  status: OrderStatus;
-  totalCents?: number;
-  currency?: string;
-  buyerEmail?: string;
-  items?: OrderItemPublic[];
-  paymentMethod?: "stripe" | "bank_transfer" | null;
-  bankTransfer?: BankTransferInstructions | null;
-};
-
-async function fetchOrder(
-  orderId: string,
-  token: string,
-): Promise<OrderPublic> {
-  const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/orders/${encodeURIComponent(
-      orderId,
-    )}?token=${encodeURIComponent(token)}`,
-    {
-      headers: {
-        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      },
-    },
-  );
-
-  if (!res.ok) {
-    throw new Error("order_fetch_failed");
-  }
-
-  const parsed = orderPublicSchema.parse(await res.json());
-  const j = {
-    ...parsed,
-    totalCents: parsed.totalCents ?? undefined,
-    currency: parsed.currency ?? undefined,
-  };
-
-  return {
-    id: j.id,
-    status: j.status,
-    totalCents: j.totalCents,
-    currency: j.currency,
-    paymentMethod: j.paymentMethod,
-    bankTransfer: j.bankTransfer ?? null,
-  };
-}
+import "./WidgetConfirmationPage.css";
 
 function isSuccessStatus(status?: string | null) {
   return status === "paid" || status === "partially_paid";
@@ -124,133 +40,79 @@ export function WidgetConfirmationPage() {
   const orderIdFromUrl = searchParams.get("orderId");
   const tokenFromUrl =
     searchParams.get("token") ?? searchParams.get("bookingToken");
-  const isPaymentReturn = Boolean(orderIdFromUrl && tokenFromUrl);
 
   const confirmationKey =
     orgSlug && eventSlug
       ? `eventflow:widget:confirmation:${orgSlug}:${eventSlug}`
       : null;
 
-  const storedData = useMemo<WidgetConfirmationData | null>(() => {
+  const storedData = useMemo(() => {
     if (!confirmationKey) return null;
-
-    const raw = sessionStorage.getItem(confirmationKey);
-    if (!raw) return null;
-
     try {
-      return JSON.parse(raw) as WidgetConfirmationData;
+      return readCachedWidgetConfirmation(
+        sessionStorage.getItem(confirmationKey),
+      );
     } catch {
       return null;
     }
   }, [confirmationKey]);
 
-  const [remoteOrder, setRemoteOrder] = useState<OrderPublic | null>(null);
-  const [loadingRemote, setLoadingRemote] = useState(false);
-  const [remoteError, setRemoteError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!orderIdFromUrl || !tokenFromUrl) return;
-
-    let cancelled = false;
-
-    async function run() {
-      try {
-        setLoadingRemote(true);
-        setRemoteError(null);
-
-        const order = await fetchOrder(orderIdFromUrl!, tokenFromUrl!);
-
-        if (cancelled) return;
-
-        setRemoteOrder(order);
-      } catch {
-        if (cancelled) return;
-        setRemoteError("Impossible de récupérer la commande.");
-      } finally {
-        if (!cancelled) setLoadingRemote(false);
-      }
-    }
-
-    run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [orderIdFromUrl, tokenFromUrl]);
+  const credentials = useMemo(
+    () =>
+      resolveWidgetOrderCredentials(orderIdFromUrl, tokenFromUrl, storedData),
+    [orderIdFromUrl, tokenFromUrl, storedData],
+  );
+  const {
+    order: remoteOrder,
+    loading: loadingRemote,
+    error: remoteError,
+    refresh,
+  } = useWidgetConfirmationOrder(credentials);
 
   function goBackToEvents() {
     if (!orgSlug) return;
-    navigate(`/widget/o/${orgSlug}${search}`);
+    const eventSearch = new URLSearchParams(search);
+    for (const key of ["orderId", "token", "bookingToken"])
+      eventSearch.delete(key);
+    const query = eventSearch.toString();
+    navigate(`/widget/o/${orgSlug}${query ? `?${query}` : ""}`);
   }
 
   if (!orgSlug || !eventSlug) {
     return <div className="widgetRoot">Confirmation introuvable.</div>;
   }
 
-  const resolvedTitle = storedData?.eventTitle ?? "votre événement";
-  const resolvedData =
-    isPaymentReturn && remoteOrder
-      ? {
-          orderId: remoteOrder.id,
-          buyerEmail: remoteOrder.buyerEmail ?? "",
-          totalCents: remoteOrder.totalCents ?? 0,
-          currency: remoteOrder.currency ?? "EUR",
-          totalTickets: (remoteOrder.items ?? []).reduce(
-            (acc, it) => acc + Number(it.quantity ?? 0),
-            0,
-          ),
-          eventTitle: resolvedTitle,
-          status: remoteOrder.status,
-          paymentMethod: remoteOrder.paymentMethod,
-          bankTransfer: remoteOrder.bankTransfer ?? null,
-          items: (remoteOrder.items ?? []).map((it) => ({
-            name: it.name ?? "Billet",
-            quantity: Number(it.quantity ?? 1),
-            totalCents: Number(
-              it.totalCents ??
-                Number(it.unitPriceCents ?? 0) * Number(it.quantity ?? 1),
-            ),
-            currency: it.currency ?? remoteOrder.currency ?? "EUR",
-          })),
-        }
-      : storedData;
+  const matchingStoredData =
+    storedData?.orderId === remoteOrder?.id ? storedData : null;
+  const resolvedData = remoteOrder
+    ? {
+        orderId: remoteOrder.id,
+        buyerEmail: matchingStoredData?.buyerEmail ?? "",
+        totalCents: remoteOrder.totalCents ?? 0,
+        currency: remoteOrder.currency ?? "EUR",
+        totalTickets: matchingStoredData?.totalTickets,
+        eventTitle: matchingStoredData?.eventTitle ?? "votre événement",
+        status: remoteOrder.status,
+        paymentMethod: remoteOrder.paymentMethod,
+        bankTransfer: remoteOrder.bankTransfer ?? null,
+        items: matchingStoredData?.items,
+      }
+    : null;
 
-  const showLoading = isPaymentReturn && loadingRemote && !resolvedData;
-
-  if (showLoading) {
+  if (loadingRemote) {
     return (
-      <div
-        className="widgetRoot"
-        style={
-          {
-            "--widget-bg": theme.bg,
-            "--widget-card": theme.card,
-            "--widget-text": theme.text,
-            "--widget-button": theme.button,
-          } as React.CSSProperties
-        }
-      >
+      <WidgetRoot theme={theme}>
         <div className="widgetConfirmationCard">
           <h2>Confirmation</h2>
           <div className="widgetEmpty">Chargement de votre commande…</div>
         </div>
-      </div>
+      </WidgetRoot>
     );
   }
 
   if (!resolvedData) {
     return (
-      <div
-        className="widgetRoot"
-        style={
-          {
-            "--widget-bg": theme.bg,
-            "--widget-card": theme.card,
-            "--widget-text": theme.text,
-            "--widget-button": theme.button,
-          } as React.CSSProperties
-        }
-      >
+      <WidgetRoot theme={theme}>
         <div className="widgetConfirmationCard">
           <h2>Confirmation</h2>
 
@@ -258,31 +120,49 @@ export function WidgetConfirmationPage() {
             <MessageBox variant="error">{remoteError}</MessageBox>
           ) : (
             <div className="widgetEmpty">
-              Impossible de retrouver les détails de la réservation.
+              Impossible de vérifier cette réservation. Utilisez le lien reçu
+              par e-mail.
             </div>
           )}
 
           <div className="widgetRecap widgetRecapActions">
+            {credentials ? (
+              <Button label="Réessayer" onClick={refresh} />
+            ) : null}
             <Button label="Retour aux événements" onClick={goBackToEvents} />
           </div>
         </div>
-      </div>
+      </WidgetRoot>
     );
   }
 
   const isSuccess = isSuccessStatus(resolvedData.status);
   const isRefunded = resolvedData.status === "refunded";
+  const isExpired = resolvedData.status === "expired";
+  const isCanceled =
+    resolvedData.status === "canceled" || resolvedData.status === "cancelled";
+  const isFailed = resolvedData.status === "failed";
+  const isClosed = isRefunded || isExpired || isCanceled || isFailed;
+  const isAwaitingTransfer =
+    resolvedData.paymentMethod === "bank_transfer" &&
+    resolvedData.status === "awaiting_payment";
+
+  const statusLabel = isSuccess
+    ? "Réservation confirmée ✅"
+    : isRefunded
+      ? "Commande remboursée"
+      : isExpired
+        ? "Réservation expirée"
+        : isCanceled
+          ? "Réservation annulée"
+          : isFailed
+            ? "Paiement échoué"
+            : "Commande enregistrée";
 
   return (
     <WidgetRoot theme={theme}>
       <div className="widgetConfirmationCard">
-        <div className="widgetConfirmationPill">
-          {isSuccess
-            ? "Réservation confirmée ✅"
-            : isRefunded
-              ? "Commande remboursée"
-              : "Commande enregistrée"}
-        </div>
+        <div className="widgetConfirmationPill">{statusLabel}</div>
 
         <h2>
           {isSuccess
@@ -298,6 +178,11 @@ export function WidgetConfirmationPage() {
               Votre réservation pour <strong>{resolvedData.eventTitle}</strong>{" "}
               a été remboursée. Les billets associés ne sont plus valables.
             </>
+          ) : isClosed ? (
+            <>
+              Cette réservation pour <strong>{resolvedData.eventTitle}</strong>{" "}
+              n’est plus active.
+            </>
           ) : (
             <>
               Votre réservation pour <strong>{resolvedData.eventTitle}</strong>{" "}
@@ -306,16 +191,21 @@ export function WidgetConfirmationPage() {
           )}
         </p>
 
-        {resolvedData.paymentMethod === "bank_transfer" && !isSuccess ? (
+        {isClosed && !isRefunded ? (
+          <MessageBox variant="info">
+            N’effectuez pas de virement pour cette réservation. Contactez
+            l’organisateur si vous avez déjà effectué le paiement.
+          </MessageBox>
+        ) : null}
+
+        {isAwaitingTransfer ? (
           <MessageBox variant="info">
             Les coordonnées de paiement ont été envoyées par e-mail. Vos billets
             seront émis après confirmation du virement par l’organisateur.
           </MessageBox>
         ) : null}
 
-        {resolvedData.paymentMethod === "bank_transfer" &&
-        !isSuccess &&
-        resolvedData.bankTransfer ? (
+        {isAwaitingTransfer && resolvedData.bankTransfer ? (
           <div className="widgetConfirmationSection">
             <div className="widgetSectionTitle">Instructions de virement</div>
             <div className="widgetPaymentInfos">
@@ -351,30 +241,26 @@ export function WidgetConfirmationPage() {
           </div>
         ) : null}
 
-        {resolvedData.buyerEmail ? (
+        {isSuccess && resolvedData.buyerEmail ? (
           <p className="widgetConfirmationSubtitle">
             Un email de confirmation sera envoyé à{" "}
             <strong>{resolvedData.buyerEmail}</strong>.
           </p>
         ) : null}
 
-        {remoteError ? (
-          <MessageBox variant="error">{remoteError}</MessageBox>
-        ) : null}
-
         <div className="widgetConfirmationSection">
           <div className="widgetSectionTitle">Récapitulatif</div>
 
           <div className="widgetPaymentRows">
-            {resolvedData.items?.map((it, idx) => (
-              <div key={idx} className="widgetPaymentRow">
+            {resolvedData.items?.map((item, index) => (
+              <div key={index} className="widgetPaymentRow">
                 <div>
                   <div className="widgetPaymentRowTitle">
-                    {it.name} × {it.quantity}
+                    {item.name} × {item.quantity}
                   </div>
                 </div>
                 <div className="widgetPaymentAmount">
-                  {formatMoney(it.totalCents, it.currency)}
+                  {formatMoney(item.totalCents, item.currency)}
                 </div>
               </div>
             ))}
@@ -390,12 +276,20 @@ export function WidgetConfirmationPage() {
           </div>
 
           <div className="widgetPaymentInfos">
-            <div>Billets : {resolvedData.totalTickets}</div>
+            {resolvedData.totalTickets !== undefined ? (
+              <div>Billets : {resolvedData.totalTickets}</div>
+            ) : null}
             <div>Commande : {resolvedData.orderId}</div>
           </div>
         </div>
 
         <div className="widgetRecap widgetRecapActions">
+          <Button
+            className="widgetButton"
+            variant="secondary"
+            label="Actualiser le statut"
+            onClick={refresh}
+          />
           <Button
             className="widgetButton"
             variant="secondary"

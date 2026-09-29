@@ -49,7 +49,10 @@ jobs:
       - name: Rebuild a disposable local database from migrations
         run: supabase db start
       - name: Check reference data and sensitive permissions
-        run: docker exec -i supabase_db_eventflow-front psql -U postgres -d postgres -v ON_ERROR_STOP=1 < tests/database/baseline.sql
+        run: |
+          for sql_file in tests/database/*.sql; do
+            docker exec -i supabase_db_eventflow-front psql -U postgres -d postgres -v ON_ERROR_STOP=1 < "$sql_file"
+          done
       - name: Stop the CI database
         if: always()
         run: supabase stop --no-backup

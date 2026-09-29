@@ -4,6 +4,7 @@ import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
 import { json } from "../_shared/app/http.ts";
 import { assertInternalEdgeAuthentication } from "../_shared/app/internal-edge/mod.ts";
 import { ResponseError } from "../_shared/errors.ts";
+import { reconcileStripeCheckouts } from "../_shared/payments/stripe-checkout-lifecycle.ts";
 import { serializeError } from "../_shared/modules/logger/mod.ts";
 import { resolveRuntimeConfig } from "../_shared/services/order-reminders/config.ts";
 import { parseSendReminderMailPayload } from "../_shared/services/order-reminders/sendReminderMail.contracts.ts";
@@ -70,6 +71,11 @@ export const handleSendReminderMailRequest = createEdgeHandler(
       });
     }
 
+    try {
+      await reconcileStripeCheckouts(admin, logger);
+    } catch (error) {
+      logger.error("stripe_checkout_reconciliation_unavailable", { error: serializeError(error) });
+    }
     const result = await runCron({
       admin,
       appBaseUrl: config.appBaseUrl,
