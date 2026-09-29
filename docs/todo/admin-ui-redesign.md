@@ -1,6 +1,6 @@
 # Refonte visuelle Eventflow — administration et parcours client
 
-**Statut : shell, vue d’ensemble et refonte visuelle de l’espace organisateur implémentés sur `dev`. La recette visuelle connectée et la refonte du parcours public restent à terminer.**
+**Statut : refonte visuelle de l’espace organisateur et du parcours public implémentée localement sur `dev`. La recette visuelle connectée desktop/mobile reste à effectuer avant validation finale.**
 
 Ce chantier concerne à la fois l’espace utilisé par les organisateurs et le parcours public utilisé par leurs clients pour découvrir un événement, choisir des billets et terminer une inscription. Il est distinct du futur back-office interne Eventflow décrit dans [platform-admin.md](platform-admin.md).
 
@@ -340,6 +340,10 @@ Les statuts techniques comme `awaiting_payment` doivent toujours être traduits 
 - Les états initiaux de chargement et d’erreur utilisent le même shell afin d’éviter le retour visuel à l’ancienne navigation.
 - Les modales partagées de confirmation, suppression et changement de mot de passe utilisent un style commun, un focus initial, un piège de focus, la fermeture par Échap et la restitution du focus.
 - Les parcours métier, routes, hooks et repositories sont inchangés.
+- Le parcours public utilise désormais des tokens sémantiques compatibles clair/sombre, tout en conservant la couleur d’accent choisie par chaque organisation.
+- Le choix clair/sombre est local au navigateur, initialisé depuis la préférence système puis mémorisé sans écriture en base.
+- Le checkout partage un stepper navigable vers les étapes déjà validées, un en-tête compact après la sélection des billets et un récapitulatif sticky sur desktop.
+- La page organisation, les cartes événements et billets, les formulaires participants, le paiement, la confirmation et le widget utilisent une hiérarchie et des surfaces harmonisées.
 - La validation navigateur connectée reste à effectuer : aucun navigateur contrôlable n’était disponible dans la session d’implémentation.
 
 ### Lot 0 — Inventaire et maquettes

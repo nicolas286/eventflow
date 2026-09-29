@@ -10,7 +10,7 @@
 }
 
 .publicEventIntroText {
-  color: #334155;
+  color: var(--public-text-soft);
   line-height: 1.55;
 }
 
@@ -40,7 +40,7 @@
 }
 
 .publicEventIntroText strong {
-  color: #0f172a;
+  color: var(--public-text);
 }
 
 .publicEventIntroToggle {
@@ -48,7 +48,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: #2563eb;
+  color: rgb(var(--primary-strong));
   font-weight: 700;
   cursor: pointer;
   text-decoration: underline;
@@ -60,7 +60,7 @@
 .publicSectionTitle {
   font-size: 1.125rem;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--public-text);
 }
 
 /* =========================================================
@@ -68,35 +68,11 @@
    ========================================================= */
 
 .publicTicketCard {
-  --status-rgb: 34 197 94;
-
   position: relative;
   overflow: hidden;
-  background-color: #ffffff;
-
-  background-image:
-    radial-gradient(
-      200px 140px at 100% 0%,
-      rgb(var(--status-rgb) / 0.10) 0%,
-      rgb(var(--status-rgb) / 0.05) 35%,
-      transparent 65%
-    ),
-    radial-gradient(
-      360px 140px at 12% 55%,
-      rgb(var(--primary-bg) / 0.08),
-      transparent 85%
-    );
-
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-clip: padding-box;
-
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 18px;
-
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.06),
-    0 1px 0 rgba(255, 255, 255, 0.75) inset;
+  background: var(--public-bg-elevated);
+  border: 1px solid var(--public-border);
+  border-radius: 16px;
 
   transition:
     transform 160ms ease,
@@ -105,36 +81,19 @@
 }
 
 .publicTicketCard.isSoldOut {
-  --status-rgb: 239 68 68;
-  opacity: 0.92;
+  opacity: 0.7;
 }
 
-.publicTicketCard::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.035;
-  mix-blend-mode: multiply;
-  border-radius: inherit;
-
-  background-image:
-    repeating-linear-gradient(
-      45deg,
-      rgba(0, 0, 0, 0.025) 0px,
-      rgba(0, 0, 0, 0.025) 1px,
-      transparent 1px,
-      transparent 6px
-    );
+.publicTicketCard.isSelected {
+  border-color: rgb(var(--primary) / 0.48);
+  box-shadow: 0 0 0 3px rgb(var(--primary) / 0.08);
 }
 
 @media (hover: hover) {
   .publicTicketCard:hover {
     transform: translateY(-1px);
-    border-color: rgba(15, 23, 42, 0.12);
-    box-shadow:
-      0 14px 34px rgba(0, 0, 0, 0.08),
-      0 1px 0 rgba(255, 255, 255, 0.8) inset;
+    border-color: rgb(var(--primary) / 0.42);
+    box-shadow: var(--public-shadow-soft);
   }
 }
 
@@ -158,18 +117,18 @@
 
 .publicTicketDesc {
   margin-bottom: 10px;
-  color: #334155;
+  color: var(--public-text-soft);
   line-height: 1.6;
 }
 
 .publicMetaRow {
-  color: #475569;
+  color: var(--public-text-muted);
   font-size: 14px;
   line-height: 1.5;
 }
 
 .publicTicketRight {
-  width: 260px;
+  width: 220px;
   flex: 0 0 auto;
 
   display: flex;
@@ -181,42 +140,42 @@
 /* ---------- Quantity block ---------- */
 
 .publicQtyBlock {
-  width: 100%;
+  width: auto;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
 
-  padding: 10px 12px;
-  border-radius: 14px;
-
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
+  padding: 5px;
+  border-radius: 12px;
+  background: var(--public-bg-subtle);
+  border: 1px solid var(--public-border);
 }
 
 .publicQtyInput {
-  width: 100%;
+  width: 54px;
   min-width: 0;
-  padding: 10px 12px;
+  padding: 8px 4px;
 
   border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.10);
+  border: 0;
   outline: none;
   box-sizing: border-box;
-  background: #fff;
-  color: #0f172a;
+  background: transparent;
+  color: var(--public-text);
+  text-align: center;
+  font-weight: 800;
 }
 
 .publicQtyInput:focus {
   border-color: rgba(37, 99, 235, 0.45);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .publicQtyBtn {
-  min-width: 44px;
-  padding-left: 12px;
-  padding-right: 12px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 6px;
 }
 
 /* ---------- Ticket total ---------- */
@@ -226,12 +185,12 @@
   border-radius: 999px;
   white-space: nowrap;
 
-  background: rgba(17, 24, 39, 0.035);
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: rgb(var(--primary) / 0.08);
+  border: 1px solid rgb(var(--primary) / 0.18);
 
   font-size: 14px;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--public-text);
 }
 
 /* =========================================================
@@ -244,7 +203,7 @@
 
 .publicRecapTitle {
   font-weight: 900;
-  color: #0f172a;
+  color: var(--public-text);
 }
 
 .publicRecapSubtitle {
@@ -255,7 +214,7 @@
   margin-top: 8px;
   font-size: 12px;
   line-height: 1.4;
-  color: #64748b;
+  color: var(--public-text-muted);
 }
 
 .publicRecapButton {
@@ -264,4 +223,3 @@
   padding-right: 18px;
   font-weight: 800;
 }
-

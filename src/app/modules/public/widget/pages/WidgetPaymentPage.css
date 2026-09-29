@@ -10,10 +10,10 @@
   width: 100%;
   max-width: 760px;
   background: var(--widget-card);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--widget-text) 14%, transparent);
   padding: 20px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
 .widgetSectionTitle {
@@ -52,7 +52,7 @@
 
 .widgetDivider {
   margin: 16px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid color-mix(in srgb, var(--widget-text) 12%, transparent);
 }
 
 .widgetPaymentTotalRow {
@@ -82,9 +82,9 @@
   min-height: 44px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid var(--widget-input-border);
   outline: none;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--widget-input-bg);
   color: var(--widget-text);
   box-sizing: border-box;
 }

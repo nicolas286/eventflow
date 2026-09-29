@@ -11,6 +11,7 @@ import { PublicCharterModal } from "../components/PublicCharterModal/PublicChart
 import { Turnstile, type TurnstileRef } from "@ui/components/Turnstile";
 
 import { PublicEventHeader } from "../components/PublicEventHeader";
+import { PublicCheckoutStepper } from "../components/PublicCheckoutStepper/PublicCheckoutStepper";
 import { PublicStickyCheckoutBar } from "../components/PublicStickyCheckoutBar/PublicStickyCheckoutBar";
 import {
   clearDraft,
@@ -360,10 +361,31 @@ export function EventPaymentPage() {
     <div className="publicPage">
       <Container>
         <div className="publicSurface">
-          <PublicEventHeader orgSlug={orgSlug} org={org} event={event} />
+          <PublicEventHeader
+            orgSlug={orgSlug}
+            org={org}
+            event={event}
+            compact
+          />
+
+          <PublicCheckoutStepper
+            currentStep={3}
+            orgSlug={orgSlug}
+            eventSlug={eventSlug}
+          />
 
           <div className="publicDivider" />
-          <div className="publicSectionTitle">3/3 — Paiement</div>
+          <div className="publicSectionHeading">
+            <div>
+              <div className="publicEyebrow">Dernière étape</div>
+              <h2 className="publicSectionTitle">
+                {totalCents > 0
+                  ? "Vérifiez et payez"
+                  : "Confirmez votre réservation"}
+              </h2>
+            </div>
+            <p>Vos billets ne seront réservés qu’après cette validation.</p>
+          </div>
 
           {picked.length === 0 ? (
             <div className="publicEmpty">
@@ -371,7 +393,7 @@ export function EventPaymentPage() {
             </div>
           ) : (
             <div className="publicGutter">
-              <div className="publicList">
+              <div className="publicList publicPaymentList">
                 <Card>
                   <CardHeader title="Récap" />
                   <CardBody>
@@ -525,8 +547,12 @@ export function EventPaymentPage() {
                     <CardHeader title="Vendeur et conditions de l’organisateur" />
                     <CardBody>
                       {!paidSalesAvailable ? (
-                        <div className="publicEmpty" style={{ marginBottom: 12 }}>
-                          Les paiements sont temporairement indisponibles pour cet organisateur.
+                        <div
+                          className="publicEmpty"
+                          style={{ marginBottom: 12 }}
+                        >
+                          Les paiements sont temporairement indisponibles pour
+                          cet organisateur.
                         </div>
                       ) : null}
                       <div
@@ -703,9 +729,7 @@ export function EventPaymentPage() {
 
           <div className="publicDivider" />
 
-          <div
-            style={{ display: "flex", justifyContent: "flex-start", gap: 12 }}
-          >
+          <div className="publicBackActions">
             <Button
               variant="secondary"
               label="Retour aux participants"

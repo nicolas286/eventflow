@@ -3,6 +3,11 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  min-height: 46px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--widget-text) 12%, transparent);
 }
 
 .widgetHeader h2 {

@@ -1,174 +1,111 @@
-.publicHero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 32px 0 32px 0;
+.publicOrgPage .publicSurface {
+  position: relative;
+  overflow: hidden;
 }
 
-.publicBrand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-  width: 100%;
+.publicOrgPage .publicSurface::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 5px;
+  background: rgb(var(--primary));
 }
-
-.publicLogo {
-  width: clamp(200px, 14vw, 300px);
-  height: clamp(200px, 14vw, 300px);
-  border-radius: clamp(22px, 4.5vw, 28px);
-  object-fit: cover;
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
-}
-
 
 .publicOrgPage .publicHero {
-  justify-content: flex-start;
+  padding: clamp(18px, 4vw, 38px) 0;
+}
+
+.publicOrgPage .publicBrand {
+  display: grid;
+  grid-template-columns: clamp(112px, 16vw, 176px) minmax(0, 1fr);
   align-items: center;
-  gap: clamp(22px, 4vw, 40px);
+  gap: clamp(22px, 5vw, 54px);
 }
 
 .publicOrgPage .publicLogo {
-  width: clamp(230px, 19vw, 340px);
-  height: clamp(230px, 19vw, 340px);
-  flex-shrink: 0;
-
-  margin-left: clamp(12px, 2.2vw, 26px);
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid var(--public-border);
+  border-radius: 28px;
+  object-fit: cover;
+  background: var(--public-bg-subtle);
+  box-shadow: var(--public-shadow-soft);
 }
 
 .publicOrgPage .publicOrgHeroRight {
-  flex: 1;
-  min-width: 0;
-
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-.publicOrgPage .publicActions{
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
-  align-items: center;
-  width: 100% !important;
-  margin-top: 14px;
-  column-gap: clamp(22px, 4vw, 70px) !important;
-}
-
-.publicOrgPage .publicActions .publicMail{
-  justify-self: start;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  white-space: nowrap;
-}
-
-.publicOrgPage .publicActions .publicPhone{
-  justify-self: center;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  white-space: nowrap;
-  padding: 0 14px; 
-}
-
-.publicOrgPage .publicActions .publicSite{
-  justify-self: end;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  white-space: nowrap;
-}
-
-.publicOrgPage .publicActions .publicSite a{
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
   min-width: 0;
 }
-.publicOrgPage .publicOrgHeroRight .ui-button {
-  font-size: 14px;
-  padding: 12px 20px;
-  border-radius: 14px;
+
+.publicOrgPage .publicOrgHeroRight:only-child {
+  grid-column: 1 / -1;
 }
 
 .publicOrgPage .publicTitle {
-  font-size: clamp(24px, 2.6vw, 28px);
-  line-height: 1.12;
-  padding-left: 5px;
+  margin: 0;
+  color: var(--public-text);
+  font-size: clamp(28px, 5vw, 48px);
+  font-weight: 850;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+  text-align: left;
 }
 
-.publicOrgPage .publicSubtitle {
-  font-size: 18px;
-  margin-top: 10px;
+.publicOrgPage .publicProse {
+  max-width: 66ch;
+  margin-top: 16px;
+  color: var(--public-text-soft);
+  font-size: clamp(15px, 2vw, 18px);
 }
 
-.publicOrgPage .publicProse{
-  margin-top: 10px;                 
-  padding: 0 clamp(10px, 2vw, 24px);
-  max-width: 70ch;                  
+.publicOrgPage .publicActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 0;
 }
 
+.publicOrgPage .publicActions > div {
+  min-width: 0;
+}
 
-@media (max-width: 860px) {
+.publicOrgPage .publicActions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 38px;
+  padding: 7px 12px;
+  border: 1px solid var(--public-border);
+  border-radius: 999px;
+  color: var(--public-text-soft);
+  background: var(--public-bg-subtle);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.publicOrgPage .publicActions a:hover {
+  border-color: rgb(var(--primary) / 0.4);
+  color: rgb(var(--primary-strong));
+}
+
+@media (max-width: 680px) {
   .publicOrgPage .publicBrand {
-    flex-direction: column;
-    align-items: center;
+    grid-template-columns: 76px minmax(0, 1fr);
+    align-items: start;
+    gap: 16px;
   }
 
   .publicOrgPage .publicLogo {
-    width: clamp(180px, 50vw, 240px);
-    height: clamp(180px, 50vw, 240px);
-    margin-left: 0;
+    border-radius: 20px;
   }
 
-  .publicOrgPage .publicOrgHeroRight {
-    width: 100%;
-
-    padding-top: 0 !important;
-
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-
-    justify-content: flex-start;
-    align-items: center;
-
-    margin-top: 16px;
+  .publicOrgPage .publicTitle {
+    font-size: clamp(25px, 8vw, 34px);
   }
 
-  .publicOrgPage .publicOrgHeroRight .publicActions {
-    justify-content: center;
-    width: 100%;
-    margin-top: 12px;
-  }
-
-  .publicOrgPage .publicActions{
-    display: flex !important;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-  }
-
-  .publicOrgPage .publicMail,
-  .publicOrgPage .publicPhone,
-  .publicOrgPage .publicSite{
-    justify-self: unset;
-    width: 100%;
-    justify-content: center;
-    text-align: center;
-    white-space: normal;
-  }
-
-  .publicOrgPage .publicSite a{
-    justify-content: center;
-    text-align: center;
-    word-break: break-word;
+  .publicOrgPage .publicProse {
+    grid-column: 1 / -1;
   }
 }

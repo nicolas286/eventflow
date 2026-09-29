@@ -27,30 +27,28 @@ export function WidgetEventCard({
   });
 
   const remainingSeats = (() => {
-  if (!displayRemaining || !data?.products?.length) return null;
+    if (!displayRemaining || !data?.products?.length) return null;
 
-  const productsWithStock = data.products.filter(
-    (product) => product.stockQty !== null && product.stockQty !== undefined
-  );
+    const productsWithStock = data.products.filter(
+      (product) => product.stockQty !== null && product.stockQty !== undefined,
+    );
 
-  if (productsWithStock.length === 0) return null;
+    if (productsWithStock.length === 0) return null;
 
-  return productsWithStock.reduce((total, product) => {
-    const usedQty = (product.soldQty ?? 0) + (product.reservedQty ?? 0);
-    const remainingQty = Math.max((product.stockQty ?? 0) - usedQty, 0);
-    const attendeesPerUnit = product.attendeesPerUnit ?? 1;
+    return productsWithStock.reduce((total, product) => {
+      const usedQty = (product.soldQty ?? 0) + (product.reservedQty ?? 0);
+      const remainingQty = Math.max((product.stockQty ?? 0) - usedQty, 0);
+      const attendeesPerUnit = product.attendeesPerUnit ?? 1;
 
-    return total + remainingQty * attendeesPerUnit;
-  }, 0);
-})();
+      return total + remainingQty * attendeesPerUnit;
+    }, 0);
+  })();
 
   const isSoldOut = event.isSoldOut;
   const isClosed = event.isRegistrationOpen === false;
 
   const noSeatsLeft =
-    displayRemaining &&
-    remainingSeats !== null &&
-    remainingSeats <= 0;
+    displayRemaining && remainingSeats !== null && remainingSeats <= 0;
 
   const isDisabled = isSoldOut || isClosed || noSeatsLeft;
 
@@ -69,46 +67,56 @@ export function WidgetEventCard({
         if (!isDisabled) onClick();
       }}
     >
-      <div className="widgetEventTitle">{event.title}</div>
-
-      {event.startsAt && (
-        <div className="widgetEventDate">
-          {new Date(event.startsAt).toLocaleString("fr-BE", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })}
-        </div>
-      )}
-
-      {displayRemaining && remainingSeats !== null && (
+      {event.bannerUrl ? (
         <div
-          className={`widgetEventRemaining ${
-            remainingSeats <= 5 ? "isLow" : ""
-          }`}
-        >
-          {remainingSeats > 0
-            ? `${remainingSeats} place${remainingSeats > 1 ? "s" : ""} restante${
-                remainingSeats > 1 ? "s" : ""
-              }`
-            : "Complet"}
-        </div>
-      )}
-
-      {isSoldOut ? (
-        <div className="widgetEventStatus">Complet</div>
-      ) : isClosed ? (
-        <div className="widgetEventStatus">Inscriptions clôturées</div>
+          className="widgetEventBanner"
+          style={{ backgroundImage: `url("${event.bannerUrl}")` }}
+          aria-hidden="true"
+        />
       ) : null}
 
-      <Button
-        className="widgetButton"
-        label={label}
-        disabled={isDisabled}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (!isDisabled) onClick();
-        }}
-      />
+      <div className="widgetEventContent">
+        <div className="widgetEventTitle">{event.title}</div>
+
+        {event.startsAt && (
+          <div className="widgetEventDate">
+            {new Date(event.startsAt).toLocaleString("fr-BE", {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}
+          </div>
+        )}
+
+        {displayRemaining && remainingSeats !== null && (
+          <div
+            className={`widgetEventRemaining ${
+              remainingSeats <= 5 ? "isLow" : ""
+            }`}
+          >
+            {remainingSeats > 0
+              ? `${remainingSeats} place${remainingSeats > 1 ? "s" : ""} restante${
+                  remainingSeats > 1 ? "s" : ""
+                }`
+              : "Complet"}
+          </div>
+        )}
+
+        {isSoldOut ? (
+          <div className="widgetEventStatus">Complet</div>
+        ) : isClosed ? (
+          <div className="widgetEventStatus">Inscriptions clôturées</div>
+        ) : null}
+
+        <Button
+          className="widgetButton"
+          label={label}
+          disabled={isDisabled}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!isDisabled) onClick();
+          }}
+        />
+      </div>
     </div>
   );
 }

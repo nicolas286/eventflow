@@ -1,20 +1,22 @@
 .publicOrgEventCard.isClickable {
   cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .publicOrgEventCard.isClickable:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  border-color: rgb(var(--primary) / 0.38);
+  box-shadow: var(--public-shadow-soft);
 }
 
 .publicOrgEventCard.isClickable:focus-visible {
-  outline: 2px solid currentColor;
+  outline: 3px solid rgb(var(--primary) / 0.22);
   outline-offset: 3px;
 }
 
 .publicOrgEventCard.isHighlighted {
-  border: 1px solid rgba(99, 102, 241, 0.4);
-}
-
-.publicOrgEventCard.isHighlighted:hover {
-  transform: translateY(-6px) scale(1.01);
+  border-color: rgb(var(--primary) / 0.42);
 }

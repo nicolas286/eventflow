@@ -21,7 +21,7 @@
   line-height: 1.15;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: #0f172a;
+  color: var(--public-text);
   text-align: center;
 }
 
@@ -29,7 +29,7 @@
 .publicSubtitle {
   margin-top: 6px;
   font-size: 16px;
-  color: #475569;
+  color: var(--public-text-soft);
 }
 
 .publicLocation {
@@ -38,7 +38,7 @@
   gap: 6px;
   margin-top: 6px;
   font-size: 16px;
-  color: #475569;
+  color: var(--public-text-soft);
 }
 
 /* date : plus d'absolute */
@@ -51,13 +51,13 @@
   padding: 10px 18px;
   border-radius: 999px;
 
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+  background: var(--public-bg-elevated);
+  border: 1px solid var(--public-border);
+  box-shadow: var(--public-shadow-soft);
 
   font-size: 16px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--public-text);
   white-space: nowrap;
 }
 

@@ -434,6 +434,7 @@ export function OrderPage() {
             orgSlug={orgSlug}
             org={orgForHeader}
             event={eventForHeader}
+            compact
           />
         ) : null}
 
@@ -443,6 +444,17 @@ export function OrderPage() {
               {statusPill ? (
                 <div className={pillClass}>{statusPill.label}</div>
               ) : null}
+
+              <div
+                className={`orderReturnHeroIcon ${isSuccessStatus(order.status) ? "isSuccess" : isFailureStatus(order.status) ? "isWarning" : "isPending"}`}
+                aria-hidden="true"
+              >
+                {isSuccessStatus(order.status)
+                  ? "✓"
+                  : isFailureStatus(order.status)
+                    ? "!"
+                    : "…"}
+              </div>
 
               <h2 className="orderReturnTitle">
                 {isSuccessStatus(order.status)
@@ -502,7 +514,9 @@ export function OrderPage() {
 
                   <div>
                     <span className="orderReturnLabel">Statut :</span>
-                    <span className="orderReturnStrong">{order.status}</span>
+                    <span className="orderReturnStrong">
+                      {statusPill?.label ?? order.status}
+                    </span>
                   </div>
 
                   <div>

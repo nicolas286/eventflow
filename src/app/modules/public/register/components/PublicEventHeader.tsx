@@ -17,9 +17,15 @@ type Props = {
   orgSlug: string;
   org?: PublicOrgProfileOverviewForEventPage;
   event: PublicEvent;
+  compact?: boolean;
 };
 
-export function PublicEventHeader({ orgSlug, org, event }: Props) {
+export function PublicEventHeader({
+  orgSlug,
+  org,
+  event,
+  compact = false,
+}: Props) {
   const startText = event.startsAt ? formatDateTimeHuman(event.startsAt) : null;
   const durationText = getDurationLabel(event.startsAt, event.endsAt);
   const banner = event.bannerUrl;
@@ -30,7 +36,7 @@ export function PublicEventHeader({ orgSlug, org, event }: Props) {
 
   return (
     <>
-      {banner ? (
+      {banner && !compact ? (
         <>
           <div
             className="publicBannerWrap"
@@ -53,12 +59,15 @@ export function PublicEventHeader({ orgSlug, org, event }: Props) {
         </>
       ) : null}
 
-      <div className="publicHeaderRow">
+      <div className={`publicHeaderRow ${compact ? "isCompact" : ""}`}>
+        {compact && org?.logoUrl ? (
+          <img src={org.logoUrl} alt="" className="publicCompactEventLogo" />
+        ) : null}
         <div className="publicTitleBlock">
           <h1 className="publicTitle">{event.title}</h1>
 
           {org?.displayName ? (
-            <div className="publicSubtitle" style={{ marginTop: 6 }}>
+            <div className="publicSubtitle publicOrganizerLine">
               Organisé par <strong>{org.displayName}</strong>
               {org.publicEmail ? (
                 <>

@@ -5,7 +5,11 @@ import type { PublicEventOverview } from "../../schemas/public.orgEventsOverview
 
 import { formatDateTimeHuman } from "@shared/helpers/dateTime";
 import { Badge, Button, CardBody, Card } from "@shared/ui/components";
-import { CalendarIcon, PinIcon, TicketIcon } from "@shared/ui/components/icon/Icons";
+import {
+  CalendarIcon,
+  PinIcon,
+  TicketIcon,
+} from "@shared/ui/components/icon/Icons";
 import { EventSoonRibbon } from "../EventSoonRibbon/EventSoonRibbon";
 import {
   getEventBadgeToneAndLabel,
@@ -13,7 +17,7 @@ import {
   getRegistrationMicrocopy,
 } from "./eventCard.logic";
 
-import "./OrgEventCard.css"; 
+import "./OrgEventCard.css";
 
 type OrgEventCardProps = {
   e: PublicEventOverview;
@@ -55,7 +59,9 @@ export function OrgEventCard({ e, nowTs, orgSlug }: OrgEventCardProps) {
           : undefined
       }
     >
-      {ribbon ? <EventSoonRibbon label={ribbon.label} type={ribbon.type} /> : null}
+      {ribbon ? (
+        <EventSoonRibbon label={ribbon.label} type={ribbon.type} />
+      ) : null}
 
       {banner ? (
         <div
@@ -69,7 +75,9 @@ export function OrgEventCard({ e, nowTs, orgSlug }: OrgEventCardProps) {
         <div className="publicOrgEventTop">
           <div className="publicOrgEventHeaderRow">
             <div className="publicOrgEventTitle">{e.title}</div>
-            {badgeData ? <Badge tone={badgeData.tone} label={badgeData.label} /> : null}
+            {badgeData ? (
+              <Badge tone={badgeData.tone} label={badgeData.label} />
+            ) : null}
           </div>
 
           <div className="publicOrgEventLocation">
@@ -108,10 +116,6 @@ export function OrgEventCard({ e, nowTs, orgSlug }: OrgEventCardProps) {
           {registrationMicrocopy ? (
             <div className="publicOrgEventReassurance">
               {registrationMicrocopy}
-            </div>
-          ) : !cta.disabled ? (
-            <div className="publicOrgEventReassurance">
-              Paiement sécurisé • Réservation immédiate
             </div>
           ) : !e.isSoldOut && !e.isRegistrationOpen ? (
             <div className="publicOrgEventReassurance">

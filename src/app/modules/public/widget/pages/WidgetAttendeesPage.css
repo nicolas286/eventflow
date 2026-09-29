@@ -1,11 +1,11 @@
-
-
 .widgetAttendeeCard {
   width: 100%;
   max-width: 760px;
   padding: 20px;
-  border-radius: 16px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+  border: 1px solid color-mix(in srgb, var(--widget-text) 14%, transparent);
+  border-radius: 18px;
+  background: var(--widget-card);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
 .widgetAttendeeList {
@@ -74,7 +74,6 @@
   width: 100%;
 }
 
-
 .widgetFieldBlock textarea {
   min-height: 96px;
 }
@@ -100,7 +99,6 @@
   margin-right: auto;
 }
 
- 
 @media (max-width: 720px) {
   .widgetRoot h2 {
     font-size: 20px;
@@ -142,7 +140,8 @@
   color: var(--widget-text);
   opacity: 0.92;
   padding-bottom: 6px;
-  border-bottom: 1px solid rgba(255,255,255,0.12);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--widget-text) 12%, transparent);
 }
 
 .widgetFieldGroupHeader {

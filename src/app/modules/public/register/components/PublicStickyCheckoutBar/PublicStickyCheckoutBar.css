@@ -2,7 +2,7 @@
    Sticky checkout bar
    ========================================================= */
 
-   .publicStickyCheckoutBar::before {
+.publicStickyCheckoutBar::before {
   content: "";
   position: absolute;
   top: -20px;
@@ -10,15 +10,10 @@
   right: 0;
   height: 20px;
 
-  background: linear-gradient(
-    to top,
-    rgba(255,255,255,0.9),
-    rgba(255,255,255,0)
-  );
+  background: linear-gradient(to top, var(--public-bg), transparent);
 
   pointer-events: none;
 }
-
 
 .publicStickyCheckoutBar {
   position: fixed;
@@ -35,13 +30,11 @@
   min-height: 72px;
   padding: 14px 18px;
 
-  background: rgba(255, 255, 255, 0.96);
+  background: color-mix(in srgb, var(--public-bg-elevated) 94%, transparent);
   backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  border-top: 1px solid var(--public-border);
   box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08);
 }
-
-
 
 .publicStickyCheckoutMeta {
   min-width: 0;
@@ -50,14 +43,14 @@
 .publicStickyCheckoutPrice {
   font-size: 18px;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--public-text);
   line-height: 1.2;
 }
 
 .publicStickyCheckoutText {
   margin-top: 2px;
   font-size: 13px;
-  color: #64748b;
+  color: var(--public-text-soft);
   line-height: 1.35;
 }
 

@@ -8,6 +8,7 @@ import Button from "@ui/components/button/Button";
 import Badge from "@ui/components/badge/Badge";
 
 import { PublicEventHeader } from "../../components/PublicEventHeader";
+import { PublicCheckoutStepper } from "../../components/PublicCheckoutStepper/PublicCheckoutStepper";
 import { PublicStickyCheckoutBar } from "../../components/PublicStickyCheckoutBar/PublicStickyCheckoutBar";
 import { PublicAttendeeField } from "../../components/PublicAttendeeField/PublicAttendeeField";
 import { useEventAttendeesPage } from "./useEventAttendeesPage";
@@ -85,11 +86,30 @@ function EventAttendeesPageContent({
     <div className="publicPage">
       <Container>
         <div className="publicSurface">
-          <PublicEventHeader orgSlug={orgSlug} org={org} event={event} />
+          <PublicEventHeader
+            orgSlug={orgSlug}
+            org={org}
+            event={event}
+            compact
+          />
+
+          <PublicCheckoutStepper
+            currentStep={2}
+            orgSlug={orgSlug}
+            eventSlug={eventSlug}
+          />
 
           <div className="publicDivider" />
 
-          <div className="publicSectionTitle">2/3 — Participants</div>
+          <div className="publicSectionHeading">
+            <div>
+              <div className="publicEyebrow">Informations</div>
+              <h2 className="publicSectionTitle">Qui participe&nbsp;?</h2>
+            </div>
+            <p>
+              Renseignez les informations demandées pour chaque participant.
+            </p>
+          </div>
 
           {totalTickets <= 0 ? (
             <div className="publicEmpty">
@@ -100,7 +120,9 @@ function EventAttendeesPageContent({
               Aucun formulaire participant n’est requis pour ces billets.
             </div>
           ) : sortedFields.length === 0 ? (
-            <div className="publicEmpty">Aucun champ configuré pour le formulaire.</div>
+            <div className="publicEmpty">
+              Aucun champ configuré pour le formulaire.
+            </div>
           ) : (
             <div className="publicGutter">
               <div className="publicList">
@@ -109,9 +131,13 @@ function EventAttendeesPageContent({
                   const rowTouched = attTouched[idx] ?? {};
 
                   return (
-                    <Card key={idx}>
+                    <Card key={idx} className="publicAttendeeCard">
                       <CardHeader
-                        title={<div className="publicCardTitle">Participant {idx + 1}</div>}
+                        title={
+                          <div className="publicCardTitle">
+                            Participant {idx + 1}
+                          </div>
+                        }
                         right={
                           <Badge
                             tone="neutral"
@@ -145,7 +171,9 @@ function EventAttendeesPageContent({
 
                               <div className="publicGrid2">
                                 {section.fields.map((field) => {
-                                  const fieldKey = String(field.fieldKey ?? "").trim();
+                                  const fieldKey = String(
+                                    field.fieldKey ?? "",
+                                  ).trim();
                                   if (!fieldKey) return null;
 
                                   return (
@@ -177,8 +205,12 @@ function EventAttendeesPageContent({
 
           <div className="publicDivider" />
 
-          <div style={{ display: "flex", justifyContent: "flex-start", gap: 12 }}>
-            <Button variant="secondary" label="Retour aux billets" onClick={goBack} />
+          <div className="publicBackActions">
+            <Button
+              variant="secondary"
+              label="Retour aux billets"
+              onClick={goBack}
+            />
           </div>
         </div>
       </Container>
@@ -197,7 +229,10 @@ function EventAttendeesPageContent({
 }
 
 export function EventAttendeesPage() {
-  const { orgSlug, eventSlug } = useParams<{ orgSlug: string; eventSlug: string }>();
+  const { orgSlug, eventSlug } = useParams<{
+    orgSlug: string;
+    eventSlug: string;
+  }>();
 
   if (!orgSlug || !eventSlug) {
     return (

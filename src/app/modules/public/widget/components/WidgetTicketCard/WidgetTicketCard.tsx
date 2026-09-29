@@ -25,11 +25,11 @@ export function WidgetTicketCard({
   return (
     <div
       key={product.id}
-      className={`widgetTicketCard ${soldOut || unavailable ? "isSoldOut" : ""}`}
+      className={`widgetTicketCard ${soldOut || unavailable ? "isSoldOut" : ""} ${qty > 0 ? "isSelected" : ""}`}
     >
       <div className="widgetTicketTitle">{product.name}</div>
 
-      <div style={{ fontSize: 13, opacity: 0.7 }}>
+      <div className="widgetTicketPrice">
         {formatMoney(product.priceCents, currency)}
       </div>
 

@@ -1,22 +1,19 @@
 /* src/styles/public/partials/public.base.css */
-/* LIGHT MODE ONLY */
-
 .publicPage {
   position: relative;
-  padding: 28px 0 64px;
+  min-height: 100%;
+  padding: 32px 0 112px;
 }
 
 /* ---------- Modern surface ---------- */
 
 .publicSurface {
-  border-radius: 18px;
-  padding: 18px;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.06),
-    0 1px 0 rgba(255, 255, 255, 0.6) inset;
-  color: #0f172a;
+  border-radius: 24px;
+  padding: clamp(18px, 3vw, 30px);
+  background: var(--public-bg-elevated);
+  border: 1px solid var(--public-border);
+  box-shadow: var(--public-shadow);
+  color: var(--public-text);
 }
 
 /* ---------- Divider ---------- */
@@ -24,7 +21,7 @@
 .publicDivider {
   height: 1px;
   width: 100%;
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--public-border);
   margin: 20px 0;
 }
 
@@ -34,19 +31,20 @@
   margin: 26px 0 12px;
   font-size: 18px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--public-text);
 }
 
 .publicProse {
   font-size: 17px;
   line-height: 1.65;
-  color: #334155;
+  color: var(--public-text-soft);
 }
 
 .publicEmpty {
-  color: #64748b;
-  font-size: 17px;
-  padding: 16px 0;
+  color: var(--public-text-soft);
+  font-size: 15px;
+  line-height: 1.55;
+  padding: 14px 0;
 }
 
 /* ---------- Lists ---------- */
@@ -72,11 +70,123 @@
 
 .publicCardTitle {
   font-weight: 900;
-  color: #0f172a;
+  color: var(--public-text);
 }
 
 .publicMetaRow {
   margin-top: 8px;
   font-size: 14px;
-  color: #475569;
+  color: var(--public-text-soft);
+}
+
+.publicSectionHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 24px 0 18px;
+}
+
+.publicSectionHeading .publicSectionTitle {
+  margin: 3px 0 0;
+  font-size: clamp(20px, 3vw, 25px);
+  letter-spacing: -0.02em;
+}
+
+.publicSectionHeading p {
+  max-width: 440px;
+  margin: 0;
+  color: var(--public-text-soft);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.publicEyebrow {
+  color: rgb(var(--primary-strong));
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.publicBackActions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.publicShellRoot .ui-card {
+  border-color: var(--public-border);
+  border-radius: 18px;
+  background: var(--public-bg-elevated);
+  box-shadow: none;
+  color: var(--public-text);
+}
+
+.publicShellRoot .ui-cardHeader {
+  border-color: var(--public-border);
+}
+
+.publicShellRoot .ui-cardHeader__title,
+.publicShellRoot .ui-cardHeader__subtitle {
+  color: inherit;
+}
+
+.publicShellRoot .ui-button--secondary {
+  color: rgb(var(--primary-strong));
+  background: rgb(var(--primary) / 0.08);
+  border-color: rgb(var(--primary) / 0.28);
+}
+
+.publicShellRoot .ui-button--ghost {
+  color: var(--public-text-soft);
+}
+
+.publicShellRoot input,
+.publicShellRoot select,
+.publicShellRoot textarea {
+  color: var(--public-text);
+  background: var(--public-bg-subtle);
+  border-color: var(--public-border-strong);
+}
+
+.publicShellRoot input::placeholder,
+.publicShellRoot textarea::placeholder {
+  color: var(--public-text-muted);
+}
+
+.publicShellRoot a {
+  color: rgb(var(--primary-strong));
+}
+
+@media (max-width: 640px) {
+  .publicPage {
+    padding-top: 54px;
+  }
+
+  .publicSurface {
+    border-radius: 18px;
+    padding: 16px;
+  }
+
+  .publicSectionHeading {
+    display: block;
+  }
+
+  .publicSectionHeading p {
+    margin-top: 8px;
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .publicShellRoot *,
+  .publicShellRoot *::before,
+  .publicShellRoot *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

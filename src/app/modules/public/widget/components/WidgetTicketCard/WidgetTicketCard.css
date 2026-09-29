@@ -1,13 +1,26 @@
-
 .widgetTicketCard {
   background: var(--widget-card);
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--widget-text) 14%, transparent);
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.widgetTicketCard.isSelected {
+  border-color: color-mix(in srgb, var(--widget-button) 55%, transparent);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--widget-button) 10%, transparent);
+}
+
+.widgetTicketCard.isSoldOut {
+  opacity: 0.68;
 }
 
 .widgetTicketTitle {
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 16px;
 }
 
 .widgetTicketPrice {
@@ -16,7 +29,7 @@
 }
 
 .widgetTicketDesc {
-      display: -webkit-box;
+  display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -29,10 +42,18 @@
   display: flex;
   gap: 8px;
   align-items: center;
+  width: fit-content;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--widget-text) 12%, transparent);
+  border-radius: 12px;
 }
 
 .widgetQtyBlock input {
-  width: 60px;
+  width: 52px;
+  border: 0;
+  background: transparent;
+  color: var(--widget-text);
+  font-weight: 800;
   text-align: center;
 }
 
@@ -41,21 +62,4 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.widgetQtyBlock {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-top: auto;
-}
-
-.widgetQtyBlock input {
-  width: 60px;
-  text-align: center;
-}
-
-.widgetTicketDesc {
-  font-size: 13px;
-  opacity: 0.8;
 }

@@ -10,7 +10,7 @@
   background: linear-gradient(
     to right,
     transparent,
-    rgba(0, 0, 0, 0.12),
+    var(--public-border, rgba(0, 0, 0, 0.12)),
     transparent
   );
   margin-bottom: 16px;
@@ -25,6 +25,7 @@
   opacity: 0.75;
   max-width: 1200px;
   margin: 0 auto;
+  color: var(--public-text-soft, inherit);
 }
 
 .publicFooterLeft { white-space: nowrap; }
@@ -51,4 +52,5 @@
   text-align: center;
   font-size: 14px;
   opacity: 0.8;
+  color: var(--public-text-soft, inherit);
 }

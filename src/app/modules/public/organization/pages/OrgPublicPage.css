@@ -1,46 +1,40 @@
-/* =========================================================
-   OrgPublicPage – Events grid + cards with banner
-   ========================================================= */
+.publicOrgPage {
+  padding-top: 62px;
+}
 
 .publicOrgEventsGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 10px;
-  align-items: stretch;
+  gap: 20px;
+  margin-top: 18px;
 }
 
-/* Card */
 .publicOrgEventCard {
-  overflow: hidden;
   height: 100%;
+  overflow: hidden;
 }
 
-/* Banner */
 .publicOrgEventBanner {
   width: 100%;
-  height: 160px;
-  background-size: cover;
+  aspect-ratio: 16 / 7;
+  border-bottom: 1px solid var(--public-border);
+  background-color: var(--public-bg-subtle);
   background-position: center;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background-size: cover;
 }
 
-/* Body */
 .publicOrgEventBody {
-  padding: 16px;
   display: flex;
+  min-height: 220px;
   flex-direction: column;
-  min-height: 210px; /* 🔥 important pour homogénéité */
+  padding: 20px;
 }
 
-/* 🔥 Bloc contenu (clé du fix) */
 .publicOrgEventTop {
   display: flex;
   flex-direction: column;
-  min-height: 110px; /* 🔥 ajuste si besoin */
 }
 
-/* Header */
 .publicOrgEventHeaderRow {
   display: flex;
   align-items: flex-start;
@@ -49,120 +43,63 @@
 }
 
 .publicOrgEventTitle {
-  font-size: 18px;
-  line-height: 1.2;
-  font-weight: 900;
-  color: #0f172a;
-
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
   overflow: hidden;
+  color: var(--public-text);
+  font-size: 19px;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
-/* Location */
-.publicOrgEventLocation {
-  margin-top: 8px;
-  font-size: 15px;
-  color: #475569;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* Dates */
+.publicOrgEventLocation,
 .publicOrgEventDates {
-  margin-top: 12px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+  margin-top: 12px;
+  color: var(--public-text-soft);
   font-size: 14px;
-  color: #334155;
-  line-height: 24px;
+  line-height: 1.45;
 }
 
 .publicOrgEventDates span {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
 }
 
 .publicOrgEventFooter {
-  margin-top: auto;
-  padding-top: 14px;
   display: flex;
-  flex-direction: column; /* 🔥 important */
-  align-items: center;
-  gap: 6px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: auto;
+  padding-top: 22px;
 }
 
 .publicOrgEventReassurance {
+  color: var(--public-text-muted);
   font-size: 12px;
-  color: #64748b;
-  opacity: 0.85;
-  text-align: center;
-  line-height: 1.3;
+  line-height: 1.4;
 }
 
-
-/* Actions */
-.publicOrgEventActions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* CTA */
 .publicOrgEventCta {
-  min-height: 44px;
-  padding: 0 20px;
+  min-height: 42px;
+  padding: 0 17px;
   border-radius: 12px;
-  font-weight: 700;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
-}
-
-.publicOrgEventCta:active {
-  transform: scale(0.97);
-}
-
-@media (hover: hover) {
-  .publicOrgEventCta {
-    transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
-  }
-
-  .publicOrgEventCta:hover {
-    transform: translateY(-1px) scale(1.02);
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.22);
-    filter: brightness(1.03);
-  }
-}
-
-/* Hover card */
-@media (hover: hover) {
-  .publicOrgEventCard {
-    transition: transform 140ms ease;
-  }
-
-  .publicOrgEventCard:hover {
-    transform: translateY(-2px);
-  }
-
-  .publicOrgEventBanner {
-    transition: transform 220ms ease;
-  }
-
-  .publicOrgEventCard:hover .publicOrgEventBanner {
-    transform: scale(1.02);
-  }
+  font-weight: 750;
 }
 
 .publicEventsToolbar {
-  margin: 12px 0 14px;
-  padding: 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(6px);
+  margin: 28px 0 16px;
+  padding: 8px;
+  border: 1px solid var(--public-border);
+  border-radius: 16px;
+  background: var(--public-bg-elevated);
+  box-shadow: var(--public-shadow-soft);
 }
 
 .publicEventsToolbarHeader {
@@ -170,123 +107,79 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-
-  padding-bottom: 8px;
 }
 
-.publicEventsToolbar.isOpen .publicEventsToolbarHeader {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.publicEventsToolbarHeaderLeft {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
+.publicEventsToolbarHeaderLeft,
 .publicEventsToolbarHeaderRight {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  gap: 8px;
 }
 
 .publicEventsToolbarRow {
-  margin-top: 12px;
   display: grid;
-  grid-template-columns: 1.4fr 0.8fr 0.8fr 0.7fr 0.7fr;
+  grid-template-columns: 1.4fr repeat(2, minmax(130px, 0.75fr)) repeat(
+      2,
+      minmax(120px, 0.6fr)
+    );
   gap: 10px;
-  align-items: end;
-
-  animation: fadeSlide 180ms ease;
-}
-
-@keyframes fadeSlide {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.publicEventsToolbarHeaderLeft .ui-button {
-  font-weight: 600;
-}
-
-.publicEventsToolbar.isOpen .ui-button {
-  background: rgba(0,0,0,0.04);
+  margin-top: 8px;
+  padding: 14px;
+  border-top: 1px solid var(--public-border);
 }
 
 .publicField {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 6px;
-  min-width: 0;
 }
 
 .publicFieldLabel {
+  color: var(--public-text-soft);
   font-size: 12px;
-  opacity: 0.72;
+  font-weight: 700;
 }
 
 .publicInput,
 .publicSelect {
-  height: 40px;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.92);
+  width: 100%;
+  height: 42px;
+  padding: 0 11px;
+  border: 1px solid var(--public-border-strong);
+  border-radius: 10px;
   outline: none;
 }
 
 .publicInput:focus,
 .publicSelect:focus {
-  border-color: rgba(0, 0, 0, 0.22);
+  border-color: rgb(var(--primary) / 0.6);
+  box-shadow: 0 0 0 3px rgb(var(--primary) / 0.1);
 }
 
 .publicMuted {
+  color: var(--public-text-muted);
   font-size: 12px;
-  opacity: 0.7;
 }
 
-@media (max-width: 920px) {
-  .publicEventsToolbarHeader {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .publicEventsToolbarHeaderRight {
-    justify-content: flex-start;
-  }
-
+@media (max-width: 900px) {
   .publicEventsToolbarRow {
     grid-template-columns: 1fr 1fr;
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 720px) {
+  .publicOrgEventsGrid,
   .publicEventsToolbarRow {
     grid-template-columns: 1fr;
   }
 
-  .publicInput,
-  .publicSelect {
-    width: 100%;
-  }
-}
-
-@media (max-width: 860px) {
-  .publicOrgEventsGrid {
-    grid-template-columns: 1fr;
+  .publicOrgEventFooter {
+    align-items: stretch;
+    flex-direction: column-reverse;
   }
 
-  .publicOrgEventBanner {
-    height: 180px;
-  }
-
+  .publicOrgEventActions,
   .publicOrgEventCta {
     width: 100%;
   }
