@@ -12,6 +12,7 @@ import { useStripeConnect } from "@app/modules/admin/payments/hooks/useStripeCon
 import { useSavePaymentSettings } from "../../hooks/useSavePaymentSettings";
 import type { Organization } from "@shared/models/db/db.organization.schema";
 import type { OrganizationProfile } from "@shared/models/db/db.organizationProfile.schema";
+import { organizationProfileSchema } from "@shared/models/db/db.organizationProfile.schema";
 import { BANK_TRANSFER_EVENT_PAYMENTS_ENABLED } from "@contracts/bank-transfer";
 import { DEFAULT_ORGANIZATION_SALES_TERMS } from "@contracts/organization-sales-terms";
 
@@ -182,6 +183,10 @@ export default function StructurePanel({
   const bankTransferReady = Boolean(
     paymentForm.beneficiary.trim() && paymentForm.iban.trim(),
   );
+  const publicEmail = form.publicEmail.trim();
+  const publicEmailValid =
+    organizationProfileSchema.shape.publicEmail.safeParse(publicEmail).success;
+  const publicEmailNeedsSave = publicEmail !== initial.publicEmail.trim();
 
   const effectiveSlug = useMemo(() => {
     return updated?.profile?.slug ?? orgProfile?.slug ?? "";
@@ -309,6 +314,16 @@ export default function StructurePanel({
   async function handleAcceptSalesTerms() {
     paymentSettings.reset();
     if (!salesTermsConfirmed) return;
+
+    if (publicEmailNeedsSave) {
+      const saved = await saveOrgInfo({
+        orgId,
+        initial,
+        current: { ...initial, publicEmail },
+      });
+      if (!saved) return;
+    }
+
     const result = await paymentSettings.acceptTerms(orgId, salesTerms);
     if (!result) return;
     setSalesTerms(result.salesTerms ?? salesTerms);
@@ -520,6 +535,12 @@ export default function StructurePanel({
             les valider. Un e-mail public est obligatoire pour les demandes des
             participants.
           </div>
+          {publicEmailNeedsSave && publicEmailValid ? (
+            <div className="structurePanel__help">
+              L’e-mail public sera enregistré avant la validation des
+              conditions.
+            </div>
+          ) : null}
           <label style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
             <input
               type="checkbox"
@@ -540,15 +561,17 @@ export default function StructurePanel({
                   ? "Validation…"
                   : salesTermsCurrent
                     ? "Conditions validées"
-                    : "Valider les conditions"
+                    : publicEmailNeedsSave
+                      ? "Enregistrer l’e-mail et valider"
+                      : "Valider les conditions"
               }
               onClick={handleAcceptSalesTerms}
               disabled={
                 paymentSettings.loading ||
+                loading ||
                 !salesTermsConfirmed ||
                 salesTerms.trim().length < 200 ||
-                !form.publicEmail.trim() ||
-                form.publicEmail.trim() !== initial.publicEmail.trim()
+                !publicEmailValid
               }
             />
           </div>
