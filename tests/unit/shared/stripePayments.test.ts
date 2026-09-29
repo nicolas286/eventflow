@@ -294,7 +294,7 @@ describe("Stripe provider boundaries", () => {
       "acct_test_org",
     );
     const body = new URLSearchParams(String(init.body));
-    expect(body.get("payment_method_types[0]")).toBe("bancontact");
+    expect(body.has("payment_method_types[0]")).toBe(false);
     expect(body.get("ui_mode")).toBe("hosted_page");
     expect(body.has("integration_identifier")).toBe(false);
     expect(body.has("origin_context")).toBe(false);
