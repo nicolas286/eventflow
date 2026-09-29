@@ -31,6 +31,9 @@ export function resolveRuntimeConfig(req: Request) {
     appBaseUrl: appBaseUrl ?? "",
     edgeServiceToken: envTrim("EDGE_SERVICE_TOKEN"),
     stripeSecretKey: envTrim("STRIPE_SECRET_KEY"),
+    stripePaymentMethodConfigurationId: envTrim(
+      "STRIPE_PAYMENT_METHOD_CONFIGURATION_ID",
+    ),
     eventPaymentProvider: envTrim("EVENT_PAYMENT_PROVIDER") ?? "stripe",
 
     registerRateLimitPer10Min,

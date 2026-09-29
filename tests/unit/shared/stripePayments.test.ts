@@ -275,6 +275,7 @@ describe("Stripe provider boundaries", () => {
     const provider = new StripeEventPaymentProvider(
       "sk_test_value",
       "acct_test_org",
+      "pmc_test_parent",
     );
     const payment = await provider.createPayment({
       orderId: "order_test",
@@ -295,6 +296,7 @@ describe("Stripe provider boundaries", () => {
     );
     const body = new URLSearchParams(String(init.body));
     expect(body.has("payment_method_types[0]")).toBe(false);
+    expect(body.get("payment_method_configuration")).toBe("pmc_test_parent");
     expect(body.get("ui_mode")).toBe("hosted_page");
     expect(body.has("integration_identifier")).toBe(false);
     expect(body.has("origin_context")).toBe(false);
@@ -318,6 +320,7 @@ describe("Stripe provider boundaries", () => {
     const provider = new StripeEventPaymentProvider(
       "sk_test_value",
       "acct_test_org",
+      "pmc_test_parent",
     );
     await provider.refundPayment({
       providerPaymentId: "pi_test",

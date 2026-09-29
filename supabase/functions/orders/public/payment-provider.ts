@@ -22,6 +22,7 @@ export async function resolveEventPaymentProvider(input: {
   admin: AdminClient;
   orgId: string;
   stripeSecretKey: string | null;
+  stripePaymentMethodConfigurationId: string | null;
   providerSelection: string;
 }): Promise<ResolvedEventPaymentMethod> {
   const { data: org, error } = await input.admin
@@ -71,6 +72,9 @@ export async function resolveEventPaymentProvider(input: {
 
   if (!input.stripeSecretKey) throw internal("STRIPE_SECRET_KEY_MISSING");
   assertStripeApiKey(input.stripeSecretKey);
+  if (!input.stripePaymentMethodConfigurationId) {
+    throw internal("STRIPE_PAYMENT_METHOD_CONFIGURATION_ID_MISSING");
+  }
 
   if (
     !org.stripe_connected_account_id ||
@@ -90,6 +94,7 @@ export async function resolveEventPaymentProvider(input: {
     provider: new StripeEventPaymentProvider(
       input.stripeSecretKey,
       org.stripe_connected_account_id,
+      input.stripePaymentMethodConfigurationId,
     ),
   };
 }
