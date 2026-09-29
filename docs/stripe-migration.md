@@ -13,7 +13,9 @@ Le compte bancaire indiqué sur les factures est le compte CBC `BE51 7320 8102 5
 
 ## Billetterie Stripe Connect
 
-La route publique `orders` crée la commande puis une Checkout Session dans le Connected Account de l’organisateur. Le paramètre `payment_method_types[0]=bancontact` empêche Checkout de proposer une carte.
+La route publique `orders` crée la commande puis une Checkout Session dans le Connected Account de l’organisateur. Le paramètre `payment_method_configuration`, fourni par `STRIPE_PAYMENT_METHOD_CONFIGURATION_ID`, sélectionne la configuration parente Connect qui doit conserver uniquement Bancontact activé.
+
+Lors de la création d’un nouveau compte Standard, Eventflow demande uniquement `capabilities[bancontact_payments][requested]=true`. La demande ne garantit pas une activation immédiate : Stripe doit rendre la capacité active pour que Bancontact soit disponible. Ce changement ne retire aucune capacité des comptes existants ; leur éventuelle régularisation reste distincte.
 
 Le déploiement est contrôlé par `user_profile.stripe_connect_allowed`, géré uniquement par un opérateur de confiance et à `false` par défaut, y compris pour les nouveaux comptes. Une organisation non autorisée voit une alerte globale et ses billets payants ne sont pas sélectionnables. Quand son owner est explicitement autorisé, l’interface l’invite à refaire l’onboarding Stripe. Un événement payant reste bloqué tant que l’organisateur n’a pas validé ses conditions de vente et que le compte Stripe n’est pas Standard (ou équivalent avec Dashboard complet et responsabilité Stripe), sans exigence en attente, avec les indicateurs `details_submitted`, `charges_enabled` et `payouts_enabled` à `true`. Les inscriptions gratuites restent disponibles.
 

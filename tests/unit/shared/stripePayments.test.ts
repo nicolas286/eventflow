@@ -202,7 +202,7 @@ describe("Stripe provider boundaries", () => {
     );
   });
 
-  it("creates a Standard account so Stripe carries negative-balance liability", async () => {
+  it("creates a Standard account requesting only Bancontact for ticket payments", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -233,6 +233,10 @@ describe("Stripe provider boundaries", () => {
     expect(String(init.body)).toContain(
       "metadata%5Beventflow_org_id%5D=org_test",
     );
+    const params = new URLSearchParams(String(init.body));
+    expect(
+      [...params.entries()].filter(([key]) => key.startsWith("capabilities[")),
+    ).toEqual([["capabilities[bancontact_payments][requested]", "true"]]);
   });
 
   it("loads the real capabilities when resuming an existing account", async () => {
