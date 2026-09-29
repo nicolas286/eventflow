@@ -46,6 +46,7 @@ export default function AdminDashboard() {
         .filter(Boolean)
         .join(" ")
     : null;
+  const userRole = bootstrap?.membership?.[0]?.role ?? null;
 
   if (loading && !bootstrap) {
     return (
@@ -121,7 +122,7 @@ export default function AdminDashboard() {
       {isOnboarding ? (
         content
       ) : (
-        <AdminAppShell org={topNavOrg} userName={userName}>
+        <AdminAppShell org={topNavOrg} userName={userName} userRole={userRole}>
           {content}
         </AdminAppShell>
       )}

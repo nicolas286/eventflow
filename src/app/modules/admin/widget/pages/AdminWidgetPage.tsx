@@ -6,6 +6,7 @@ import Card, { CardBody, CardHeader } from "@shared/ui/components/card/Card";
 
 import type { AdminOutletContext } from "../../dashboard/components/AdminDashboard";
 import WidgetPanel from "../components/WidgetPanel";
+import { AdminPageHeader } from "../../dashboard/components/AdminPageHeader/AdminPageHeader";
 
 export type WidgetThemeUI = {
   widgetBg?: string | null;
@@ -29,7 +30,7 @@ export default function AdminWidgetPage() {
       widgetText: orgProfile?.widgetText ?? "#FFDE59",
       widgetButton: orgProfile?.widgetButton ?? "#D9931A",
     }),
-    [orgProfile]
+    [orgProfile],
   );
 
   const [widgetTheme, setWidgetTheme] = useState<WidgetThemeUI>(initial);
@@ -40,13 +41,22 @@ export default function AdminWidgetPage() {
 
   return (
     <Container>
+      <AdminPageHeader
+        eyebrow="Intégration"
+        title="Billetterie sur votre site"
+        description="Personnalisez le widget, vérifiez son rendu et récupérez le code prêt à intégrer sur votre propre site."
+      />
       <Card>
         <CardHeader
-          title="Widget d’intégration"
-          subtitle="Intégrez votre billetterie directement sur votre site via une iframe personnalisable."
+          title="Configuration du widget"
+          subtitle="Les couleurs restent sous votre contrôle et l’aperçu se met à jour automatiquement."
         />
         <CardBody>
-          <WidgetPanel org={widgetTheme} setOrg={setWidgetTheme} orgPlan={orgPlan} />
+          <WidgetPanel
+            org={widgetTheme}
+            setOrg={setWidgetTheme}
+            orgPlan={orgPlan}
+          />
         </CardBody>
       </Card>
     </Container>

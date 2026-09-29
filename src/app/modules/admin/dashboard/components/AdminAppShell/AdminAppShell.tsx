@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 
 import { useAuth } from "@providers/AuthProvider/useAuth";
@@ -16,11 +16,13 @@ import {
 } from "@ui/components/icon/Icons";
 
 import "./AdminAppShell.css";
+import "./AdminWorkspace.css";
 
 type AdminAppShellProps = {
   children: ReactNode;
   org: OrgInfo | null;
   userName?: string | null;
+  userRole?: "owner" | "admin" | null;
 };
 
 type NavigationItem = {
@@ -126,12 +128,19 @@ function NavigationGroup({
   );
 }
 
-export function AdminAppShell({ children, org, userName }: AdminAppShellProps) {
+export function AdminAppShell({
+  children,
+  org,
+  userName,
+  userRole,
+}: AdminAppShellProps) {
   const location = useLocation();
   const { signOut } = useAuth();
   const { showToast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileSidebarRef = useRef<HTMLDivElement>(null);
 
   const publicPath = getPublicPath(org);
   const activeLabel = useMemo(() => {
@@ -147,17 +156,45 @@ export function AdminAppShell({ children, org, userName }: AdminAppShellProps) {
     if (!mobileOpen) return;
 
     const previousOverflow = document.body.style.overflow;
+    const menuButton = menuButtonRef.current;
     document.body.style.overflow = "hidden";
 
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setMobileOpen(false);
+    const focusableSelector =
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusableElements = Array.from(
+      mobileSidebarRef.current?.querySelectorAll<HTMLElement>(
+        focusableSelector,
+      ) ?? [],
+    );
+
+    focusableElements[0]?.focus();
+
+    function handleDrawerKeyboard(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab" || focusableElements.length === 0) return;
+
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     }
 
-    window.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("keydown", handleDrawerKeyboard);
 
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("keydown", handleDrawerKeyboard);
+      menuButton?.focus();
     };
   }, [mobileOpen]);
 
@@ -281,7 +318,9 @@ export function AdminAppShell({ children, org, userName }: AdminAppShellProps) {
         </div>
         <div className="adminSidebar__userCopy">
           <strong>{userName || "Mon compte"}</strong>
-          <span>Administrateur</span>
+          <span>
+            {userRole === "owner" ? "Propriétaire" : "Administrateur"}
+          </span>
         </div>
         <button
           type="button"
@@ -302,8 +341,12 @@ export function AdminAppShell({ children, org, userName }: AdminAppShellProps) {
       <div className="adminAppShell__desktopSidebar">{sidebar}</div>
 
       <div
+        id="admin-mobile-navigation"
         className={`adminAppShell__mobileLayer${mobileOpen ? " isOpen" : ""}`}
         aria-hidden={!mobileOpen}
+        role="dialog"
+        aria-modal={mobileOpen ? "true" : undefined}
+        aria-label="Navigation de l’administration"
       >
         <button
           type="button"
@@ -312,18 +355,22 @@ export function AdminAppShell({ children, org, userName }: AdminAppShellProps) {
           aria-label="Fermer le menu"
           tabIndex={mobileOpen ? 0 : -1}
         />
-        <div className="adminAppShell__mobileSidebar">{sidebar}</div>
+        <div ref={mobileSidebarRef} className="adminAppShell__mobileSidebar">
+          {sidebar}
+        </div>
       </div>
 
       <main className="adminAppShell__main">
         <header className="adminAppShell__topbar">
           <div className="adminAppShell__topbarLeft">
             <button
+              ref={menuButtonRef}
               type="button"
               className="adminAppShell__menuButton"
               onClick={() => setMobileOpen(true)}
               aria-label="Ouvrir le menu"
               aria-expanded={mobileOpen}
+              aria-controls="admin-mobile-navigation"
             >
               <span />
               <span />

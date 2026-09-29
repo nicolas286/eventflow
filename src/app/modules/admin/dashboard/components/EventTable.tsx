@@ -1,7 +1,6 @@
 import "./EventTable.mobile.css";
 import "./EventTable.desktop.css";
 
-import { Card, CardBody, CardHeader } from "@ui/components";
 import { useMemo } from "react";
 import { useToast } from "@ui/components/toast/useToast";
 import { getPublicOrigin } from "@shared/helpers/publicOrigin";
@@ -31,7 +30,6 @@ export default function EventTable({
   renderInlineEditor,
   orgSlug,
 }: EventTableProps) {
-
   const { showToast } = useToast();
 
   function getShareEventUrl(orgSlug?: string, eventSlug?: string) {
@@ -81,44 +79,36 @@ export default function EventTable({
   }
 
   function shareOnWhatsapp(orgSlug?: string, eventSlug?: string) {
-  const shareUrl = getShareEventUrl(orgSlug, eventSlug);
+    const shareUrl = getShareEventUrl(orgSlug, eventSlug);
 
-  if (!shareUrl) {
-    showToast({
-      title: "Impossible de partager",
-      description: "Lien indisponible.",
-      variant: "error",
-    });
-    return;
+    if (!shareUrl) {
+      showToast({
+        title: "Impossible de partager",
+        description: "Lien indisponible.",
+        variant: "error",
+      });
+      return;
+    }
+
+    const message = `Découvrez cet événement : ${shareUrl}`;
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+    window.open(waUrl, "_blank", "noopener,noreferrer");
   }
 
-  const message = `Découvrez cet événement : ${shareUrl}`;
-  const waUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-
-  window.open(waUrl, "_blank", "noopener,noreferrer");
-}
-
-    const { upcoming, past } = useMemo(
+  const { upcoming, past } = useMemo(
     () => splitEventsByStatus(events),
-    [events]
+    [events],
   );
 
   return (
-    <Card>
+    <section className="eventTable" aria-label="Liste des événements">
+      <div className="eventTable__list">
+        {events.length === 0 && (
+          <div className="eventTable-empty">Aucun événement pour le moment</div>
+        )}
 
-      <CardHeader title="Aperçu de mes événements" />
-
-      <CardBody>
-
-        <div className="eventTable__list">
-
-          {events.length === 0 && (
-            <div className="eventTable-empty">
-              Aucun événement pour le moment
-            </div>
-          )}
-
-          {upcoming.map((row) => (
+        {upcoming.map((row) => (
           <div key={row.event.id} className="eventCardWrap">
             <EventCard
               row={row}
@@ -138,12 +128,13 @@ export default function EventTable({
 
         {past.length > 0 && (
           <>
-            <div className="eventTable__sectionTitle">
-              Événements passés
-            </div>
+            <div className="eventTable__sectionTitle">Événements passés</div>
 
             {past.map((row) => (
-              <div key={row.event.id} className="eventCardWrap eventCardWrap--past">
+              <div
+                key={row.event.id}
+                className="eventCardWrap eventCardWrap--past"
+              >
                 <EventCard
                   row={row}
                   isSelected={row.event.id === editingId}
@@ -161,11 +152,7 @@ export default function EventTable({
             ))}
           </>
         )}
-
-        </div>
-
-      </CardBody>
-
-    </Card>
+      </div>
+    </section>
   );
 }

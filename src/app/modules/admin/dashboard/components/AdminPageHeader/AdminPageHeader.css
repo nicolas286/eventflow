@@ -1,0 +1,137 @@
+.adminPageHeader {
+  position: relative;
+  display: flex;
+  width: 100%;
+  max-width: 1280px;
+  min-width: 0;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 4px 2px 8px;
+}
+
+.adminPageHeader::before {
+  position: absolute;
+  top: 2px;
+  bottom: 8px;
+  left: -32px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--primary-strong)),
+    rgb(var(--primary) / 0.16)
+  );
+  content: "";
+}
+
+.adminPageHeader__main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 18px;
+}
+
+.adminPageHeader__copy {
+  min-width: 0;
+}
+
+.adminPageHeader__eyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: rgb(var(--primary-strong));
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.adminPageHeader__title {
+  margin: 0;
+  color: var(--ef-text-primary);
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 700 !important;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+}
+
+.adminPageHeader__description {
+  max-width: 72ch;
+  margin: 8px 0 0;
+  color: var(--ef-text-secondary);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.adminPageHeader__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.adminPageHeader__metaText {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 3px 9px;
+  border: 1px solid var(--ef-border-default);
+  border-radius: 999px;
+  background: var(--ef-bg-surface);
+  color: var(--ef-text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.adminPageHeader__visual {
+  width: 78px;
+  height: 78px;
+  flex: 0 0 78px;
+  overflow: hidden;
+  border: 1px solid var(--ef-border-default);
+  border-radius: 18px;
+  background: var(--ef-bg-muted);
+  box-shadow: var(--ef-shadow-sm);
+}
+
+.adminPageHeader__visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.adminPageHeader__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .adminPageHeader {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: 4px;
+  }
+
+  .adminPageHeader::before {
+    display: none;
+  }
+
+  .adminPageHeader__visual {
+    width: 60px;
+    height: 60px;
+    flex-basis: 60px;
+    border-radius: 14px;
+  }
+
+  .adminPageHeader__actions {
+    width: 100%;
+  }
+
+  .adminPageHeader__actions > * {
+    flex: 1 1 auto;
+  }
+}

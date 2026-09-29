@@ -5,6 +5,7 @@ import Card, { CardBody, CardHeader } from "@ui/components/card/Card";
 
 import StructurePanel from "../components/OrganizationPanel/OrganizationPanel";
 import type { AdminOutletContext } from "../../dashboard/components/AdminDashboard";
+import { AdminPageHeader } from "../../dashboard/components/AdminPageHeader/AdminPageHeader";
 
 export default function AdminStructurePage() {
   const { bootstrap, orgId, refetch } = useOutletContext<AdminOutletContext>();
@@ -13,10 +14,15 @@ export default function AdminStructurePage() {
 
   return (
     <Container>
+      <AdminPageHeader
+        eyebrow="Organisation"
+        title="Profil organisateur"
+        description="Centralisez les informations publiques de votre structure et la configuration nécessaire à l’encaissement de vos ventes."
+      />
       <Card>
         <CardHeader
-          title="Structure"
-          subtitle="Gérez l’identité, les infos publiques et le fournisseur des paiements d’événements."
+          title="Informations de l’organisation"
+          subtitle="Coordonnées publiques, présentation et configuration des paiements."
         />
         <CardBody>
           {!ready ? (

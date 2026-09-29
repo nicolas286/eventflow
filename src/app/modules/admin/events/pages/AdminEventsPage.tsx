@@ -25,6 +25,7 @@ import { useDuplicateEvent } from "../../singleEvent/hooks/useDuplicateEvent";
 import { PlusIcon } from "@ui/components/icon/Icons";
 import { MessageBox } from "@shared/ui/components/message/MessageBox";
 import { AdminNotices } from "../../notices/components/AdminNotices";
+import { AdminPageHeader } from "../../dashboard/components/AdminPageHeader/AdminPageHeader";
 
 type EditableEventFields = Partial<
   Pick<
@@ -171,6 +172,22 @@ export default function AdminEventsPage() {
 
   return (
     <>
+      <AdminPageHeader
+        eyebrow="Pilotage"
+        title="Vos événements"
+        description="Créez, publiez et suivez vos événements depuis un espace unique. Les commandes et recettes restent visibles en un coup d’œil."
+        actions={
+          <Button
+            label={creating ? "Création…" : "Nouvel événement"}
+            onClick={addEvent}
+            disabled={creating}
+          >
+            <PlusIcon />
+            {creating ? "Création…" : "Nouvel événement"}
+          </Button>
+        }
+      />
+
       <AdminNotices bootstrap={bootstrap} />
 
       <div className="adminAllEventsWrap">
@@ -185,24 +202,13 @@ export default function AdminEventsPage() {
         <div className="adminAllEventsCard">
           <div className="adminAllEventsHeader">
             <div>
-              <h3 className="adminAllEventsTitle">Événements</h3>
+              <h2 className="adminAllEventsTitle">Tous les événements</h2>
               <div className="adminAllEventsHint">
                 {events.length} événement(s)
                 {isEditorVisible ? (
                   <span className="adminAllEventsDot">• Éditeur ouvert</span>
                 ) : null}
               </div>
-            </div>
-
-            <div className="adminAllEventsHeaderActions">
-              <Button
-                label={creating ? "Création…" : "Nouvel événement"}
-                onClick={addEvent}
-                disabled={creating}
-              >
-                <PlusIcon />
-                Nouvel événement
-              </Button>
             </div>
           </div>
 

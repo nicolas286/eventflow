@@ -1,6 +1,6 @@
 # Refonte visuelle Eventflow — administration et parcours client
 
-**Statut : chantier démarré sur `dev` avec les fondations visuelles et le shell d’administration. Les autres lots restent à implémenter.**
+**Statut : shell et refonte visuelle de l’espace organisateur implémentés sur `dev`. La recette visuelle connectée et la refonte du parcours public restent à terminer.**
 
 Ce chantier concerne à la fois l’espace utilisé par les organisateurs et le parcours public utilisé par leurs clients pour découvrir un événement, choisir des billets et terminer une inscription. Il est distinct du futur back-office interne Eventflow décrit dans [platform-admin.md](platform-admin.md).
 
@@ -329,6 +329,15 @@ Les statuts techniques comme `awaiting_payment` doivent toujours être traduits 
 7. Aligner complètement le widget et réaliser la recette embarquée.
 
 ## Proposition de déroulement
+
+### État d’implémentation au 29 septembre 2026
+
+- Le shell desktop/mobile, la sidebar, la topbar et le focus du drawer mobile sont en place.
+- Le footer public a été retiré du layout organisateur afin que la sidebar reste attachée au viewport sur toute la page.
+- Les écrans Événements, détail d’événement, Apparence, Widget, Profil organisateur, Profil personnel et Abonnement utilisent un en-tête de page commun.
+- Une couche visuelle limitée à `.adminAppShell` harmonise cartes, formulaires, boutons, badges, listes, onglets, factures, éditeurs et états vides sans modifier le thème des pages publiques.
+- Les parcours métier, routes, hooks et repositories sont inchangés.
+- La validation navigateur connectée reste à effectuer : aucun navigateur contrôlable n’était disponible dans la session d’implémentation.
 
 ### Lot 0 — Inventaire et maquettes
 

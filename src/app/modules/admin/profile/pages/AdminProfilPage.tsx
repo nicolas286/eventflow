@@ -7,7 +7,11 @@ import Card, { CardBody, CardHeader } from "@ui/components/card/Card";
 import ProfilePanel from "../components/ProfilePanel/ProfilePanel";
 import type { AdminOutletContext } from "../../dashboard/components/AdminDashboard";
 
-import { type AdminProfileForm, adminProfileFormSchema } from "../schemas/admin.updateAdminProfile.schema";
+import {
+  type AdminProfileForm,
+  adminProfileFormSchema,
+} from "../schemas/admin.updateAdminProfile.schema";
+import { AdminPageHeader } from "../../dashboard/components/AdminPageHeader/AdminPageHeader";
 export default function AdminProfilPage() {
   const { bootstrap, refetch } = useOutletContext<AdminOutletContext>();
   const p = bootstrap?.profile ?? null;
@@ -54,6 +58,11 @@ export default function AdminProfilPage() {
   if (!bootstrap || !p) {
     return (
       <Container>
+        <AdminPageHeader
+          eyebrow="Compte"
+          title="Profil personnel"
+          description="Chargement de vos informations privées…"
+        />
         <Card>
           <CardHeader
             title="Profil"
@@ -71,13 +80,22 @@ export default function AdminProfilPage() {
 
   return (
     <Container>
+      <AdminPageHeader
+        eyebrow="Compte"
+        title="Profil personnel"
+        description="Tenez vos coordonnées à jour et gérez les paramètres sensibles de votre compte Eventflow."
+      />
       <Card>
         <CardHeader
-          title="Profil"
-          subtitle="Gérez vos informations privées. Elles ne sont visibles que dans l'espace admin."
+          title="Vos informations"
+          subtitle="Ces données restent privées et sont uniquement utilisées pour la gestion de votre compte."
         />
         <CardBody>
-          <ProfilePanel profile={profile} setProfile={setProfile} onSaved={refetch} />
+          <ProfilePanel
+            profile={profile}
+            setProfile={setProfile}
+            onSaved={refetch}
+          />
         </CardBody>
       </Card>
     </Container>

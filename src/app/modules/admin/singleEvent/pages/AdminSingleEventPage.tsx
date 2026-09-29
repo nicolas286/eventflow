@@ -19,6 +19,10 @@ import { SingleEventFormSection } from "../../forms/components/SingleEventFormTa
 import { SingleEventParticipantsSection } from "../../orders/components/SingleEventParticipantsSection";
 import { AdminSingleEventTabs } from "../components/AdminSingleEventTabs";
 import { SingleEventPromoCodesSection } from "../../promoCodes/components/SingleEventPromoCodesTabs";
+import { AdminPageHeader } from "../../dashboard/components/AdminPageHeader/AdminPageHeader";
+import { Badge, Button } from "@ui/components";
+import { ChevronLeftIcon } from "@ui/components/icon/Icons";
+import { formatDateTimeHuman } from "@helpers/dateTime";
 
 export function AdminSingleEventPage() {
   const { eventSlug } = useParams<{ eventSlug: string }>();
@@ -74,7 +78,7 @@ export function AdminSingleEventPage() {
   }
 
   async function handleConfirmFullPatch(
-    patch: UpdateEventFullPatch
+    patch: UpdateEventFullPatch,
   ): Promise<void> {
     if (!event?.id) return;
 
@@ -120,14 +124,46 @@ export function AdminSingleEventPage() {
   const showCoreError = core.error;
 
   return (
-    <div className="adminCard">
-      <h2 className="adminEventTitle">{headerTitle}</h2>
+    <div className="adminSingleEventPage">
+      <AdminPageHeader
+        eyebrow="Gestion de l’événement"
+        title={headerTitle}
+        description="Configurez l’événement, sa billetterie et son formulaire, puis suivez les inscriptions depuis le même espace."
+        visual={
+          event?.bannerUrlEffective ? (
+            <img src={event.bannerUrlEffective} alt="" />
+          ) : null
+        }
+        meta={
+          event ? (
+            <>
+              <Badge
+                tone={event.isPublished ? "success" : "neutral"}
+                label={event.isPublished ? "Publié" : "Brouillon"}
+              />
+              <span className="adminPageHeader__metaText">
+                {formatDateTimeHuman(event.startsAt)}
+              </span>
+            </>
+          ) : null
+        }
+        actions={
+          <Button variant="secondary" onClick={() => navigate("/admin/events")}>
+            <ChevronLeftIcon />
+            Tous les événements
+          </Button>
+        }
+      />
 
       <AdminSingleEventTabs activeTab={tab} onChange={setTab} />
 
-      <div style={{ marginTop: 16 }}>
-        {showCoreLoading && <p>Chargement…</p>}
-        {showCoreError && <p style={{ color: "crimson" }}>{showCoreError}</p>}
+      <div className="adminSingleEventPage__body">
+        {showCoreLoading && (
+          <div className="adminEventEmpty">Chargement de l’événement…</div>
+        )}
+        {showCoreError && (
+          <div className="adminEventAlert isError">{showCoreError}</div>
+        )}
 
         {!showCoreLoading && !showCoreError && core.data && event && (
           <>
@@ -159,12 +195,12 @@ export function AdminSingleEventPage() {
             )}
 
             {tab === "promoCodes" && (
-            <SingleEventPromoCodesSection
-              orgId={orgId}
-              event={event}
-              onChanged={refreshAll}
-            />
-          )}
+              <SingleEventPromoCodesSection
+                orgId={orgId}
+                event={event}
+                onChanged={refreshAll}
+              />
+            )}
 
             {tab === "participants" && (
               <SingleEventParticipantsSection

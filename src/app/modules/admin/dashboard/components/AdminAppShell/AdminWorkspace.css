@@ -1,0 +1,816 @@
+/* Organizer workspace: a scoped visual layer so public pages keep their theme. */
+
+.adminAppShell .ui-container {
+  display: grid;
+  min-width: 0;
+  max-width: 1280px;
+  gap: 20px;
+  padding: 0;
+}
+
+.adminAppShell .ui-card,
+.adminAppShell .flexPanel,
+.adminAppShell .adminAllEventsCard,
+.adminAppShell .adminCard {
+  border: 1px solid var(--ef-border-default);
+  border-radius: var(--ef-radius-xl);
+  background: var(--ef-bg-surface);
+  box-shadow: var(--ef-shadow-sm);
+}
+
+.adminAppShell .ui-cardHeader {
+  min-height: 76px;
+  align-items: center;
+  padding: 20px 24px;
+  border-color: var(--ef-border-default);
+  border-radius: var(--ef-radius-xl) var(--ef-radius-xl) 0 0;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+}
+
+.adminAppShell .ui-cardHeader__title {
+  font-family: "Poppins", sans-serif;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.adminAppShell .ui-cardHeader__subtitle {
+  max-width: 75ch;
+  margin-top: 5px;
+  color: var(--ef-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.adminAppShell .ui-cardBody {
+  padding: 24px;
+}
+
+.adminAppShell .flexPanel {
+  max-width: none;
+  padding: 24px;
+}
+
+.adminAppShell .ui-button {
+  min-height: 42px;
+  padding: 10px 15px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 680;
+  letter-spacing: -0.005em;
+  box-shadow: none;
+}
+
+.adminAppShell .ui-button--primary {
+  border-color: rgb(var(--primary-strong));
+  background: rgb(var(--primary-strong));
+  box-shadow: 0 6px 16px rgb(var(--primary) / 0.18);
+}
+
+.adminAppShell .ui-button--primary:hover {
+  background: rgb(var(--primary-strong) / 0.9);
+  box-shadow: 0 8px 20px rgb(var(--primary) / 0.22);
+  transform: translateY(-1px);
+}
+
+.adminAppShell .ui-button--secondary {
+  border-color: var(--ef-border-strong);
+  background: var(--ef-bg-surface);
+  color: var(--ef-text-secondary);
+}
+
+.adminAppShell .ui-button--secondary:hover {
+  border-color: rgb(var(--primary) / 0.38);
+  background: rgb(var(--primary) / 0.06);
+  color: rgb(var(--primary-strong));
+}
+
+.adminAppShell .ui-button--ghost {
+  color: var(--ef-text-secondary);
+}
+
+.adminAppShell .ui-button--ghost:hover {
+  background: var(--ef-bg-muted);
+  color: var(--ef-text-primary);
+}
+
+.adminAppShell .ui-field__label,
+.adminAppShell .eventLabel,
+.adminAppShell .adminEventLabel,
+.adminAppShell .profilePanel__label,
+.adminAppShell .structurePanel__fieldLabel {
+  margin-bottom: 7px;
+  color: var(--ef-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.adminAppShell .ui-input,
+.adminAppShell .ui-textArea,
+.adminAppShell .adminEventInput,
+.adminAppShell .adminEventTextarea,
+.adminAppShell .adminFormControl,
+.adminAppShell .adminSearchInput,
+.adminAppShell .adminSearchSelect,
+.adminAppShell .uiFilterBarInput,
+.adminAppShell .uiFilterBarSelect,
+.adminAppShell .profilePanel__select,
+.adminAppShell .profilePanel__phoneInput,
+.adminAppShell .widgetPanel__code {
+  border: 1px solid var(--ef-border-default);
+  border-radius: 10px;
+  background: var(--ef-bg-subtle);
+  color: var(--ef-text-primary);
+  box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.02);
+}
+
+.adminAppShell .ui-input,
+.adminAppShell .profilePanel__select,
+.adminAppShell .profilePanel__phoneInput,
+.adminAppShell .adminSearchInput,
+.adminAppShell .adminSearchSelect {
+  min-height: 44px;
+}
+
+.adminAppShell .ui-input:hover,
+.adminAppShell .ui-textArea:hover,
+.adminAppShell .adminEventInput:hover,
+.adminAppShell .adminEventTextarea:hover,
+.adminAppShell .adminFormControl:hover {
+  border-color: var(--ef-border-strong);
+}
+
+.adminAppShell .ui-input:focus,
+.adminAppShell .ui-textArea:focus,
+.adminAppShell .adminEventInput:focus,
+.adminAppShell .adminEventTextarea:focus,
+.adminAppShell .adminFormControl:focus,
+.adminAppShell .adminSearchInput:focus,
+.adminAppShell .adminSearchSelect:focus {
+  border-color: rgb(var(--primary) / 0.65);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgb(var(--primary) / 0.13);
+  outline: none;
+}
+
+.adminAppShell .ui-input:disabled,
+.adminAppShell .ui-textArea:disabled,
+.adminAppShell select:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.adminAppShell .ui-badge {
+  min-height: 24px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 680;
+  line-height: 1.2;
+}
+
+.adminAppShell .message {
+  margin-top: 0;
+  padding: 12px 14px;
+  border-radius: 11px;
+  font-size: 13px;
+  font-style: normal;
+  line-height: 1.5;
+}
+
+/* Notices */
+.adminAppShell .adminNotices {
+  gap: 8px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.adminAppShell .adminNotice {
+  align-items: center;
+  padding: 13px 16px;
+  border: 1px solid #f4d6a6;
+  border-radius: 13px;
+  background: #fffaf0;
+  box-shadow: var(--ef-shadow-xs);
+}
+
+.adminAppShell .adminNoticeTitle {
+  color: #7c4a0a;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.adminAppShell .adminNoticeBody {
+  margin-top: 3px;
+  color: #805a2b;
+  font-size: 12px;
+  line-height: 1.45;
+  opacity: 1;
+}
+
+.adminAppShell .adminNoticeCta {
+  flex: 0 0 auto;
+  padding: 8px 11px;
+  border-color: #e9c78f;
+  border-radius: 9px;
+  color: #7c4a0a;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* Events overview */
+.adminAppShell .adminAllEventsWrap {
+  max-width: 1280px;
+  padding: 0;
+}
+
+.adminAppShell .adminAllEventsCard {
+  padding: 22px;
+}
+
+.adminAppShell .adminAllEventsCard--compact {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.adminAppShell .adminAllEventsHeader {
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.adminAppShell .adminAllEventsTitle {
+  color: var(--ef-text-primary);
+  font-family: "Poppins", sans-serif;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.adminAppShell .adminAllEventsHint {
+  color: var(--ef-text-muted);
+  font-weight: 550;
+}
+
+.adminAppShell .adminStats {
+  gap: 14px;
+}
+
+.adminAppShell .adminStats .ui-card {
+  position: relative;
+  overflow: hidden;
+  border-color: var(--ef-border-default);
+  box-shadow: var(--ef-shadow-xs);
+}
+
+.adminAppShell .adminStats .ui-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: rgb(var(--primary));
+  content: "";
+}
+
+.adminAppShell .adminStats .ui-cardBody {
+  padding: 18px 20px;
+}
+
+.adminAppShell .adminStats__label {
+  color: var(--ef-text-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.adminAppShell .adminStats__value {
+  margin-top: 7px;
+  color: var(--ef-text-primary);
+  font-family: "Poppins", sans-serif;
+  font-size: 28px;
+  font-weight: 680;
+  letter-spacing: -0.04em;
+}
+
+.adminAppShell .eventTable__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.adminAppShell .uiEditorShell.isEditorOpen .eventTable__list {
+  grid-template-columns: 1fr;
+}
+
+.adminAppShell .eventTable__sectionTitle {
+  grid-column: 1 / -1;
+  margin: 12px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--ef-border-default);
+  color: var(--ef-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.adminAppShell .eventCardWrap {
+  min-width: 0;
+}
+
+.adminAppShell .eventCard {
+  display: grid;
+  min-height: 230px;
+  grid-template-rows: auto 1fr auto auto;
+  padding: 18px;
+  border: 1px solid var(--ef-border-default);
+  border-radius: 16px;
+  background: var(--ef-bg-surface);
+  box-shadow: var(--ef-shadow-xs);
+}
+
+.adminAppShell .eventCard:hover {
+  border-color: rgb(var(--primary) / 0.24);
+  box-shadow: var(--ef-shadow-sm);
+  transform: translateY(-2px);
+}
+
+.adminAppShell .eventCard.isSelected {
+  border-color: rgb(var(--primary) / 0.42);
+  background: rgb(var(--primary) / 0.035);
+  box-shadow: 0 0 0 3px rgb(var(--primary) / 0.08);
+}
+
+.adminAppShell .eventCard.isPast {
+  background: var(--ef-bg-subtle);
+  opacity: 0.82;
+}
+
+.adminAppShell .eventCard__actionLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.adminAppShell .eventCard__title {
+  color: var(--ef-text-primary);
+  font-family: "Poppins", sans-serif;
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.adminAppShell .eventCard__meta {
+  margin-top: 18px;
+  gap: 9px;
+}
+
+.adminAppShell .eventCard__row {
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.adminAppShell .eventCard__label {
+  color: var(--ef-text-muted);
+  font-size: 12px;
+}
+
+.adminAppShell .eventCard__value {
+  color: var(--ef-text-secondary);
+  font-size: 13px;
+}
+
+.adminAppShell .eventCard__stats {
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ef-border-default);
+  color: var(--ef-text-secondary);
+  font-size: 12px;
+}
+
+.adminAppShell .eventCard__stat svg {
+  width: 16px;
+  height: 16px;
+  color: rgb(var(--primary-strong));
+}
+
+.adminAppShell .eventCard__actions {
+  margin-top: 14px;
+}
+
+.adminAppShell .eventCardActions__menu {
+  border-color: var(--ef-border-default);
+  border-radius: 12px;
+  box-shadow: var(--ef-shadow-md);
+}
+
+/* Event workspace and tabs */
+.adminAppShell .adminSingleEventPage {
+  display: grid;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  gap: 20px;
+}
+
+.adminAppShell .adminSingleEventPage__body {
+  min-width: 0;
+}
+
+.adminAppShell .adminEventTabs {
+  position: static;
+  left: auto;
+  width: auto;
+  margin: 0;
+  padding: 5px;
+  overflow-x: auto;
+  border: 1px solid var(--ef-border-default);
+  border-radius: 13px;
+  background: var(--ef-bg-muted);
+}
+
+.adminAppShell .adminEventTabsInner {
+  width: max-content;
+  max-width: none;
+  min-width: 100%;
+  padding: 0;
+  gap: 4px;
+}
+
+.adminAppShell .adminEventTab.ui-button,
+.adminAppShell .adminEventTab {
+  min-height: 38px;
+  flex: 1 0 auto;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ef-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  box-shadow: none;
+}
+
+.adminAppShell .adminEventTab:hover {
+  background: rgb(255 255 255 / 0.7);
+  color: var(--ef-text-primary);
+}
+
+.adminAppShell .adminEventTab.isActive {
+  border: 0;
+  background: var(--ef-bg-surface);
+  color: rgb(var(--primary-strong));
+  box-shadow: var(--ef-shadow-xs);
+}
+
+.adminAppShell .adminEventSection {
+  max-width: none;
+  margin: 0;
+}
+
+.adminAppShell .adminEventHeaderRow,
+.adminAppShell .adminParticipantsHeader,
+.adminAppShell .adminSectionHeader {
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--ef-border-default);
+}
+
+.adminAppShell .adminEventHeaderRow h3,
+.adminAppShell .adminParticipantsTitle,
+.adminAppShell .adminSectionHeader h3 {
+  margin: 0;
+  color: var(--ef-text-primary);
+  font-family: "Poppins", sans-serif;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.adminAppShell .adminTickets,
+.adminAppShell .adminRegForm,
+.adminAppShell .adminParticipantsCard,
+.adminAppShell .adminSingleEventPromoCodes {
+  padding: 22px;
+  border: 1px solid var(--ef-border-default);
+  border-radius: var(--ef-radius-xl);
+  background: var(--ef-bg-surface);
+  box-shadow: var(--ef-shadow-sm);
+}
+
+.adminAppShell .adminTicketCard,
+.adminAppShell .adminRegCard,
+.adminAppShell .adminOrderCard,
+.adminAppShell .adminPromoCreateCard,
+.adminAppShell .adminPromoListCard,
+.adminAppShell .adminParticipantCard,
+.adminAppShell .adminTicketRow {
+  border-color: var(--ef-border-default);
+  border-radius: 14px;
+  background: var(--ef-bg-subtle);
+  box-shadow: none;
+}
+
+.adminAppShell .adminTicketCard:hover,
+.adminAppShell .adminRegCard:hover,
+.adminAppShell .adminOrderCard:hover,
+.adminAppShell .adminTicketRow:hover {
+  border-color: rgb(var(--primary) / 0.24);
+  background: #ffffff;
+}
+
+.adminAppShell .adminTicketsEditorCard,
+.adminAppShell .adminRegEditorCard,
+.adminAppShell .editorCard {
+  border-color: var(--ef-border-default);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: var(--ef-shadow-md);
+}
+
+.adminAppShell .adminSubtabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--ef-border-default);
+  border-radius: 11px;
+  background: var(--ef-bg-muted);
+}
+
+.adminAppShell .adminSubtab {
+  min-height: 36px;
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ef-text-secondary);
+  font-weight: 650;
+}
+
+.adminAppShell .adminSubtab.isActive {
+  background: #ffffff;
+  color: rgb(var(--primary-strong));
+  box-shadow: var(--ef-shadow-xs);
+}
+
+/* Branding, organization, profile and widget */
+.adminAppShell .brandingPanel,
+.adminAppShell .structurePanel,
+.adminAppShell .profilePanel,
+.adminAppShell .widgetPanel {
+  gap: 20px;
+}
+
+.adminAppShell .brandingPanel__colorCard,
+.adminAppShell .brandingPanel__previewCard,
+.adminAppShell .brandingPanel__asset,
+.adminAppShell .structurePanel__block,
+.adminAppShell .profilePanel__section,
+.adminAppShell .widgetPanel__previewCard,
+.adminAppShell .widgetPanel__codeCard {
+  border: 1px solid var(--ef-border-default);
+  border-radius: 15px;
+  background: var(--ef-bg-subtle);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.adminAppShell .brandingPanel__colorCard,
+.adminAppShell .brandingPanel__previewCard,
+.adminAppShell .brandingPanel__asset,
+.adminAppShell .structurePanel__block,
+.adminAppShell .widgetPanel__previewCard,
+.adminAppShell .widgetPanel__codeCard {
+  padding: 18px;
+}
+
+.adminAppShell .profilePanel__section {
+  padding: 18px;
+}
+
+.adminAppShell .brandingPanel__label,
+.adminAppShell .structurePanel__label,
+.adminAppShell .profilePanel__title,
+.adminAppShell .profilePanel__sectionTitle,
+.adminAppShell .widgetPanel__label {
+  color: var(--ef-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.adminAppShell .brandingPanel__help,
+.adminAppShell .structurePanel__hint,
+.adminAppShell .profilePanel__subtitle,
+.adminAppShell .widgetPanel__help {
+  color: var(--ef-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.adminAppShell .brandingPanel__preview,
+.adminAppShell .brandingPanel__colorPick,
+.adminAppShell .widgetPanel__previewWrap {
+  border-color: var(--ef-border-default);
+  border-radius: 13px;
+  background: #ffffff;
+}
+
+.adminAppShell .brandingPanel__actionsBar,
+.adminAppShell .structurePanel__actionsBar,
+.adminAppShell .profilePanel__actionsBar {
+  margin-top: 2px;
+  padding-top: 18px;
+  border-top: 1px solid var(--ef-border-default);
+}
+
+.adminAppShell .profilePanel__danger {
+  padding: 16px !important;
+  border: 1px solid #fecaca !important;
+  border-radius: 13px;
+  background: #fff7f7;
+}
+
+.adminAppShell .widgetPanel__code {
+  color: #334155;
+  font-size: 12px;
+}
+
+/* Subscription */
+.adminAppShell .adminSub__page {
+  display: grid;
+  gap: 16px;
+}
+
+.adminAppShell .adminSub__spacer {
+  display: none;
+}
+
+.adminAppShell .adminSub__summaryGrid,
+.adminAppShell .adminSub__limitsGrid {
+  gap: 14px;
+}
+
+.adminAppShell .adminSub__summaryGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.adminAppShell .adminSub__summaryCol,
+.adminAppShell .adminSub__limitRow,
+.adminAppShell .adminSub__planTile,
+.adminAppShell .adminSub__dangerBox {
+  border-color: var(--ef-border-default);
+  border-radius: 14px;
+  background: var(--ef-bg-subtle);
+  box-shadow: none;
+}
+
+.adminAppShell .adminSub__summaryCol {
+  padding: 16px;
+  border: 1px solid var(--ef-border-default);
+}
+
+.adminAppShell .adminSub__planTile {
+  transition:
+    border-color 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.adminAppShell .adminSub__planTile:hover {
+  border-color: rgb(var(--primary) / 0.28);
+  box-shadow: var(--ef-shadow-sm);
+  transform: translateY(-2px);
+}
+
+.adminAppShell .adminSub__planTile.isHighlight {
+  border-color: rgb(var(--primary) / 0.4);
+  background: linear-gradient(180deg, rgb(var(--primary) / 0.055), #ffffff);
+}
+
+.adminAppShell .invDesktopTable {
+  overflow: hidden;
+  border: 1px solid var(--ef-border-default);
+  border-radius: 13px;
+}
+
+.adminAppShell .invTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.adminAppShell .invTh {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--ef-border-default);
+  background: var(--ef-bg-muted);
+  color: var(--ef-text-muted);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.adminAppShell .invTd {
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--ef-border-default);
+  color: var(--ef-text-secondary);
+  font-size: 13px;
+}
+
+.adminAppShell .invTr:last-child .invTd {
+  border-bottom: 0;
+}
+
+.adminAppShell .invTr:hover .invTd {
+  background: var(--ef-bg-subtle);
+}
+
+.adminAppShell .invMobileCard {
+  border-color: var(--ef-border-default);
+  border-radius: 14px;
+  background: var(--ef-bg-subtle);
+  box-shadow: none;
+}
+
+.adminAppShell .billingTabGrid {
+  gap: 16px;
+}
+
+.adminAppShell .billingTabCheckbox {
+  border: 1px solid var(--ef-border-default);
+  border-radius: 10px;
+  background: var(--ef-bg-subtle);
+}
+
+/* Empty and loading states */
+.adminAppShell .adminEventEmpty,
+.adminAppShell .eventTable-empty,
+.adminAppShell .adminPromoEmpty,
+.adminAppShell .adminFilledEmpty,
+.adminAppShell .adminOrderEmptyPeople {
+  padding: 24px;
+  border: 1px dashed var(--ef-border-strong);
+  border-radius: 13px;
+  background: var(--ef-bg-subtle);
+  color: var(--ef-text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+@media (max-width: 1120px) {
+  .adminAppShell .eventTable__list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .adminAppShell .adminSub__summaryGrid,
+  .adminAppShell .adminSub__limitsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminAppShell .ui-cardHeader,
+  .adminAppShell .ui-cardBody,
+  .adminAppShell .flexPanel,
+  .adminAppShell .adminAllEventsCard,
+  .adminAppShell .adminTickets,
+  .adminAppShell .adminRegForm,
+  .adminAppShell .adminParticipantsCard,
+  .adminAppShell .adminSingleEventPromoCodes {
+    padding: 16px;
+  }
+
+  .adminAppShell .ui-cardHeader {
+    min-height: 0;
+  }
+
+  .adminAppShell .adminNotice {
+    align-items: stretch;
+  }
+
+  .adminAppShell .adminNoticeCta {
+    width: 100%;
+    text-align: center;
+  }
+
+  .adminAppShell .eventCard {
+    min-height: 0;
+  }
+
+  .adminAppShell .adminEventTabsInner {
+    flex-wrap: nowrap;
+  }
+
+  .adminAppShell .adminEventTab.ui-button,
+  .adminAppShell .adminEventTab {
+    flex: 0 0 auto;
+  }
+
+  .adminAppShell .brandingPanel__actionsBar,
+  .adminAppShell .structurePanel__actionsBar,
+  .adminAppShell .profilePanel__actionsBar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adminAppShell .eventCard,
+  .adminAppShell .adminSub__planTile,
+  .adminAppShell .ui-button {
+    transition: none;
+  }
+}
