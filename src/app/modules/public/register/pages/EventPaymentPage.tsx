@@ -144,6 +144,7 @@ export function EventPaymentPage() {
 
   const hasDeposit = depositCents > 0 && totalCents > 0;
   const requiresOrganizerTerms = totalCents > 0;
+  const paidSalesAvailable = org.paidSalesAvailable === true;
 
   const attendeesCount = picked.reduce((acc, x) => {
     if (!x.p.createsAttendees) return acc;
@@ -240,6 +241,7 @@ export function EventPaymentPage() {
   async function pay() {
     if (!orgSlug || !eventSlug) return;
     if (picked.length === 0) return;
+    if (requiresOrganizerTerms && !paidSalesAvailable) return;
     if (!accepted) return;
     if (requiresOrganizerTerms && (!org.salesTermsAccepted || !salesTermsRead))
       return;
@@ -345,6 +347,7 @@ export function EventPaymentPage() {
 
   const canPay =
     picked.length > 0 &&
+    (!requiresOrganizerTerms || paidSalesAvailable) &&
     accepted &&
     (!requiresOrganizerTerms || (org.salesTermsAccepted && salesTermsRead)) &&
     (!hasCharter || charterRead) &&
@@ -521,6 +524,11 @@ export function EventPaymentPage() {
                   <Card>
                     <CardHeader title="Vendeur et conditions de l’organisateur" />
                     <CardBody>
+                      {!paidSalesAvailable ? (
+                        <div className="publicEmpty" style={{ marginBottom: 12 }}>
+                          Les paiements sont temporairement indisponibles pour cet organisateur.
+                        </div>
+                      ) : null}
                       <div
                         className="publicSubtitle"
                         style={{ marginBottom: 12 }}

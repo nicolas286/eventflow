@@ -305,15 +305,16 @@ Deno.test(
             body.mollieAction === "skipped",
         );
         assert(
-          mutations.length === 2 &&
-            mutations.every((entry) => entry.startsWith("PATCH")),
+          mutations.length === 1 &&
+            mutations[0].startsWith("POST") &&
+            mutations[0].includes("/rpc/cancel_internal_subscription"),
         );
       },
       (url, method) => {
         assert(!url.includes("api.mollie.com"), "Mollie must remain read-only");
         if (method !== "GET") {
           mutations.push(`${method} ${url}`);
-          return new Response(null, { status: 204 });
+          return Response.json({ ok: true, org_id: orgId });
         }
         if (url.includes("/rest/v1/subscriptions")) {
           return Response.json({

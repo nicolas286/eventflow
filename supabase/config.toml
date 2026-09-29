@@ -407,22 +407,6 @@ import_map = "./functions/import_map.json"
 verify_jwt = false
 import_map = "./functions/import_map.json"
 
-[functions.mollie-connect-start]
-verify_jwt = false
-import_map = "./functions/import_map.json"
-
-[functions.mollie-connect-callback]
-verify_jwt = false
-import_map = "./functions/import_map.json"
-
-[functions.mollie-webhook]
-verify_jwt = false
-import_map = "./functions/import_map.json"
-
-[functions.mollie-webhook-tickets]
-verify_jwt = false
-import_map = "./functions/import_map.json"
-
 [functions.stripe-connect-start]
 verify_jwt = false
 import_map = "./functions/import_map.json"

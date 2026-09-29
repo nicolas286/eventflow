@@ -15,7 +15,7 @@ Le compte bancaire indiqué sur les factures est le compte CBC `BE51 7320 8102 5
 
 La route publique `orders` crée la commande puis une Checkout Session dans le Connected Account de l’organisateur. Le paramètre `payment_method_types[0]=bancontact` empêche Checkout de proposer une carte.
 
-Les organisations anciennement onboardées avec Mollie, en test ou en live, reçoivent une alerte d’onboarding Stripe. Un événement payant reste bloqué tant que l’organisateur n’a pas validé ses conditions de vente et que le compte Stripe n’est pas Standard (ou équivalent avec Dashboard complet et responsabilité Stripe), sans exigence en attente, avec les indicateurs `details_submitted`, `charges_enabled` et `payouts_enabled` à `true`. Les inscriptions gratuites restent disponibles.
+Le déploiement est contrôlé par `user_profile.stripe_connect_allowed`, géré uniquement par un opérateur de confiance et à `false` par défaut, y compris pour les nouveaux comptes. Une organisation non autorisée voit une alerte globale et ses billets payants ne sont pas sélectionnables. Quand son owner est explicitement autorisé, l’interface l’invite à refaire l’onboarding Stripe. Un événement payant reste bloqué tant que l’organisateur n’a pas validé ses conditions de vente et que le compte Stripe n’est pas Standard (ou équivalent avec Dashboard complet et responsabilité Stripe), sans exigence en attente, avec les indicateurs `details_submitted`, `charges_enabled` et `payouts_enabled` à `true`. Les inscriptions gratuites restent disponibles.
 
 Le webhook Connect vérifie la signature et le mode live/test, exige un événement lié à un Connected Account et utilise le journal privé `private.payment_webhook_events` pour l’idempotence. Un remboursement total invalide les billets et libère la capacité une seule fois ; un e-mail de remboursement idempotent est envoyé.
 
@@ -52,6 +52,8 @@ Lors d’une souscription ou d’un passage vers un plan supérieur :
 
 Un nouvel appel identique pendant la période active réutilise la facture existante. Les anciennes références Mollie sont copiées dans `mollie_legacy_snapshot` lors du premier passage volontaire à la facturation interne, sans être modifiées ni appelées.
 
+Les abonnements Mollie payants encore actifs lors de la migration sont convertis sans appel à Mollie vers le fournisseur `manual`. Leur plan est prolongé gratuitement jusqu’au 1er novembre 2026 à 00:00 (Europe/Brussels). `billing_deferred_until` et un trigger empêchent toute émission anticipée ; la première facture de renouvellement ne peut être créée qu’à partir de cette échéance. Les prix, promotions et identifiants historiques restent conservés.
+
 Le job PostgreSQL `eventflow-manual-subscription-renewals` passe toutes les cinq
 minutes et crée de façon idempotente la facture de la période suivante pour les
 abonnements manuels arrivés à échéance. Une grâce maximale d'une heure conserve
@@ -67,6 +69,9 @@ fait plus échouer la souscription déjà validée : l'écran affiche l'avertiss
 et permet de reprendre les erreurs déterministes. Une réponse Billit incertaine
 demande un rapprochement préalable pour éviter un doublon. Les détails figurent
 dans [Reprise des livraisons de paiement](todo/payment-delivery.md).
+Le worker de rappels prend également en charge les nouvelles factures manuelles
+créées automatiquement à partir du 1er novembre, sans reprendre en masse les
+anciennes factures.
 
 ## Variables Edge Functions
 
@@ -127,5 +132,5 @@ refund.updated
 ## Limites connues
 
 - Le rapprochement d’un virement et le passage de la facture à `paid` restent opérés par le circuit comptable existant.
-- Les factures créées par le job de renouvellement suivent le circuit comptable existant pour leur transmission éventuelle à Billit ; le job ne déclenche pas lui-même cet envoi et aucun envoi Peppol n’est tenté en staging.
+- Les factures créées par le job de renouvellement sont reprises par le worker existant pour génération du PDF et transmission Billit éventuelle. Aucun envoi Peppol n’est tenté en staging.
 - Aucun paiement Stripe réel ne doit être exécuté dans les tests automatisés.

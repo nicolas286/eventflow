@@ -23,6 +23,7 @@ export const publicOrgProfileOverviewForEventPageSchema =
       salesTerms: z.string().min(200).max(10_000),
       salesTermsVersion: z.string().min(3).max(100),
       salesTermsAccepted: z.boolean(),
+      paidSalesAvailable: z.boolean().default(false),
     });
 
 export const publicEventSchema = eventDbSchema

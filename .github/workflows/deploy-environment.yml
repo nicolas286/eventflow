@@ -101,6 +101,8 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: npm run test:integration:accounts
       - name: Verify backend availability
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/deployment/check-backend.mjs
       - name: Synchronize Netlify build and function variables for this site
         run: node scripts/deployment/configure-netlify.mjs "$APP_ENV"

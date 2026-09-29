@@ -516,6 +516,11 @@ UPDATE public.organizations
 SET stripe_connected_account_id = 'acct_express_legacy'
 WHERE id = '20000000-0000-4000-8000-000000000002';
 
+-- Simulate the single operator-approved pilot; new profiles still default false.
+UPDATE public.user_profile
+SET stripe_connect_allowed = true
+WHERE user_id = '20000000-0000-4000-8000-000000000001';
+
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claim.role" = 'authenticated';
 SET LOCAL "request.jwt.claim.sub" = '20000000-0000-4000-8000-000000000001';
@@ -778,6 +783,36 @@ BEGIN
   THEN
     RAISE EXCEPTION 'The scheduled manual renewal is not idempotent';
   END IF;
+
+  DELETE FROM public.invoices WHERE org_id = invoice_row.org_id;
+  UPDATE public.subscriptions
+  SET current_period_end = now() + interval '1 day',
+      billing_deferred_until = now() + interval '1 day'
+  WHERE org_id = invoice_row.org_id;
+  UPDATE public.organizations
+  SET plan_expires_at = now() + interval '1 day'
+  WHERE id = invoice_row.org_id;
+
+  BEGIN
+    PERFORM public.create_manual_subscription_invoice(
+      invoice_row.org_id,
+      'starter',
+      1599,
+      'EUR',
+      NULL,
+      NULL
+    );
+    RAISE EXCEPTION 'A deferred subscription produced an early invoice';
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF SQLERRM NOT LIKE '%BILLING_DEFERRED%' THEN
+        RAISE;
+      END IF;
+  END;
+
+  IF (SELECT count(*) FROM public.invoices WHERE org_id = invoice_row.org_id) <> 0 THEN
+    RAISE EXCEPTION 'The deferred invoice attempt was not rolled back';
+  END IF;
 END $$;
 
 ROLLBACK;
@@ -799,9 +834,9 @@ BEGIN
       AND table_name = 'user_profile'
       AND column_name = 'stripe_connect_allowed'
       AND data_type = 'boolean'
-      AND column_default = 'true'
+      AND column_default = 'false'
   ) THEN
-    RAISE EXCEPTION 'The global Stripe Connect rollout default is missing';
+    RAISE EXCEPTION 'Stripe Connect must remain disabled by default';
   END IF;
 
   IF NOT EXISTS (
@@ -857,6 +892,39 @@ BEGIN
       AND column_name = 'mollie_legacy_snapshot'
   ) THEN
     RAISE EXCEPTION 'Mollie subscription history snapshot is missing';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'subscriptions'
+      AND column_name = 'billing_deferred_until'
+  ) THEN
+    RAISE EXCEPTION 'The complimentary billing transition guard is missing';
+  END IF;
+
+  IF has_function_privilege(
+    'authenticated',
+    'public.get_deployment_cron_status()',
+    'EXECUTE'
+  ) OR NOT has_function_privilege(
+    'service_role',
+    'public.get_deployment_cron_status()',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Cron deployment status must remain service-only';
+  END IF;
+
+  IF has_function_privilege(
+    'authenticated',
+    'public.cancel_internal_subscription(uuid)',
+    'EXECUTE'
+  ) OR NOT has_function_privilege(
+    'service_role',
+    'public.cancel_internal_subscription(uuid)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Subscription cancellation must remain atomic and service-only';
   END IF;
 
   IF NOT EXISTS (

@@ -13,6 +13,7 @@ import { resolveRuntimeConfig } from "./config.ts";
 import {
   getEventPaymentContextOrThrow,
   recordOrderTermsAcceptanceOrThrow,
+  selectedItemsIncludePaidProductOrThrow,
 } from "./db.ts";
 import { getAcceptedOrganizationSalesTerms } from "../../_shared/payments/organization-sales-terms.ts";
 import { createOrderIntentOrThrow } from "./order-intent-repository.ts";
@@ -23,7 +24,10 @@ import {
   findReusableProviderPayment,
   insertProviderPaymentOrRollback,
 } from "./payment-storage.ts";
-import { resolveEventPaymentProvider } from "./payment-provider.ts";
+import {
+  resolveEventPaymentProvider,
+  type ResolvedEventPaymentMethod,
+} from "./payment-provider.ts";
 import { completeFreeOrderOrThrow } from "./free-order.ts";
 import { assertWidgetAllowedForOrgOrThrow } from "./widget.ts";
 import { createBankTransferPaymentOrThrow } from "./bank-transfer.ts";
@@ -117,6 +121,18 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       body.eventId,
     );
 
+    let paymentMethod: ResolvedEventPaymentMethod | null = null;
+    if (
+      await selectedItemsIncludePaidProductOrThrow(admin, body.eventId, body.items)
+    ) {
+      paymentMethod = await resolveEventPaymentProvider({
+        admin,
+        orgId,
+        stripeSecretKey: config.stripeSecretKey,
+        providerSelection: config.eventPaymentProvider,
+      });
+    }
+
     const order = await createOrderIntentOrThrow({
       admin,
       args: {
@@ -164,7 +180,7 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       });
     }
 
-    const paymentMethod = await resolveEventPaymentProvider({
+    paymentMethod ??= await resolveEventPaymentProvider({
       admin,
       orgId,
       stripeSecretKey: config.stripeSecretKey,

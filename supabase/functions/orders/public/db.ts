@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { internal, ResponseError } from "../../_shared/errors.ts";
 import { EVENTFLOW_BUYER_TERMS_VERSION } from "../../../../shared/schemas/organization-sales-terms.ts";
+import type { RegisterItemInput } from "./types.ts";
 
 export async function issueFreeOrderTicketsOrThrow(
   admin: SupabaseClient,
@@ -33,6 +34,22 @@ export async function getEventPaymentContextOrThrow(
     orgId: data.org_id,
     eventTitle: data.title ?? null,
   };
+}
+
+export async function selectedItemsIncludePaidProductOrThrow(
+  admin: SupabaseClient,
+  eventId: string,
+  items: RegisterItemInput[],
+) {
+  const productIds = [...new Set(items.map((item) => item.eventProductId))];
+  const { data, error } = await admin
+    .from("event_products")
+    .select("id, price_cents")
+    .eq("event_id", eventId)
+    .in("id", productIds);
+
+  if (error) throw internal("EVENT_PRODUCTS_LOAD_FAILED");
+  return (data ?? []).some((product) => Number(product.price_cents ?? 0) > 0);
 }
 
 export async function recordOrderTermsAcceptanceOrThrow(

@@ -7,8 +7,6 @@ import { describe, expect, it, vi } from "vitest";
 // start Deno.serve and import remote modules at module evaluation time.
 const paths = [
   "supabase/functions/orders/public/mollie-auth.ts",
-  "supabase/functions/mollie-webhook-tickets/index.ts",
-  "supabase/functions/mollie-webhook/index.ts",
 ];
 
 function loadRefresh(path: string, redirectUri: string | undefined) {

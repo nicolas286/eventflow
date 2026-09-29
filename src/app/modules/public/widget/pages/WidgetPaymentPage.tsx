@@ -134,6 +134,7 @@ export function WidgetPaymentPage() {
 
   const hasDeposit = depositCents > 0 && totalCents > 0;
   const requiresOrganizerTerms = totalCents > 0;
+  const paidSalesAvailable = org.paidSalesAvailable === true;
 
   const attendeesCount = picked.reduce((acc, x) => {
     if (!x.p.createsAttendees) return acc;
@@ -217,6 +218,7 @@ export function WidgetPaymentPage() {
   async function pay() {
     if (!orgSlug || !eventSlug) return;
     if (picked.length === 0) return;
+    if (requiresOrganizerTerms && !paidSalesAvailable) return;
     if (!accepted) return;
     if (requiresOrganizerTerms && (!org.salesTermsAccepted || !salesTermsRead))
       return;
@@ -363,6 +365,7 @@ export function WidgetPaymentPage() {
 
   const canPay =
     picked.length > 0 &&
+    (!requiresOrganizerTerms || paidSalesAvailable) &&
     accepted &&
     (!requiresOrganizerTerms || (org.salesTermsAccepted && salesTermsRead)) &&
     !registering &&
@@ -445,6 +448,11 @@ export function WidgetPaymentPage() {
           {requiresOrganizerTerms ? (
             <div className="widgetPaymentCard">
               <div className="widgetSectionTitle">Vendeur et conditions</div>
+              {!paidSalesAvailable ? (
+                <MessageBox variant="error">
+                  Les paiements sont temporairement indisponibles pour cet organisateur.
+                </MessageBox>
+              ) : null}
               <div className="widgetPaymentInfos">
                 Billets vendus par <strong>{org.displayName}</strong>. Paiement
                 encaissé directement sur son compte Stripe. Eventflow n’est pas

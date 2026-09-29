@@ -12,6 +12,7 @@ import {
   runCron,
   runManual,
 } from "../_shared/services/order-reminders/index.ts";
+import { deliverPendingManualSubscriptionInvoices } from "./manual-invoice-delivery.ts";
 export const handleSendReminderMailRequest = createEdgeHandler(
   {
     name: "workers/reminders",
@@ -81,10 +82,22 @@ export const handleSendReminderMailRequest = createEdgeHandler(
       appBaseUrl: config.appBaseUrl,
       logger,
     });
+    let manualInvoicesProcessed = 0;
+    try {
+      manualInvoicesProcessed = await deliverPendingManualSubscriptionInvoices(
+        admin,
+        logger,
+      );
+    } catch (error) {
+      logger.error("manual_invoice_delivery_unavailable", {
+        error: serializeError(error),
+      });
+    }
 
     return json(req, {
       ok: true,
       mode: "cron",
+      manualInvoicesProcessed,
       ...result,
     });
   },

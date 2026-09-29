@@ -63,29 +63,11 @@ export async function cancelSubscription(
       return json(req, { error: "LOAD_SUBSCRIPTION_FAILED" }, 500);
     }
 
-    const now = new Date().toISOString();
-    const { error: organizationError } = await service
-      .from("organizations")
-      .update({
-        plan: "free",
-        plan_started_at: now,
-        plan_expires_at: null,
-        updated_at: now,
-      })
-      .eq("id", orgId);
-    if (organizationError) {
-      return json(req, { error: "DB_ORG_UPDATE_FAILED" }, 500);
-    }
-
-    if (subscription) {
-      const { error: cancelError } = await service
-        .from("subscriptions")
-        .update({ status: "canceled", updated_at: now })
-        .eq("org_id", orgId);
-      if (cancelError) {
-        return json(req, { error: "DB_SUB_UPDATE_FAILED" }, 500);
-      }
-    }
+    const { error: cancelError } = await service.rpc(
+      "cancel_internal_subscription",
+      { p_org_id: orgId },
+    );
+    if (cancelError) return json(req, { error: "DB_CANCEL_FAILED" }, 500);
 
     return json(req, {
       ok: true,
