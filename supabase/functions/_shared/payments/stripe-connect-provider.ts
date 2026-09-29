@@ -104,8 +104,8 @@ export class StripeConnectedAccountProvider implements ConnectedAccountProvider 
           email: input.email,
           "business_profile[name]": input.displayName,
           "metadata[eventflow_org_id]": input.orgId,
-          "capabilities[card_payments][requested]": true,
-          "capabilities[transfers][requested]": true,
+          // Ticket payments use Bancontact direct charges only.
+          "capabilities[bancontact_payments][requested]": true,
         },
       },
     );
