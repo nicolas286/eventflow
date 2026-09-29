@@ -1,4 +1,11 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@ui/components";
 
@@ -66,6 +73,7 @@ export default function EventCardActionsMenu({
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const items: MenuItem[] = useMemo(() => {
     const base: MenuItem[] = [];
@@ -85,7 +93,9 @@ export default function EventCardActionsMenu({
     base.push({
       kind: "action",
       key: "toggleEdit",
-      label: isSelected ? "Fermer la modification rapide" : "Modification rapide",
+      label: isSelected
+        ? "Fermer la modification rapide"
+        : "Modification rapide",
       icon: isSelected ? <CloseIcon /> : <EditIcon />,
       onClick: onToggleInlineEdit,
     });
@@ -99,7 +109,8 @@ export default function EventCardActionsMenu({
     });
 
     /* --------- 🔗 Partage --------- */
-    const hasShare = canView && (onShareFacebook || onShareWhatsapp || onCopyLink);
+    const hasShare =
+      canView && (onShareFacebook || onShareWhatsapp || onCopyLink);
 
     if (hasShare) {
       if (base.length) {
@@ -200,6 +211,39 @@ export default function EventCardActionsMenu({
     };
   }, [open]);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    function updatePlacement() {
+      const root = rootRef.current;
+      const menu = menuRef.current;
+      if (!root || !menu) return;
+
+      const rootRect = root.getBoundingClientRect();
+      const menuHeight = menu.getBoundingClientRect().height;
+      const roomBelow = window.innerHeight - rootRect.bottom;
+      const roomAbove = rootRect.top;
+      const safetyMargin = 16;
+      const shouldOpenUpward =
+        roomBelow < menuHeight + safetyMargin && roomAbove > roomBelow;
+
+      menu.classList.toggle("eventCardActions__menu--up", shouldOpenUpward);
+      menu.style.maxHeight = `${Math.max(
+        48,
+        (shouldOpenUpward ? roomAbove : roomBelow) - safetyMargin,
+      )}px`;
+    }
+
+    updatePlacement();
+    window.addEventListener("resize", updatePlacement);
+    window.addEventListener("scroll", updatePlacement, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePlacement);
+      window.removeEventListener("scroll", updatePlacement, true);
+    };
+  }, [open]);
+
   return (
     <div className="eventCardActions" ref={rootRef}>
       <Button
@@ -220,6 +264,7 @@ export default function EventCardActionsMenu({
 
       {open && (
         <div
+          ref={menuRef}
           id={menuId}
           className="eventCardActions__menu"
           role="menu"

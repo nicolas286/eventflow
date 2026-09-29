@@ -1,7 +1,7 @@
 .eventCardActions__separator {
   height: 1px;
   margin: 10px 8px;
-  background: rgba(0,0,0,0.06);
+  background: rgba(0, 0, 0, 0.06);
 }
 
 /* Le wrapper doit être un "point d'ancrage" */
@@ -14,5 +14,13 @@
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: 99999;
+}
+
+.eventCardActions__menu.eventCardActions__menu--up {
+  top: auto;
+  bottom: calc(100% + 8px);
 }
