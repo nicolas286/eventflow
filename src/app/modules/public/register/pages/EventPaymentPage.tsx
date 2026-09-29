@@ -69,13 +69,19 @@ export function EventPaymentPage() {
 
   const [charterOpen, setCharterOpen] = useState(false);
   const [charterRead, setCharterRead] = useState(false);
+  const [salesTermsOpen, setSalesTermsOpen] = useState(false);
+  const [salesTermsRead, setSalesTermsRead] = useState(false);
 
   const turnstileRef = useRef<TurnstileRef | null>(null);
-  const turnstileSiteKey = (import.meta.env.VITE_TURNSTILE_SITEKEY as string | undefined)?.trim() ?? "";
+  const turnstileSiteKey =
+    (import.meta.env.VITE_TURNSTILE_SITEKEY as string | undefined)?.trim() ??
+    "";
 
-
-
-  const { register, loading: registering, error: registerError } = useRegister({ supabase });
+  const {
+    register,
+    loading: registering,
+    error: registerError,
+  } = useRegister({ supabase });
 
   function persistDraft(next: CheckoutDraft) {
     saveDraft(next);
@@ -126,16 +132,19 @@ export function EventPaymentPage() {
   const totalCents = picked.reduce((acc, x) => acc + x.qty * x.p.priceCents, 0);
   const currency = picked[0]?.p.currency ?? "EUR";
 
-  const depositCents = typeof event?.depositCents === "number" ? event.depositCents : 0;
+  const depositCents =
+    typeof event?.depositCents === "number" ? event.depositCents : 0;
 
   const dueNowCentsUi =
     totalCents <= 0
       ? 0
       : depositCents > 0
-      ? Math.min(totalCents, depositCents)
-      : totalCents;
+        ? Math.min(totalCents, depositCents)
+        : totalCents;
 
   const hasDeposit = depositCents > 0 && totalCents > 0;
+  const requiresOrganizerTerms = totalCents > 0;
+  const paidSalesAvailable = org.paidSalesAvailable === true;
 
   const attendeesCount = picked.reduce((acc, x) => {
     if (!x.p.createsAttendees) return acc;
@@ -173,7 +182,8 @@ export function EventPaymentPage() {
   }> {
     const fieldIdByKey = new Map<string, string>();
     for (const f of formFields ?? []) {
-      if (f?.fieldKey && f?.id) fieldIdByKey.set(String(f.fieldKey), String(f.id));
+      if (f?.fieldKey && f?.id)
+        fieldIdByKey.set(String(f.fieldKey), String(f.id));
     }
 
     const expandedProductIds: string[] = [];
@@ -194,7 +204,10 @@ export function EventPaymentPage() {
           if (!id) return null;
           return { eventFormFieldId: id, value };
         })
-        .filter(Boolean) as Array<{ eventFormFieldId: string; value?: unknown }>;
+        .filter(Boolean) as Array<{
+        eventFormFieldId: string;
+        value?: unknown;
+      }>;
 
       return {
         eventProductId,
@@ -219,6 +232,7 @@ export function EventPaymentPage() {
       promoCode: normalizedPromoCode ? normalizedPromoCode : null,
       turnstileToken: withToken,
       checkoutSource: "public",
+      termsAccepted: true as const,
     };
 
     return register(payload as any);
@@ -227,7 +241,10 @@ export function EventPaymentPage() {
   async function pay() {
     if (!orgSlug || !eventSlug) return;
     if (picked.length === 0) return;
+    if (requiresOrganizerTerms && !paidSalesAvailable) return;
     if (!accepted) return;
+    if (requiresOrganizerTerms && (!org.salesTermsAccepted || !salesTermsRead))
+      return;
     if (attendeesMismatch) return;
 
     const email = buyerEmail.trim();
@@ -266,14 +283,16 @@ export function EventPaymentPage() {
     const status = typeof r?.status === "string" ? r.status : null;
 
     const bookingToken =
-      typeof r?.bookingToken === "string" && r.bookingToken.trim() ? r.bookingToken.trim() : null;
+      typeof r?.bookingToken === "string" && r.bookingToken.trim()
+        ? r.bookingToken.trim()
+        : null;
 
     if (r?.ok === true && status === "paid" && orderId) {
       clearDraft(orgSlug, eventSlug);
 
       const url = bookingToken
         ? `/order/${orderId}?token=${encodeURIComponent(bookingToken)}&org=${encodeURIComponent(
-            orgSlug
+            orgSlug,
           )}&event=${encodeURIComponent(eventSlug)}`
         : `/order/${orderId}?org=${encodeURIComponent(orgSlug)}&event=${encodeURIComponent(eventSlug)}`;
 
@@ -294,8 +313,8 @@ export function EventPaymentPage() {
       if (orderId) {
         navigate(
           `/order/${orderId}?token=${encodeURIComponent(bookingToken ?? "")}&org=${encodeURIComponent(
-            orgSlug
-          )}&event=${encodeURIComponent(eventSlug)}`
+            orgSlug,
+          )}&event=${encodeURIComponent(eventSlug)}`,
         );
       }
       return;
@@ -305,8 +324,8 @@ export function EventPaymentPage() {
       clearDraft(orgSlug, eventSlug);
       navigate(
         `/order/${orderId}?token=${encodeURIComponent(bookingToken ?? "")}&org=${encodeURIComponent(
-          orgSlug
-        )}&event=${encodeURIComponent(eventSlug)}`
+          orgSlug,
+        )}&event=${encodeURIComponent(eventSlug)}`,
       );
     }
   }
@@ -321,15 +340,16 @@ export function EventPaymentPage() {
   }
 
   const charterText =
-  typeof event.charterText === "string"
-    ? event.charterText.trim() : "";
+    typeof event.charterText === "string" ? event.charterText.trim() : "";
 
   const hasCharter = charterText.length > 0;
-
+  const organizerSalesTerms = org.salesTerms.trim();
 
   const canPay =
     picked.length > 0 &&
+    (!requiresOrganizerTerms || paidSalesAvailable) &&
     accepted &&
+    (!requiresOrganizerTerms || (org.salesTermsAccepted && salesTermsRead)) &&
     (!hasCharter || charterRead) &&
     !registering &&
     !pendingPay &&
@@ -346,16 +366,31 @@ export function EventPaymentPage() {
           <div className="publicSectionTitle">3/3 — Paiement</div>
 
           {picked.length === 0 ? (
-            <div className="publicEmpty">Aucun billet sélectionné. Reviens à l’étape “Billets”.</div>
+            <div className="publicEmpty">
+              Aucun billet sélectionné. Reviens à l’étape “Billets”.
+            </div>
           ) : (
             <div className="publicGutter">
               <div className="publicList">
                 <Card>
                   <CardHeader title="Récap" />
                   <CardBody>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                      }}
+                    >
                       {picked.map(({ p, qty }) => (
-                        <div key={p.id} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                        <div
+                          key={p.id}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 12,
+                          }}
+                        >
                           <div>
                             <div style={{ fontWeight: 800 }}>
                               {p.name} × {qty}
@@ -366,7 +401,12 @@ export function EventPaymentPage() {
                                 : "Pas de participant créé"}
                             </div>
                           </div>
-                          <div style={{ fontWeight: 800 }}>{formatMoney(qty * p.priceCents, p.currency ?? "EUR")}</div>
+                          <div style={{ fontWeight: 800 }}>
+                            {formatMoney(
+                              qty * p.priceCents,
+                              p.currency ?? "EUR",
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -374,11 +414,15 @@ export function EventPaymentPage() {
                     <div className="publicDivider" />
 
                     <div>
-                      <div style={{ fontWeight: 800, marginBottom: 6 }}>Code promo</div>
+                      <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                        Code promo
+                      </div>
 
                       <input
                         value={promoCode}
-                        onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                        onChange={(e) =>
+                          setPromoCode(e.target.value.toUpperCase())
+                        }
                         placeholder="ex: CLUB10"
                         maxLength={20}
                         style={{
@@ -393,27 +437,44 @@ export function EventPaymentPage() {
                       />
 
                       <div className="publicSubtitle" style={{ marginTop: 6 }}>
-                        Si le code est valide, la réduction sera appliquée à la validation.
+                        Si le code est valide, la réduction sera appliquée à la
+                        validation.
                       </div>
                     </div>
 
                     <div className="publicDivider" />
 
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <div style={{ fontWeight: 800 }}>{hasDeposit ? "À payer maintenant" : "Total"}</div>
-                        <div style={{ fontWeight: 800 }}>{formatMoney(dueNowCentsUi, currency)}</div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <div style={{ fontWeight: 800 }}>
+                        {hasDeposit ? "À payer maintenant" : "Total"}
                       </div>
+                      <div style={{ fontWeight: 800 }}>
+                        {formatMoney(dueNowCentsUi, currency)}
+                      </div>
+                    </div>
 
-                      {hasDeposit ? (
-                        <>
-                          <div className="publicSubtitle" style={{ marginTop: 6 }}>
-                            Total commande : {formatMoney(totalCents, currency)}
-                          </div>
-                          <div className="publicSubtitle" style={{ marginTop: 2 }}>
-                            Le solde sera à régler plus tard (selon les modalités de l’organisateur).
-                          </div>
-                        </>
-                      ) : null}
+                    {hasDeposit ? (
+                      <>
+                        <div
+                          className="publicSubtitle"
+                          style={{ marginTop: 6 }}
+                        >
+                          Total commande : {formatMoney(totalCents, currency)}
+                        </div>
+                        <div
+                          className="publicSubtitle"
+                          style={{ marginTop: 2 }}
+                        >
+                          Le solde sera à régler plus tard (selon les modalités
+                          de l’organisateur).
+                        </div>
+                      </>
+                    ) : null}
 
                     <div className="publicSubtitle" style={{ marginTop: 6 }}>
                       Participants à renseigner : {attendeesCount}
@@ -421,7 +482,8 @@ export function EventPaymentPage() {
 
                     {attendeesMismatch ? (
                       <div className="publicEmpty" style={{ marginTop: 12 }}>
-                        Oups : le nombre de participants ne correspond pas aux billets sélectionnés. Reviens à l’étape “Participants”.
+                        Oups : le nombre de participants ne correspond pas aux
+                        billets sélectionnés. Reviens à l’étape “Participants”.
                       </div>
                     ) : null}
                   </CardBody>
@@ -431,20 +493,86 @@ export function EventPaymentPage() {
                   <Card>
                     <CardHeader title="Charte de l’événement" />
                     <CardBody>
-                      <div className="publicSubtitle" style={{ marginBottom: 12 }}>
-                        L’organisateur demande de lire et d’accepter la charte avant de confirmer l’inscription.
+                      <div
+                        className="publicSubtitle"
+                        style={{ marginBottom: 12 }}
+                      >
+                        L’organisateur demande de lire et d’accepter la charte
+                        avant de confirmer l’inscription.
                       </div>
 
                       <Button
                         variant="secondary"
-                        label={charterRead ? "Relire la charte" : "Lire la charte"}
+                        label={
+                          charterRead ? "Relire la charte" : "Lire la charte"
+                        }
                         onClick={() => setCharterOpen(true)}
                         disabled={registering || pendingPay}
                       />
 
                       {!charterRead ? (
                         <div className="publicEmpty" style={{ marginTop: 12 }}>
-                          Vous devez lire la charte avant de pouvoir accepter les conditions.
+                          Vous devez lire la charte avant de pouvoir accepter
+                          les conditions.
+                        </div>
+                      ) : null}
+                    </CardBody>
+                  </Card>
+                ) : null}
+
+                {requiresOrganizerTerms ? (
+                  <Card>
+                    <CardHeader title="Vendeur et conditions de l’organisateur" />
+                    <CardBody>
+                      {!paidSalesAvailable ? (
+                        <div className="publicEmpty" style={{ marginBottom: 12 }}>
+                          Les paiements sont temporairement indisponibles pour cet organisateur.
+                        </div>
+                      ) : null}
+                      <div
+                        className="publicSubtitle"
+                        style={{ marginBottom: 12 }}
+                      >
+                        Les billets sont vendus par{" "}
+                        <strong>{org.displayName}</strong>. Le paiement est
+                        encaissé directement sur son compte Stripe. Eventflow
+                        fournit la plateforme technique et n’est pas le vendeur.
+                      </div>
+                      <div
+                        className="publicSubtitle"
+                        style={{ marginBottom: 12 }}
+                      >
+                        Contact :{" "}
+                        {org.publicEmail ? (
+                          <a href={`mailto:${org.publicEmail}`}>
+                            {org.publicEmail}
+                          </a>
+                        ) : (
+                          "à compléter par l’organisateur"
+                        )}
+                      </div>
+                      <Button
+                        variant="secondary"
+                        label={
+                          salesTermsRead
+                            ? "Relire les conditions"
+                            : "Lire les conditions"
+                        }
+                        onClick={() => setSalesTermsOpen(true)}
+                        disabled={
+                          registering || pendingPay || !org.salesTermsAccepted
+                        }
+                      />
+                      {!org.salesTermsAccepted && requiresOrganizerTerms ? (
+                        <div className="publicEmpty" style={{ marginTop: 12 }}>
+                          Les paiements sont temporairement indisponibles :
+                          l’organisateur doit valider ses conditions de vente et
+                          son contact public.
+                        </div>
+                      ) : !salesTermsRead && requiresOrganizerTerms ? (
+                        <div className="publicEmpty" style={{ marginTop: 12 }}>
+                          Vous devez lire les conditions de l’organisateur avant
+                          de confirmer.
                         </div>
                       ) : null}
                     </CardBody>
@@ -454,9 +582,17 @@ export function EventPaymentPage() {
                 <Card>
                   <CardHeader title="Contact & validation" />
                   <CardBody>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                      }}
+                    >
                       <div>
-                        <div style={{ fontWeight: 800, marginBottom: 6 }}>Email acheteur</div>
+                        <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                          Email acheteur
+                        </div>
                         <input
                           value={buyerEmail}
                           onChange={(e) => setBuyerEmail(e.target.value)}
@@ -474,7 +610,9 @@ export function EventPaymentPage() {
 
                       {turnstileSiteKey ? (
                         <div>
-                          <div style={{ fontWeight: 800, marginBottom: 6 }}>Validation anti-bot</div>
+                          <div style={{ fontWeight: 800, marginBottom: 6 }}>
+                            Validation anti-bot
+                          </div>
                           <Turnstile
                             ref={turnstileRef}
                             siteKey={turnstileSiteKey}
@@ -482,37 +620,79 @@ export function EventPaymentPage() {
                             onError={() => {
                               setPendingPay(false);
                               setTurnstileToken(null);
-                              setTurnstileError("Impossible de valider (Turnstile). Réessaie ou recharge la page.");
+                              setTurnstileError(
+                                "Impossible de valider (Turnstile). Réessaie ou recharge la page.",
+                              );
                             }}
                             onExpired={() => {
                               setPendingPay(false);
                               setTurnstileToken(null);
-                              setTurnstileError("Validation expirée. Réessaie.");
+                              setTurnstileError(
+                                "Validation expirée. Réessaie.",
+                              );
                             }}
                           />
                           {turnstileError ? (
-                            <div className="publicEmpty" style={{ marginTop: 10 }}>
+                            <div
+                              className="publicEmpty"
+                              style={{ marginTop: 10 }}
+                            >
                               {turnstileError}
                             </div>
                           ) : null}
                         </div>
                       ) : (
-                        <div className="publicEmpty">Turnstile non configuré (VITE_TURNSTILE_SITEKEY manquant).</div>
+                        <div className="publicEmpty">
+                          Turnstile non configuré (VITE_TURNSTILE_SITEKEY
+                          manquant).
+                        </div>
                       )}
 
-                      <label style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <label
+                        style={{
+                          display: "flex",
+                          gap: 10,
+                          alignItems: "center",
+                        }}
+                      >
                         <input
                           type="checkbox"
                           checked={accepted}
                           onChange={(e) => setAccepted(e.target.checked)}
                           style={{ width: 18, height: 18 }}
-                          disabled={registering || pendingPay || (hasCharter && !charterRead)}
+                          disabled={
+                            registering ||
+                            pendingPay ||
+                            (requiresOrganizerTerms &&
+                              (!org.salesTermsAccepted || !salesTermsRead)) ||
+                            (hasCharter && !charterRead)
+                          }
                         />
-                        <span style={{ fontWeight: 700 }}>J’accepte les conditions et je confirme l’achat.</span>
+                        <span style={{ fontWeight: 700 }}>
+                          J’accepte{" "}
+                          {requiresOrganizerTerms
+                            ? "les conditions de " + org.displayName + ", "
+                            : ""}
+                          les{" "}
+                          <a href="/cgu" target="_blank" rel="noreferrer">
+                            CGU Eventflow
+                          </a>{" "}
+                          et la{" "}
+                          <a
+                            href="/politique-confidentialite"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            politique de confidentialité
+                          </a>
+                          , et je confirme l’achat.
+                        </span>
                       </label>
 
                       {registerError ? (
-                        <div className="publicEmpty">Erreur : {formatRegisterError(registerError)}</div>
+                        <div className="publicEmpty">
+                          Erreur : {formatRegisterError(registerError)}
+                        </div>
                       ) : null}
                     </div>
                   </CardBody>
@@ -523,7 +703,9 @@ export function EventPaymentPage() {
 
           <div className="publicDivider" />
 
-          <div style={{ display: "flex", justifyContent: "flex-start", gap: 12 }}>
+          <div
+            style={{ display: "flex", justifyContent: "flex-start", gap: 12 }}
+          >
             <Button
               variant="secondary"
               label="Retour aux participants"
@@ -534,30 +716,43 @@ export function EventPaymentPage() {
         </div>
       </Container>
       <PublicStickyCheckoutBar
-      amountCents={dueNowCentsUi}
-      currency={currency}
-      primaryText={hasDeposit ? "À payer maintenant" : "Total"}
-      secondaryText={
-        hasDeposit
-          ? `Total commande : ${formatMoney(totalCents, currency)}`
-          : `${picked.reduce((acc, x) => acc + x.qty, 0)} billet(s)`
-      }
-      onClick={pay}
-      disabled={!canPay}
-      ctaLabel={stickyCtaLabel}
-    />
-
-    {charterOpen ? (
-      <PublicCharterModal
-        open={charterOpen}
-        markdown={charterText}
-        onClose={() => setCharterOpen(false)}
-        onConfirmRead={() => {
-          setCharterRead(true);
-          setCharterOpen(false);
-        }}
+        amountCents={dueNowCentsUi}
+        currency={currency}
+        primaryText={hasDeposit ? "À payer maintenant" : "Total"}
+        secondaryText={
+          hasDeposit
+            ? `Total commande : ${formatMoney(totalCents, currency)}`
+            : `${picked.reduce((acc, x) => acc + x.qty, 0)} billet(s)`
+        }
+        onClick={pay}
+        disabled={!canPay}
+        ctaLabel={stickyCtaLabel}
       />
-    ) : null}
+
+      {charterOpen ? (
+        <PublicCharterModal
+          open={charterOpen}
+          markdown={charterText}
+          onClose={() => setCharterOpen(false)}
+          onConfirmRead={() => {
+            setCharterRead(true);
+            setCharterOpen(false);
+          }}
+        />
+      ) : null}
+      {salesTermsOpen && org.salesTermsAccepted ? (
+        <PublicCharterModal
+          open={salesTermsOpen}
+          markdown={organizerSalesTerms}
+          title={`Conditions de ${org.displayName}`}
+          confirmLabel="J’ai lu les conditions"
+          onClose={() => setSalesTermsOpen(false)}
+          onConfirmRead={() => {
+            setSalesTermsRead(true);
+            setSalesTermsOpen(false);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -8,7 +8,7 @@
     "types": ["vite/client"],
     "skipLibCheck": true,
 
-    /* ✅ Aliases */
+    /* âœ… Aliases */
     "baseUrl": "./src",
     "paths": {
       "@app/*" : ["app/*"],
@@ -21,8 +21,8 @@
          "@errors/*" : ["shared/errors/*"],
          "@gateways/*" : ["shared/gateways/*"],
          "@helpers/*" : ["shared/helpers/*"],
-         "@ui/*" : ["shared/ui/*"],   
-      "@contracts/*": ["../contracts/*"],    
+         "@ui/*" : ["shared/ui/*"],
+      "@contracts/*": ["../shared/schemas/*"],
     },
 
     /* Bundler mode */

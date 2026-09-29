@@ -72,11 +72,12 @@ export function WidgetTicketsPage() {
     return <div className="widgetRoot">Événement introuvable</div>;
   }
 
-  const { event, products } = data;
+  const { org, event, products } = data;
 
   const isEventSoldOut = event.isSoldOut === true;
   const isRegistrationClosed = event.isRegistrationOpen === false;
   const isEventClosed = isEventSoldOut || isRegistrationClosed;
+  const paidSalesAvailable = org.paidSalesAvailable === true;
 
   const quantities = isEventClosed ? {} : (draft?.quantities ?? {});
   const sortedProducts = sortBySortOrder(products);
@@ -91,6 +92,8 @@ export function WidgetTicketsPage() {
 
     const p = sortedProducts.find((x) => x.id === productId);
     if (!p) return;
+    const currentQty = Number(draft.quantities[p.id] ?? 0) || 0;
+    if (p.priceCents > 0 && !paidSalesAvailable && nextQty >= currentQty) return;
 
     const remaining = computeRemaining(p);
     const q = computeNextQty(nextQty, remaining);
@@ -107,7 +110,7 @@ export function WidgetTicketsPage() {
   }
 
   function goNext() {
-    if (isEventClosed) return;
+    if (isEventClosed || (totalCents > 0 && !paidSalesAvailable)) return;
     navigate(`/widget/o/${orgSlug}/e/${eventSlug}/participants${search}`);
   }
 
@@ -138,6 +141,7 @@ export function WidgetTicketsPage() {
             const qty = Number(quantities[p.id] ?? 0) || 0;
             const remaining = computeRemaining(p);
             const soldOut = remaining === 0 && remaining != null;
+            const paidUnavailable = p.priceCents > 0 && !paidSalesAvailable;
             const maxQty = resolveMaxQty(remaining);
             const moneyCurrency = p.currency ?? currency;
 
@@ -146,6 +150,7 @@ export function WidgetTicketsPage() {
                 key={p.id}
                 product={p}
                 soldOut={soldOut}
+                unavailable={paidUnavailable}
                 currency={moneyCurrency}
                 qty={qty}
                 maxQty={maxQty}
@@ -178,7 +183,7 @@ export function WidgetTicketsPage() {
           className="widgetButton"
           label={continueLabel}
           onClick={goNext}
-          disabled={isEventClosed || totalTickets <= 0}
+          disabled={isEventClosed || totalTickets <= 0 || (totalCents > 0 && !paidSalesAvailable)}
         />
       </div>
 

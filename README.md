@@ -17,7 +17,7 @@ Voir le [guide de déploiement et de retour arrière](docs/deploiements.md). Un 
 
 ## Démarrage local
 
-Prérequis : Node.js et npm ; Docker et Supabase CLI pour le backend local. Versions utilisées par la CI : Node `24.19.0`, Supabase CLI `2.84.2` ; vérifier `.github/workflows/` en cas d'évolution.
+Prérequis : Node.js, npm et Deno `2.9.6` ; Docker et Supabase CLI pour le backend local. Versions utilisées par la CI : Node `24.19.0`, Supabase CLI `2.84.2` ; vérifier `.github/workflows/` en cas d'évolution.
 
 ```sh
 npm ci
@@ -40,8 +40,13 @@ Le fichier `.env.prod` historique n'est pas chargé par un `vite build` standard
 ```sh
 npm test        # Vitest et contrôles des destinations
 npm run build  # TypeScript frontend puis Vite
-npm run lint   # ESLint ; distinguer erreurs nouvelles et dette existante
+npm run lint   # ESLint frontend/outillage
+npm run check:backend # Deno strict : fonctions, tests et contrats partagés
+npm run lint:backend  # Deno lint
+npm run test:backend  # Tests backend et prestataires simulés
 ```
+
+Installer les extensions recommandées par `.vscode/extensions.json`. Deno est activé pour `supabase/functions` et `shared/schemas` ; le frontend reste suivi par TypeScript/Vite. Après installation de Deno, redémarrer le terminal intégré si le PATH n'est pas actualisé. Sous PowerShell, `npm.cmd` et `deno.cmd` évitent les problèmes de politique de scripts.
 
 Le build Vite ne vérifie pas à lui seul les Edge Functions Deno. Voir la [stratégie de test](docs/agents/TESTING.md) pour les contrôles SQL et backend.
 
@@ -50,6 +55,12 @@ Le build Vite ne vérifie pas à lui seul les Edge Functions Deno. Voir la [stra
 React 19, TypeScript, Vite, React Router, Zod, Supabase Auth/PostgreSQL/RLS/RPC/Storage/Edge Functions Deno, Netlify et GitHub Actions. Mollie gère les paiements, Resend les e-mails métier et Billit l'intégration de facturation.
 
 L'architecture est historique et hétérogène. Les conventions décrivent comment la faire évoluer progressivement ; elles ne prétendent pas que tout le code les applique déjà.
+
+## Réorganisation backend sur dev
+
+La migration directe regroupe les commandes dans `orders`, les abonnements dans `subscriptions`, les comptes dans `accounts`, les liens de factures dans `invoices` et les tâches planifiées dans `workers`. Les e-mails, PDF et appels Billit deviennent des services internes. Les contrats front/API résident dans `/shared/schemas`, avec Zod `4.3.6` partagé. Les anciennes routes ne sont pas conservées comme adaptateurs.
+
+Cette tranche vise **dev/staging uniquement**. Son intégration dans les sources ne vaut pas validation du déploiement ni recette métier ; suivre le [plan backend](docs/todo/backend.md) avant toute promotion.
 
 ## Documentation
 
@@ -65,4 +76,4 @@ L'architecture est historique et hétérogène. Les conventions décrivent comme
 | Historique de la séparation | [Journal](docs/staging-production-journal.md) |
 | Incident OAuth résolu | [Renouvellement Mollie](docs/incident-mollie-refresh-2026-09-15.md) |
 
-En staging, les e-mails métier sont capturés dans `mail-previews`, les paiements live et Billit sont bloqués. La configuration Mollie sandbox et la recette des e-mails Supabase Auth restent à terminer.
+En staging, les e-mails métier sont capturés dans `mail-previews`, les paiements live et Billit sont bloqués. Connect, paiement de billets et souscription en mode test ont été validés avant cette migration. Leur recette doit être répétée sur les nouvelles routes ; la recette des e-mails Supabase Auth reste distincte.

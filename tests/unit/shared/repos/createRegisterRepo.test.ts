@@ -39,6 +39,7 @@ const validPayload = {
   },
   turnstileToken: "test-token",
   checkoutSource: "public",
+  termsAccepted: true,
 };
 
 describe("createRegisterRepo", () => {
@@ -61,6 +62,7 @@ describe("createRegisterRepo", () => {
         ok: true,
         orderId: "33333333-3333-4333-8333-333333333333",
         status: "awaiting_payment",
+        paymentMethod: "stripe",
         checkoutUrl: "https://example.com/checkout",
         amountDueNowCents: 1599,
         totalCents: 1599,
@@ -75,11 +77,43 @@ describe("createRegisterRepo", () => {
     await expect(repo.register(validPayload)).resolves.toMatchObject({
       ok: true,
       status: "awaiting_payment",
+      paymentMethod: "stripe",
       checkoutUrl: "https://example.com/checkout",
     });
 
-    expect(supabase.functions.invoke).toHaveBeenCalledWith("register-tickets", {
+    expect(supabase.functions.invoke).toHaveBeenCalledWith("orders", {
       body: validPayload,
+    });
+  });
+
+  it("retourne une réservation par virement sans URL de checkout", async () => {
+    const supabase = makeSupabaseInvokeMock({
+      data: {
+        ok: true,
+        orderId: "33333333-3333-4333-8333-333333333333",
+        status: "awaiting_payment",
+        paymentMethod: "bank_transfer",
+        amountDueNowCents: 1599,
+        totalCents: 1599,
+        bookingToken: "booking-token",
+        bankTransfer: {
+          internalReference: "EF-33333333333343338333333333333333",
+          communication:
+            "EVENTFLOW | Concert | jean@example.com | EF-33333333333343338333333333333333",
+          beneficiary: "Eventflow ASBL",
+          iban: "BE51732081025262",
+          amountCents: 1599,
+          currency: "EUR",
+          paymentDueAt: null,
+        },
+      },
+      error: null,
+    });
+    const repo = createRegisterRepo(supabase);
+    await expect(repo.register(validPayload)).resolves.toMatchObject({
+      ok: true,
+      status: "awaiting_payment",
+      paymentMethod: "bank_transfer",
     });
   });
 
@@ -91,7 +125,9 @@ describe("createRegisterRepo", () => {
 
     const repo = createRegisterRepo(supabase);
 
-    await expect(repo.register(validPayload)).rejects.toThrow("EVENT_NOT_FOUND");
+    await expect(repo.register(validPayload)).rejects.toThrow(
+      "EVENT_NOT_FOUND",
+    );
   });
 
   it("throw si l'edge renvoie une réponse vide", async () => {
@@ -102,6 +138,8 @@ describe("createRegisterRepo", () => {
 
     const repo = createRegisterRepo(supabase);
 
-    await expect(repo.register(validPayload)).rejects.toThrow("REGISTER_EMPTY_RESPONSE");
+    await expect(repo.register(validPayload)).rejects.toThrow(
+      "REGISTER_EMPTY_RESPONSE",
+    );
   });
 });

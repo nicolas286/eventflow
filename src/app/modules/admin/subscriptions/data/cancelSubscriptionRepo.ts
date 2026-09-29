@@ -8,7 +8,7 @@ import {
   type CancelSubscriptionResponse,
 } from "../schemas/admin.cancelSubscription.schema";
 
-export function createCancelSubscriptionRepo(supabase: SupabaseClient) {
+export function createCancelSubscriptionRepo(supabase: { functions: Pick<SupabaseClient["functions"], "invoke"> }) {
   return {
     async cancelSubscription(
       input: CancelSubscriptionPayload,
@@ -17,8 +17,8 @@ export function createCancelSubscriptionRepo(supabase: SupabaseClient) {
 
       const raw = await edgeSafe(
         () =>
-          supabase.functions.invoke("cancel-suscription", {
-            body: payload,
+          supabase.functions.invoke(`subscriptions/${payload.orgId}`, {
+            method: "DELETE",
           }),
         "CANCEL_SUBSCRIPTION_EMPTY_RESPONSE"
       );

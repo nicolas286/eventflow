@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2.75.0";
+import { createClient } from "@supabase/supabase-js";
 
 export type SupabaseRuntimeConfig = {
   supabaseUrl: string;
@@ -9,3 +9,5 @@ export type SupabaseRuntimeConfig = {
 export function createAdminClient(config: SupabaseRuntimeConfig) {
   return createClient(config.supabaseUrl, config.serviceKey);
 }
+
+export type AdminClient = ReturnType<typeof createAdminClient>;

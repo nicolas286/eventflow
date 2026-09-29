@@ -6,23 +6,28 @@ import "./WidgetTicketCard.css";
 type Props = {
     product: PublicEventProduct;
     soldOut: boolean;
+    unavailable?: boolean;
     currency: string;
     qty: number;
     maxQty: number;
     updateQty: (productId: string, qty: number) => void;
 }
 
-export function WidgetTicketCard({product, soldOut, currency, qty, maxQty, updateQty} : Props){
+export function WidgetTicketCard({product, soldOut, unavailable = false, currency, qty, maxQty, updateQty} : Props){
     return (
     <div
     key={product.id}
-    className={`widgetEventCard ${soldOut ? "isSoldOut" : ""}`}
+    className={`widgetEventCard ${soldOut || unavailable ? "isSoldOut" : ""}`}
     >
         <div className="widgetEventTitle">{product.name}</div>
 
         <div style={{ fontSize: 13, opacity: 0.7 }}>
         {formatMoney(product.priceCents, currency)}
         </div>
+
+        {unavailable ? (
+          <div className="widgetTicketDesc">Paiement temporairement indisponible</div>
+        ) : null}
 
         {product.description && (
         <div className="widgetTicketDesc">
@@ -41,16 +46,17 @@ export function WidgetTicketCard({product, soldOut, currency, qty, maxQty, updat
             <input
                 type="number"
                 min={0}
-                max={maxQty}
+                max={unavailable ? qty : maxQty}
                 value={qty}
                 onChange={(e) => updateQty(product.id, Number(e.target.value))}
+                disabled={soldOut}
             />
 
             <Button
             className="widgetButton"
                 label="+"
                 onClick={() => updateQty(product.id, qty + 1)}
-                disabled={soldOut || qty >= maxQty}
+                disabled={soldOut || unavailable || qty >= maxQty}
             />
         </div>
     </div>

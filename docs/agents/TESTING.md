@@ -17,9 +17,12 @@ Tester au niveau le plus bas qui prouve le comportement. Choisir les validations
 npm test
 npm run build
 npm run lint
+npm run check:backend
+npm run lint:backend
+npm run test:backend
 ```
 
-`npm test` exécute Vitest et les tests Node de `tests/deployment`. `npm run build` vérifie le frontend, pas tous les modules Deno. Ne pas annoncer un lint global réussi sans l'avoir exécuté.
+`npm test` exécute Vitest et les tests Node de `tests/deployment`. `npm run build` vérifie le frontend, pas les modules Deno. Deno `2.9.6` vérifie toutes les fonctions, tests et contrats `shared/schemas` via les trois commandes backend ; ESLint reste limité au frontend/outillage. Les tests backend simulent les prestataires et ne valident pas un paiement réel. Ne pas annoncer un lint global réussi sans l'avoir exécuté ; la dette frontend non touchée reste distincte du backend propre.
 
 La CI reconstruit une base jetable avec `supabase db start`, puis exécute `supabase db query --local --file tests/database/baseline.sql`. Pour une vérification manuelle, utiliser un workdir isolé, des ports disponibles et un chemin de fichier absolu si le CLI change de workdir. Ne pas arrêter la stack d'un autre projet.
 

@@ -76,6 +76,7 @@ export function EventTicketsPage() {
   const isEventSoldOut = event.isSoldOut === true;
   const isRegistrationClosed = event.isRegistrationOpen === false;
   const isEventClosed = isEventSoldOut || isRegistrationClosed;
+  const paidSalesAvailable = org.paidSalesAvailable === true;
 
   const quantities = draft?.quantities ?? {};
   const sortedProducts = sortBySortOrder(products);
@@ -89,6 +90,8 @@ export function EventTicketsPage() {
 
     const p = sortedProducts.find((x) => x.id === productId);
     if (!p) return;
+    const currentQty = Number(draft.quantities[p.id] ?? 0) || 0;
+    if (p.priceCents > 0 && !paidSalesAvailable && nextQty >= currentQty) return;
 
     const remaining = computeRemaining(p);
     const q = computeNextQty(nextQty, remaining);
@@ -105,7 +108,7 @@ export function EventTicketsPage() {
   }
 
   function goNext() {
-    if (isEventClosed) return;
+    if (isEventClosed || (totalCents > 0 && !paidSalesAvailable)) return;
     navigate(`/o/${orgSlug}/e/${eventSlug}/participants`);
   }
 
@@ -162,6 +165,12 @@ export function EventTicketsPage() {
 
             <div className="publicSectionTitle">1/3 — Choisir vos billets</div>
 
+            {!paidSalesAvailable && sortedProducts.some((p) => p.priceCents > 0) ? (
+              <div className="publicEmpty">
+                Les paiements sont temporairement indisponibles pour cet organisateur. Les billets gratuits restent réservables.
+              </div>
+            ) : null}
+
             {isEventSoldOut ? (
               <div className="publicEmpty">Cet événement est complet.</div>
             ) : isRegistrationClosed ? (
@@ -175,11 +184,16 @@ export function EventTicketsPage() {
                     const qty = Number(quantities[p.id] ?? 0) || 0;
 
                     const remaining = computeRemaining(p);
+                    const paidUnavailable = p.priceCents > 0 && !paidSalesAvailable;
                     const soldOut = remaining === 0 && remaining != null;
                     const maxQty = resolveMaxQty(remaining);
 
-                    const badgeTone = soldOut ? "danger" : "success";
-                    const badgeLabel = soldOut ? "Épuisé" : "Disponible";
+                    const badgeTone = soldOut || paidUnavailable ? "danger" : "success";
+                    const badgeLabel = soldOut
+                      ? "Épuisé"
+                      : paidUnavailable
+                        ? "Paiement indisponible"
+                        : "Disponible";
 
                     const createsAtt = p.createsAttendees === true;
                     const perUnit = p.attendeesPerUnit ?? 0;
@@ -239,7 +253,7 @@ export function EventTicketsPage() {
                                 <input
                                   type="number"
                                   min={0}
-                                  max={maxQty}
+                                  max={paidUnavailable ? qty : maxQty}
                                   value={qty}
                                   onChange={(e) => updateQty(p.id, Number(e.target.value))}
                                   className="publicQtyInput"
@@ -250,7 +264,7 @@ export function EventTicketsPage() {
                                   variant="primary"
                                   label="+"
                                   onClick={() => updateQty(p.id, qty + 1)}
-                                  disabled={soldOut || isEventClosed || qty >= maxQty}
+                                  disabled={soldOut || isEventClosed || paidUnavailable || qty >= maxQty}
                                   className="publicQtyBtn"
                                 />
                               </div>
@@ -275,7 +289,7 @@ export function EventTicketsPage() {
           currency={currency}
           primaryText={`${totalTickets} billet(s)`}
           onClick={goNext}
-          disabled={isEventClosed || totalTickets <= 0}
+          disabled={isEventClosed || totalTickets <= 0 || (totalCents > 0 && !paidSalesAvailable)}
           ctaLabel={stickyCtaLabel}
         />
       </div>

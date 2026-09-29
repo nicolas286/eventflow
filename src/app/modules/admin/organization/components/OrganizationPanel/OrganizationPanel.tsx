@@ -8,14 +8,19 @@ import { MarkdownRichTextarea } from "@shared/ui/components/inputs/MarkdownRichT
 
 import { supabase } from "@shared/gateways/supabase/supabaseClient";
 import { useSaveOrgInfo } from "../../hooks/useSaveOrgInfo";
-import { useStartMollieConnect } from "@app/modules/admin/payments/hooks/useStartMollieConnect";
+import { useStripeConnect } from "@app/modules/admin/payments/hooks/useStripeConnect";
+import { useSavePaymentSettings } from "../../hooks/useSavePaymentSettings";
 import type { Organization } from "@shared/models/db/db.organization.schema";
 import type { OrganizationProfile } from "@shared/models/db/db.organizationProfile.schema";
+import { organizationProfileSchema } from "@shared/models/db/db.organizationProfile.schema";
+import { BANK_TRANSFER_EVENT_PAYMENTS_ENABLED } from "@contracts/bank-transfer";
+import { DEFAULT_ORGANIZATION_SALES_TERMS } from "@contracts/organization-sales-terms";
 
 type Props = {
   orgId: string;
   orgInfo: Organization | null;
   orgProfile: OrganizationProfile | null;
+  stripeConnectAllowed: boolean;
   onSaved: () => Promise<void>;
 };
 
@@ -32,6 +37,12 @@ type Form = {
   emailReminderDaysBefore: number | null;
 };
 
+type PaymentForm = {
+  provider: "stripe" | "bank_transfer";
+  beneficiary: string;
+  iban: string;
+};
+
 const emptyForm: Form = {
   type: "association",
   name: "",
@@ -43,7 +54,10 @@ const emptyForm: Form = {
   emailReminderDaysBefore: null,
 };
 
-function toForm(o: Organization | null, profile: OrganizationProfile | null): Form {
+function toForm(
+  o: Organization | null,
+  profile: OrganizationProfile | null,
+): Form {
   if (!o || !profile) return emptyForm;
 
   return {
@@ -77,37 +91,106 @@ function parseNullableNonNegativeInt(v: string): number | null {
   return i;
 }
 
-export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: Props) {
+export default function StructurePanel({
+  orgId,
+  orgInfo,
+  orgProfile,
+  stripeConnectAllowed,
+  onSaved,
+}: Props) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { loading, error, updated, saveOrgInfo, reset, hasChanges } = useSaveOrgInfo({ supabase });
+  const { loading, error, updated, saveOrgInfo, reset, hasChanges } =
+    useSaveOrgInfo({ supabase });
 
-  const {
-    loading: connecting,
-    error: connectError,
-    startMollieConnect,
-    reset: resetConnect,
-  } = useStartMollieConnect({ supabase });
+  const stripeConnect = useStripeConnect({ supabase });
+  const paymentSettings = useSavePaymentSettings({ supabase });
+  const stripeReady = Boolean(
+    orgInfo?.stripeConnectedAccountId &&
+    orgInfo.stripeDetailsSubmitted &&
+    orgInfo.stripeChargesEnabled &&
+    orgInfo.stripePayoutsEnabled,
+  );
+  const stripeStatus: Organization["paymentsStatus"] = stripeReady
+    ? "connected"
+    : orgInfo?.stripeConnectedAccountId
+      ? "pending"
+      : "not_connected";
 
   // ✅ initial dépend de org (pas juste orgId)
-  const initial = useMemo<Form>(() => toForm(orgInfo, orgProfile), [orgInfo, orgProfile]);
+  const initial = useMemo<Form>(
+    () => toForm(orgInfo, orgProfile),
+    [orgInfo, orgProfile],
+  );
 
   // form local (on n’édite pas org directement tant que pas save)
   const [form, setForm] = useState<Form>(initial);
+
+  const initialPaymentForm = useMemo<PaymentForm>(
+    () => ({
+      provider:
+        !BANK_TRANSFER_EVENT_PAYMENTS_ENABLED ||
+        (stripeConnectAllowed && orgInfo?.paymentsProvider === "stripe")
+          ? "stripe"
+          : "bank_transfer",
+      beneficiary: orgInfo?.bankTransferBeneficiary ?? "",
+      iban: orgInfo?.bankTransferIban ?? "",
+    }),
+    [orgInfo, stripeConnectAllowed],
+  );
+  const [paymentForm, setPaymentForm] =
+    useState<PaymentForm>(initialPaymentForm);
+  const [hasStoredBankTransferIban, setHasStoredBankTransferIban] = useState(
+    Boolean(orgInfo?.bankTransferIban),
+  );
+  const [paymentDetailsRevealed, setPaymentDetailsRevealed] = useState(
+    !hasStoredBankTransferIban,
+  );
+  const initialSalesTerms =
+    orgProfile?.salesTerms?.trim() || DEFAULT_ORGANIZATION_SALES_TERMS;
+  const [salesTerms, setSalesTerms] = useState(initialSalesTerms);
+  const [salesTermsConfirmed, setSalesTermsConfirmed] = useState(false);
+  const salesTermsCurrent = Boolean(
+    orgProfile?.salesTermsAcceptedAt &&
+    orgProfile?.salesTermsVersion &&
+    orgProfile.salesTermsAcceptedVersion === orgProfile.salesTermsVersion &&
+    salesTerms.trim() === initialSalesTerms,
+  );
 
   // resync quand bootstrap/refetch modifie org
   useEffect(() => {
     setForm(initial);
   }, [initial]);
 
+  useEffect(() => {
+    setPaymentForm(initialPaymentForm);
+    setHasStoredBankTransferIban(Boolean(orgInfo?.bankTransferIban));
+    setPaymentDetailsRevealed(!orgInfo?.bankTransferIban);
+  }, [initialPaymentForm, orgInfo?.bankTransferIban]);
+
+  useEffect(() => {
+    setSalesTerms(initialSalesTerms);
+    setSalesTermsConfirmed(false);
+  }, [initialSalesTerms]);
+
   const dirty = hasChanges(initial, form);
+  const paymentDirty =
+    paymentForm.provider !== initialPaymentForm.provider ||
+    paymentForm.beneficiary.trim() !== initialPaymentForm.beneficiary.trim() ||
+    paymentForm.iban.replace(/\s+/g, "").toUpperCase() !==
+      initialPaymentForm.iban.replace(/\s+/g, "").toUpperCase();
+  const bankTransferReady = Boolean(
+    paymentForm.beneficiary.trim() && paymentForm.iban.trim(),
+  );
+  const publicEmail = form.publicEmail.trim();
+  const publicEmailValid =
+    organizationProfileSchema.shape.publicEmail.safeParse(publicEmail).success;
+  const publicEmailNeedsSave = publicEmail !== initial.publicEmail.trim();
 
   const effectiveSlug = useMemo(() => {
     return updated?.profile?.slug ?? orgProfile?.slug ?? "";
   }, [updated?.profile?.slug, orgProfile?.slug]);
-
-  /* -------- Mollie return flash -------- */
 
   const [connectFlash, setConnectFlash] = useState<{
     ok: boolean;
@@ -116,45 +199,48 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
 
   useEffect(() => {
     const qs = new URLSearchParams(location.search);
-    const connect = qs.get("connect");
-    if (!connect) return;
+    const stripeReturn = qs.get("stripe_connect");
+    if (!stripeReturn || !stripeConnectAllowed) return;
 
-    const errorCode = qs.get("error");
-    const reason = qs.get("reason");
+    async function handleStripeReturn() {
+      if (stripeReturn === "refresh") {
+        const url = await stripeConnect.start(orgId);
+        if (url) window.location.assign(url);
+        return;
+      }
 
-    if (connect === "1") {
-      setConnectFlash({ ok: true, message: "Mollie connecté avec succès ✅" });
-      onSaved().catch(() => null);
-    } else {
-      setConnectFlash({
-        ok: false,
-        message: reason
-          ? `Connexion Mollie échouée : ${reason}`
-          : errorCode
-          ? `Connexion Mollie échouée : ${errorCode}`
-          : "Connexion Mollie échouée",
-      });
-      onSaved().catch(() => null);
-    }
+      const status = await stripeConnect.refreshStatus(orgId);
+      if (status) {
+        setConnectFlash({
+          ok: status.status === "connected",
+          message:
+            status.status === "connected"
+              ? "Stripe est prêt à encaisser et verser les fonds."
+              : "Onboarding Stripe reçu, mais les paiements ou versements ne sont pas encore activés.",
+        });
+        await onSaved();
+      }
 
-    // ✅ Nettoyage URL après un petit délai (sinon tu ne vois jamais les params / flash)
-    setTimeout(() => {
-      qs.delete("connect");
-      qs.delete("error");
-      qs.delete("reason");
-
-      const newSearch = qs.toString();
+      qs.delete("stripe_connect");
       navigate(
         {
           pathname: location.pathname,
-          search: newSearch ? `?${newSearch}` : "",
+          search: qs.toString() ? `?${qs.toString()}` : "",
         },
-        { replace: true }
+        { replace: true },
       );
-    }, 300);
+    }
 
+    void handleStripeReturn();
+    // The return marker must be handled once; hook methods are intentionally not dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, location.pathname, navigate]);
+  }, [
+    location.search,
+    location.pathname,
+    navigate,
+    orgId,
+    stripeConnectAllowed,
+  ]);
 
   /* -------- actions -------- */
 
@@ -190,13 +276,72 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
     });
   }
 
-  async function handleConnect(mode: "test" | "live") {
-    resetConnect();
+  async function handleStripeConnect() {
     setConnectFlash(null);
+    if (!salesTermsCurrent) {
+      setConnectFlash({
+        ok: false,
+        message: "Validez d’abord les conditions organisateur.",
+      });
+      return;
+    }
+    const url = await stripeConnect.start(orgId);
+    if (url) window.location.assign(url);
+  }
 
-    const url = await startMollieConnect({ orgId, mode });
+  async function handlePaymentSettingsSave() {
+    if (paymentForm.provider !== "stripe") return;
 
-    if (url) window.location.href = url;
+    paymentSettings.reset();
+    const result = await paymentSettings.save({
+      orgId,
+      paymentsProvider: "stripe",
+      bankTransferBeneficiary: null,
+      bankTransferIban: null,
+    });
+    if (!result) return;
+
+    setPaymentForm({
+      provider: result.paymentsProvider,
+      beneficiary: result.bankTransferBeneficiary ?? "",
+      iban: result.bankTransferIbanMasked ?? "",
+    });
+    setHasStoredBankTransferIban(Boolean(result.bankTransferIbanMasked));
+    setPaymentDetailsRevealed(false);
+    await onSaved();
+  }
+
+  async function handleAcceptSalesTerms() {
+    paymentSettings.reset();
+    if (!salesTermsConfirmed) return;
+
+    if (publicEmailNeedsSave) {
+      const saved = await saveOrgInfo({
+        orgId,
+        initial,
+        current: { ...initial, publicEmail },
+      });
+      if (!saved) return;
+    }
+
+    const result = await paymentSettings.acceptTerms(orgId, salesTerms);
+    if (!result) return;
+    setSalesTerms(result.salesTerms ?? salesTerms);
+    setSalesTermsConfirmed(false);
+    await onSaved();
+  }
+
+  async function handleRevealPaymentSettings() {
+    paymentSettings.reset();
+    const result = await paymentSettings.read(orgId);
+    if (!result) return;
+
+    setPaymentForm({
+      provider: result.paymentsProvider,
+      beneficiary: result.bankTransferBeneficiary ?? "",
+      iban: result.bankTransferIban ?? "",
+    });
+    setPaymentDetailsRevealed(true);
   }
 
   /* -------- render -------- */
@@ -210,18 +355,24 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
             <div>
               <div className="structurePanel__label">Organisation</div>
               <div className="structurePanel__hint">
-                Le nom impacte le slug public. Si vous changez le nom, l’URL publique change.
+                Le nom impacte le slug public. Si vous changez le nom, l’URL
+                publique change.
               </div>
             </div>
 
-            <Badge tone={dirty ? "warn" : "info"} label={dirty ? "Modifs" : "OK"} />
+            <Badge
+              tone={dirty ? "warn" : "info"}
+              label={dirty ? "Modifs" : "OK"}
+            />
           </div>
 
           <div className="structurePanel__field">
             <div className="structurePanel__fieldLabel">Type</div>
             <Select
               value={form.type}
-              onChange={(e) => setForm((s) => ({ ...s, type: e.target.value as Form["type"] }))}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, type: e.target.value as Form["type"] }))
+              }
             >
               <option value="association">Association</option>
               <option value="person">Personne</option>
@@ -236,7 +387,10 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
               placeholder="Nom de l’organisation"
             />
             <div className="structurePanel__help">
-              Slug : <span className="structurePanel__mono">{effectiveSlug || "—"}</span>
+              Slug :{" "}
+              <span className="structurePanel__mono">
+                {effectiveSlug || "—"}
+              </span>
             </div>
           </div>
         </div>
@@ -247,7 +401,8 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
             <div>
               <div className="structurePanel__label">Infos publiques</div>
               <div className="structurePanel__hint">
-                Affichées sur les pages publiques si tu les utilises (contact, event page, etc.)
+                Affichées sur les pages publiques si tu les utilises (contact,
+                event page, etc.)
               </div>
             </div>
           </div>
@@ -266,14 +421,18 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
             <Input
               label="Email public"
               value={form.publicEmail}
-              onChange={(e) => setForm((s) => ({ ...s, publicEmail: e.target.value }))}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, publicEmail: e.target.value }))
+              }
               placeholder="contact@..."
             />
 
             <Input
               label="Téléphone"
               value={form.phone}
-              onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, phone: e.target.value }))
+              }
               placeholder="+32 ..."
             />
           </div>
@@ -282,7 +441,9 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
             <Input
               label="Site web"
               value={form.website}
-              onChange={(e) => setForm((s) => ({ ...s, website: e.target.value }))}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, website: e.target.value }))
+              }
               placeholder="https://..."
             />
           </div>
@@ -294,11 +455,17 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
               type="number"
               inputMode="numeric"
               min={0}
-              value={form.emailReminderDaysBefore === null ? "" : String(form.emailReminderDaysBefore)}
+              value={
+                form.emailReminderDaysBefore === null
+                  ? ""
+                  : String(form.emailReminderDaysBefore)
+              }
               onChange={(e) =>
                 setForm((s) => ({
                   ...s,
-                  emailReminderDaysBefore: parseNullableNonNegativeInt(e.target.value),
+                  emailReminderDaysBefore: parseNullableNonNegativeInt(
+                    e.target.value,
+                  ),
                 }))
               }
               placeholder="ex: 3 (laisser vide pour désactiver)"
@@ -310,51 +477,229 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
         </div>
       </div>
 
-      {/* ---------------- Mollie Connect ---------------- */}
+      {/* ---------------- Payment providers ---------------- */}
       <div className="structurePanel__block">
         <div className="structurePanel__labelRow">
           <div>
-            <div className="structurePanel__label">Paiements (Mollie)</div>
+            <div className="structurePanel__label">
+              Paiements des événements
+            </div>
             <div className="structurePanel__hint">
-              Lance le flow Mollie Connect. Le statut se met à jour au retour Mollie.
+              Stripe Connect encaisse directement les paiements sur le compte de
+              l’organisateur. Le paiement par virement est désactivé.
             </div>
           </div>
 
           <div className="structurePanel__chip">
+            <span className="structurePanel__chipLabel">Fournisseur</span>
+            <span className="structurePanel__chipValue">
+              {paymentForm.provider === "stripe" ? "Stripe" : "Virement"}
+            </span>
             <span className="structurePanel__chipLabel">Statut</span>
             <span className="structurePanel__chipValue">
-              {orgInfo ? prettyPaymentLabel(orgInfo.paymentsStatus) : "—"}
+              {paymentForm.provider === "stripe"
+                ? orgInfo
+                  ? prettyPaymentLabel(stripeStatus)
+                  : "—"
+                : bankTransferReady
+                  ? "Configuré"
+                  : "À compléter"}
             </span>
 
-            {orgInfo?.paymentsLiveReady ? (
-              <span className="structurePanel__chipOk">live prêt</span>
+            {(
+              paymentForm.provider === "stripe"
+                ? stripeReady
+                : bankTransferReady
+            ) ? (
+              <span className="structurePanel__chipOk">prêt</span>
             ) : (
-              <span className="structurePanel__chipWarn">live non prêt</span>
+              <span className="structurePanel__chipWarn">non prêt</span>
             )}
           </div>
         </div>
 
-        <div className="structurePanel__actionsBar">
+        <div className="structurePanel__field">
+          <div className="structurePanel__fieldLabel">
+            Conditions organisateur
+          </div>
+          <MarkdownRichTextarea
+            value={salesTerms}
+            onChange={(next: string) => {
+              setSalesTerms(next);
+              setSalesTermsConfirmed(false);
+            }}
+          />
+          <div className="structurePanel__help">
+            Ces conditions sont présentées aux acheteurs. Vérifiez-les et
+            adaptez-les à vos règles d’annulation et de remboursement avant de
+            les valider. Un e-mail public est obligatoire pour les demandes des
+            participants.
+          </div>
+          {publicEmailNeedsSave && publicEmailValid ? (
+            <div className="structurePanel__help">
+              L’e-mail public sera enregistré avant la validation des
+              conditions.
+            </div>
+          ) : null}
+          <label style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <input
+              type="checkbox"
+              checked={salesTermsConfirmed}
+              onChange={(event) => setSalesTermsConfirmed(event.target.checked)}
+            />
+            <span>
+              Je confirme être autorisé à engager l’organisation et que ces
+              conditions correspondent aux modalités appliquées aux
+              participants.
+            </span>
+          </label>
           <div className="structurePanel__actions">
             <Button
-              variant="secondary"
-              label={connecting ? "Ouverture…" : "Connecter (test)"}
-              onClick={() => handleConnect("test")}
-              disabled={connecting}
+              variant={salesTermsCurrent ? "secondary" : "primary"}
+              label={
+                paymentSettings.loading
+                  ? "Validation…"
+                  : salesTermsCurrent
+                    ? "Conditions validées"
+                    : publicEmailNeedsSave
+                      ? "Enregistrer l’e-mail et valider"
+                      : "Valider les conditions"
+              }
+              onClick={handleAcceptSalesTerms}
+              disabled={
+                paymentSettings.loading ||
+                loading ||
+                !salesTermsConfirmed ||
+                salesTerms.trim().length < 200 ||
+                !publicEmailValid
+              }
             />
+          </div>
+        </div>
+
+        <div className="structurePanel__field">
+          <div className="structurePanel__fieldLabel">Mode de paiement</div>
+          <Select
+            value={paymentForm.provider}
+            disabled={!BANK_TRANSFER_EVENT_PAYMENTS_ENABLED}
+            onChange={(event) =>
+              setPaymentForm((current) => ({
+                ...current,
+                provider: event.target.value as PaymentForm["provider"],
+              }))
+            }
+          >
+            {stripeConnectAllowed ? (
+              <option value="stripe">Stripe Connect (Bancontact)</option>
+            ) : null}
+            {BANK_TRANSFER_EVENT_PAYMENTS_ENABLED ? (
+              <option value="bank_transfer">Virement bancaire</option>
+            ) : null}
+          </Select>
+        </div>
+
+        {paymentForm.provider === "bank_transfer" ? (
+          <>
+            <div className="structurePanel__grid2Inner">
+              <Input
+                label="Nom du bénéficiaire"
+                value={paymentForm.beneficiary}
+                readOnly={hasStoredBankTransferIban && !paymentDetailsRevealed}
+                onChange={(event) =>
+                  setPaymentForm((current) => ({
+                    ...current,
+                    beneficiary: event.target.value,
+                  }))
+                }
+                placeholder="Nom ou raison sociale"
+              />
+              <Input
+                label="IBAN"
+                value={paymentForm.iban}
+                readOnly={hasStoredBankTransferIban && !paymentDetailsRevealed}
+                onChange={(event) =>
+                  setPaymentForm((current) => ({
+                    ...current,
+                    iban: event.target.value.toUpperCase(),
+                  }))
+                }
+                placeholder="BE00 0000 0000 0000"
+              />
+            </div>
+            {hasStoredBankTransferIban && !paymentDetailsRevealed ? (
+              <div className="structurePanel__actions">
+                <Button
+                  variant="secondary"
+                  onClick={handleRevealPaymentSettings}
+                  disabled={paymentSettings.loading}
+                >
+                  Modifier les coordonnées bancaires
+                </Button>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+
+        <div className="structurePanel__actionsBar">
+          <div className="structurePanel__actions">
+            {stripeConnectAllowed && paymentForm.provider === "stripe" ? (
+              <Button
+                variant="secondary"
+                label={
+                  stripeConnect.loading ? "Ouverture…" : "Configurer Stripe"
+                }
+                onClick={handleStripeConnect}
+                disabled={stripeConnect.loading || !salesTermsCurrent}
+              />
+            ) : null}
             <Button
               variant="primary"
-              label={connecting ? "Ouverture…" : "Connecter (live)"}
-              onClick={() => handleConnect("live")}
-              disabled={connecting}
+              label={
+                paymentSettings.loading
+                  ? "Enregistrement…"
+                  : "Enregistrer le mode"
+              }
+              onClick={handlePaymentSettingsSave}
+              disabled={
+                !paymentDirty ||
+                paymentSettings.loading ||
+                (paymentForm.provider === "bank_transfer" &&
+                  hasStoredBankTransferIban &&
+                  !paymentDetailsRevealed)
+              }
             />
           </div>
 
           <div className="structurePanel__status">
-            {connectError ? <div className="structurePanel__error">{connectError}</div> : null}
+            {stripeConnectAllowed && stripeConnect.error ? (
+              <div className="structurePanel__error">{stripeConnect.error}</div>
+            ) : null}
             {connectFlash ? (
-              <div className={connectFlash.ok ? "structurePanel__success" : "structurePanel__error"}>
+              <div
+                className={
+                  connectFlash.ok
+                    ? "structurePanel__success"
+                    : "structurePanel__error"
+                }
+              >
                 {connectFlash.message}
+              </div>
+            ) : null}
+            {paymentSettings.error ? (
+              <div className="structurePanel__error">
+                {paymentSettings.error}
+              </div>
+            ) : null}
+            {paymentSettings.updated ? (
+              <div className="structurePanel__success">
+                Mode de paiement enregistré
+              </div>
+            ) : null}
+            {paymentSettings.updated?.bankTransferIbanChanged &&
+            !paymentSettings.updated.securityEmailSent ? (
+              <div className="structurePanel__error">
+                Les coordonnées ont été enregistrées, mais l’e-mail de sécurité
+                n’a pas pu être envoyé.
               </div>
             ) : null}
           </div>
@@ -365,7 +710,9 @@ export default function StructurePanel({ orgId, orgInfo, orgProfile, onSaved }: 
       <div className="structurePanel__actionsBar">
         <div className="structurePanel__status">
           {error ? <div className="structurePanel__error">{error}</div> : null}
-          {updated ? <div className="structurePanel__success">Infos sauvegardées</div> : null}
+          {updated ? (
+            <div className="structurePanel__success">Infos sauvegardées</div>
+          ) : null}
         </div>
 
         <div className="structurePanel__actions">

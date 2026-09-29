@@ -3,10 +3,14 @@ import { invoicePdfRepo } from "../data/makeInvoicePdfUrlRepo";
 import { Button, Badge, Card, CardBody, CardHeader } from "@ui/components";
 import { useMakeInvoiceList } from "../hooks/useMakeInvoiceList";
 import { supabase } from "@gateways/supabase/supabaseClient";
+import type { Invoice } from "@shared/models/db/db.invoice.schema";
 
 function fmtMoneyCents(v: number | null | undefined) {
   if (v === null || v === undefined) return "—";
-  return (v / 100).toLocaleString("fr-BE", { style: "currency", currency: "EUR" });
+  return (v / 100).toLocaleString("fr-BE", {
+    style: "currency",
+    currency: "EUR",
+  });
 }
 
 function fmtDateShort(d: string | null | undefined) {
@@ -28,9 +32,7 @@ export function InvoicesTab({ orgId }: { orgId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
 
-    async function onDownloadPdf(inv: any) {
-    if (!inv.pdfPath) return;
-
+  async function onDownloadPdf(inv: Invoice) {
     try {
       const { url } = await pdfRepo.getPdfUrl({
         invoiceId: inv.id,
@@ -46,9 +48,16 @@ export function InvoicesTab({ orgId }: { orgId: string }) {
 
   return (
     <Card>
-      <CardHeader title="Mes factures" subtitle="Historique des factures et téléchargements PDF." />
+      <CardHeader
+        title="Mes factures"
+        subtitle="Historique des factures et téléchargements PDF."
+      />
       <CardBody>
-        {invoices.error && <div className="adminSub__alert adminSub__alert--error">{invoices.error}</div>}
+        {invoices.error && (
+          <div className="adminSub__alert adminSub__alert--error">
+            {invoices.error}
+          </div>
+        )}
 
         {/* Wrapper unique pour forcer le comportement CSS */}
         <div className="invWrap" data-invoices-view="wrap">
@@ -61,8 +70,12 @@ export function InvoicesTab({ orgId }: { orgId: string }) {
                 <div key={inv.id} className="invMobileCard">
                   <div className="invMobileTop">
                     <div className="invMobileLeft">
-                      <div className="invMobileTitle">{inv.number ? `Facture ${inv.number}` : "Facture"}</div>
-                      <div className="invMobileMeta">{fmtDateShort(inv.issuedAt)}</div>
+                      <div className="invMobileTitle">
+                        {inv.number ? `Facture ${inv.number}` : "Facture"}
+                      </div>
+                      <div className="invMobileMeta">
+                        {fmtDateShort(inv.issuedAt)}
+                      </div>
                     </div>
                     <div className="invMobileRight">
                       <Badge>{inv.status ?? "—"}</Badge>
@@ -72,7 +85,9 @@ export function InvoicesTab({ orgId }: { orgId: string }) {
                   <div className="invMobileGrid">
                     <div className="invMobileRow">
                       <div className="invMobileLabel">Montant</div>
-                      <div className="invMobileValue">{fmtMoneyCents(inv.totalCents)}</div>
+                      <div className="invMobileValue">
+                        {fmtMoneyCents(inv.totalCents)}
+                      </div>
                     </div>
                     <div className="invMobileRow">
                       <div className="invMobileLabel">Numéro</div>
@@ -80,12 +95,33 @@ export function InvoicesTab({ orgId }: { orgId: string }) {
                     </div>
                     <div className="invMobileRow">
                       <div className="invMobileLabel">Date</div>
-                      <div className="invMobileValue">{fmtDateShort(inv.issuedAt)}</div>
+                      <div className="invMobileValue">
+                        {fmtDateShort(inv.issuedAt)}
+                      </div>
                     </div>
+                    {inv.status === "issued" ? (
+                      <>
+                        <div className="invMobileRow">
+                          <div className="invMobileLabel">À payer avant</div>
+                          <div className="invMobileValue">
+                            {fmtDateShort(inv.dueAt)}
+                          </div>
+                        </div>
+                        <div className="invMobileRow">
+                          <div className="invMobileLabel">Communication</div>
+                          <div className="invMobileValue">
+                            {inv.paymentReference ?? inv.number}
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
                   </div>
 
                   <div className="invMobileActions">
-                    <Button variant="secondary" onClick={() => onDownloadPdf(inv)} disabled={!inv.pdfPath}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => onDownloadPdf(inv)}
+                    >
                       Télécharger PDF
                     </Button>
                   </div>
@@ -117,14 +153,22 @@ export function InvoicesTab({ orgId }: { orgId: string }) {
                 ) : (
                   invoices.items.map((inv) => (
                     <tr key={inv.id} className="invTr">
-                      <td className="invTd">{fmtDateShort(inv.issuedAt)}</td>
+                      <td className="invTd">
+                        {fmtDateShort(inv.issuedAt)}
+                        {inv.status === "issued" ? (
+                          <div>Échéance : {fmtDateShort(inv.dueAt)}</div>
+                        ) : null}
+                      </td>
                       <td className="invTd invTdStrong">{inv.number ?? "—"}</td>
                       <td className="invTd">{fmtMoneyCents(inv.totalCents)}</td>
                       <td className="invTd">
                         <Badge>{inv.status ?? "—"}</Badge>
                       </td>
                       <td className="invTd invTdRight">
-                        <Button variant="secondary" onClick={() => onDownloadPdf(inv)} disabled={!inv.pdfPath}>
+                        <Button
+                          variant="secondary"
+                          onClick={() => onDownloadPdf(inv)}
+                        >
                           Télécharger PDF
                         </Button>
                       </td>
@@ -137,12 +181,23 @@ export function InvoicesTab({ orgId }: { orgId: string }) {
         </div>
 
         <div className="invFooterActions">
-          <Button variant="secondary" disabled={invoices.loading} onClick={() => invoices.fetchFirst({ orgId })}>
+          <Button
+            variant="secondary"
+            disabled={invoices.loading}
+            onClick={() => invoices.fetchFirst({ orgId })}
+          >
             Rafraîchir
           </Button>
 
-          <Button disabled={invoices.loading || !invoices.hasMore} onClick={() => invoices.fetchMore({ orgId })}>
-            {invoices.loading ? "Chargement…" : invoices.hasMore ? "Charger plus" : "Tout est chargé"}
+          <Button
+            disabled={invoices.loading || !invoices.hasMore}
+            onClick={() => invoices.fetchMore({ orgId })}
+          >
+            {invoices.loading
+              ? "Chargement…"
+              : invoices.hasMore
+                ? "Charger plus"
+                : "Tout est chargé"}
           </Button>
         </div>
       </CardBody>

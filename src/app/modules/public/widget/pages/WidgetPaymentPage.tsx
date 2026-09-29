@@ -24,6 +24,7 @@ import { useRegister } from "../../register/hooks/useRegister";
 import "./WidgetPaymentPage.css";
 import { WidgetFooter } from "../components/WidgetFooter/WidgetFooter";
 import { WidgetRoot } from "../components/WidgetRoot/WidgetRoot";
+import { PublicCharterModal } from "../../register/components/PublicCharterModal/PublicCharterModal";
 
 function ensureDraft(orgSlug: string, eventSlug: string): CheckoutDraft {
   const d = loadDraft(orgSlug, eventSlug) as CheckoutDraft;
@@ -42,7 +43,6 @@ export function WidgetPaymentPage() {
   const { search } = useLocation();
   const theme = useWidgetTheme();
   useWidgetAutoResize();
-  
 
   const { orgSlug: orgSlugParam, eventSlug: eventSlugParam } = useParams<{
     orgSlug: string;
@@ -59,9 +59,9 @@ export function WidgetPaymentPage() {
   });
 
   const widgetReturnUrl = useMemo(() => {
-  if (!orgSlug || !eventSlug) return null;
-  return `${window.location.origin}/widget/o/${orgSlug}/e/${eventSlug}/confirmation${search}`;
-}, [orgSlug, eventSlug, search]);
+    if (!orgSlug || !eventSlug) return null;
+    return `${window.location.origin}/widget/o/${orgSlug}/e/${eventSlug}/confirmation${search}`;
+  }, [orgSlug, eventSlug, search]);
 
   const [tick, setTick] = useState(0);
 
@@ -75,11 +75,19 @@ export function WidgetPaymentPage() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
   const [pendingPay, setPendingPay] = useState(false);
+  const [salesTermsOpen, setSalesTermsOpen] = useState(false);
+  const [salesTermsRead, setSalesTermsRead] = useState(false);
 
   const turnstileRef = useRef<TurnstileRef | null>(null);
-  const turnstileSiteKey = (import.meta.env.VITE_TURNSTILE_SITEKEY as string | undefined)?.trim() ?? "";
+  const turnstileSiteKey =
+    (import.meta.env.VITE_TURNSTILE_SITEKEY as string | undefined)?.trim() ??
+    "";
 
-  const { register, loading: registering, error: registerError } = useRegister({ supabase });
+  const {
+    register,
+    loading: registering,
+    error: registerError,
+  } = useRegister({ supabase });
 
   function persistDraft(next: CheckoutDraft) {
     saveDraft(next);
@@ -102,7 +110,7 @@ export function WidgetPaymentPage() {
     return <div className="widgetRoot">Draft introuvable.</div>;
   }
 
-  const { event, products, formFields } = data;
+  const { org, event, products, formFields } = data;
 
   const quantities = draft.quantities;
   const accepted = draft.acceptedTerms ?? false;
@@ -114,12 +122,19 @@ export function WidgetPaymentPage() {
   const totalCents = picked.reduce((acc, x) => acc + x.qty * x.p.priceCents, 0);
   const currency = picked[0]?.p.currency ?? "EUR";
 
-  const depositCents = typeof event?.depositCents === "number" ? event.depositCents : 0;
+  const depositCents =
+    typeof event?.depositCents === "number" ? event.depositCents : 0;
 
   const dueNowCentsUi =
-    totalCents <= 0 ? 0 : depositCents > 0 ? Math.min(totalCents, depositCents) : totalCents;
+    totalCents <= 0
+      ? 0
+      : depositCents > 0
+        ? Math.min(totalCents, depositCents)
+        : totalCents;
 
   const hasDeposit = depositCents > 0 && totalCents > 0;
+  const requiresOrganizerTerms = totalCents > 0;
+  const paidSalesAvailable = org.paidSalesAvailable === true;
 
   const attendeesCount = picked.reduce((acc, x) => {
     if (!x.p.createsAttendees) return acc;
@@ -145,7 +160,8 @@ export function WidgetPaymentPage() {
     const fieldIdByKey = new Map<string, string>();
 
     for (const f of formFields ?? []) {
-      if (f?.fieldKey && f?.id) fieldIdByKey.set(String(f.fieldKey), String(f.id));
+      if (f?.fieldKey && f?.id)
+        fieldIdByKey.set(String(f.fieldKey), String(f.id));
     }
 
     const expandedProductIds: string[] = [];
@@ -167,7 +183,10 @@ export function WidgetPaymentPage() {
           if (!id) return null;
           return { eventFormFieldId: id, value };
         })
-        .filter(Boolean) as Array<{ eventFormFieldId: string; value?: unknown }>;
+        .filter(Boolean) as Array<{
+        eventFormFieldId: string;
+        value?: unknown;
+      }>;
 
       return {
         eventProductId,
@@ -177,28 +196,32 @@ export function WidgetPaymentPage() {
   }
 
   async function doRegister(withToken: string) {
-  const items = picked.map(({ p, qty }) => ({
-    eventProductId: p.id,
-    quantity: qty,
-  }));
+    const items = picked.map(({ p, qty }) => ({
+      eventProductId: p.id,
+      quantity: qty,
+    }));
 
-  const payload = {
-    eventId: event.id,
-    items,
-    attendees: buildAttendeesPayload(),
-    buyerEmail: buyerEmail.trim(),
-    turnstileToken: withToken,
-    widgetReturnUrl,
-    checkoutSource: "widget", 
-  };
+    const payload = {
+      eventId: event.id,
+      items,
+      attendees: buildAttendeesPayload(),
+      buyerEmail: buyerEmail.trim(),
+      turnstileToken: withToken,
+      widgetReturnUrl,
+      checkoutSource: "widget",
+      termsAccepted: true as const,
+    };
 
-  return register(payload as any);
-}
+    return register(payload as any);
+  }
 
   async function pay() {
     if (!orgSlug || !eventSlug) return;
     if (picked.length === 0) return;
+    if (requiresOrganizerTerms && !paidSalesAvailable) return;
     if (!accepted) return;
+    if (requiresOrganizerTerms && (!org.salesTermsAccepted || !salesTermsRead))
+      return;
     if (attendeesMismatch) return;
 
     const email = buyerEmail.trim();
@@ -235,39 +258,78 @@ export function WidgetPaymentPage() {
     const status = typeof r?.status === "string" ? r.status : null;
 
     const bookingToken =
-      typeof r?.bookingToken === "string" && r.bookingToken.trim() ? r.bookingToken.trim() : null;
+      typeof r?.bookingToken === "string" && r.bookingToken.trim()
+        ? r.bookingToken.trim()
+        : null;
 
     if (r?.ok === true && status === "paid" && orderId) {
-  const confirmationKey = `eventflow:widget:confirmation:${orgSlug}:${eventSlug}`;
+      const confirmationKey = `eventflow:widget:confirmation:${orgSlug}:${eventSlug}`;
 
-  const confirmationData = {
-    orderId,
-    buyerEmail: buyerEmail.trim(),
-    totalCents,
-    currency,
-    totalTickets: picked.reduce((acc, x) => acc + x.qty, 0),
-    eventTitle: event.title,
-    bookingToken,
-    status,
-    items: picked.map(({ p, qty }) => ({
-      name: p.name,
-      quantity: qty,
-      totalCents: qty * p.priceCents,
-      currency: p.currency ?? currency,
-    })),
-  };
+      const confirmationData = {
+        orderId,
+        buyerEmail: buyerEmail.trim(),
+        totalCents,
+        currency,
+        totalTickets: picked.reduce((acc, x) => acc + x.qty, 0),
+        eventTitle: event.title,
+        bookingToken,
+        status,
+        items: picked.map(({ p, qty }) => ({
+          name: p.name,
+          quantity: qty,
+          totalCents: qty * p.priceCents,
+          currency: p.currency ?? currency,
+        })),
+      };
 
-  sessionStorage.setItem(confirmationKey, JSON.stringify(confirmationData));
+      sessionStorage.setItem(confirmationKey, JSON.stringify(confirmationData));
 
-  clearDraft(orgSlug, eventSlug);
-  navigate(`/widget/o/${orgSlug}/e/${eventSlug}/confirmation${search}`);
-  return;
-}
+      clearDraft(orgSlug, eventSlug);
+      navigate(`/widget/o/${orgSlug}/e/${eventSlug}/confirmation${search}`);
+      return;
+    }
 
     if (r?.ok === true && status === "awaiting_payment") {
       const checkoutUrl = r?.checkoutUrl;
 
       clearDraft(orgSlug, eventSlug);
+
+      if (r?.paymentMethod === "bank_transfer" && orderId) {
+        const confirmationKey = `eventflow:widget:confirmation:${orgSlug}:${eventSlug}`;
+        sessionStorage.setItem(
+          confirmationKey,
+          JSON.stringify({
+            orderId,
+            buyerEmail: buyerEmail.trim(),
+            totalCents,
+            currency,
+            totalTickets: picked.reduce((acc, x) => acc + x.qty, 0),
+            eventTitle: event.title,
+            bookingToken,
+            status,
+            paymentMethod: "bank_transfer",
+            bankTransfer: r.bankTransfer,
+            items: picked.map(({ p, qty }) => ({
+              name: p.name,
+              quantity: qty,
+              totalCents: qty * p.priceCents,
+              currency: p.currency ?? currency,
+            })),
+          }),
+        );
+        const confirmationSearch = new URLSearchParams(search);
+        for (const key of ["orderId", "token", "bookingToken"])
+          confirmationSearch.delete(key);
+        if (bookingToken) {
+          confirmationSearch.set("orderId", orderId);
+          confirmationSearch.set("token", bookingToken);
+        }
+        const query = confirmationSearch.toString();
+        navigate(
+          `/widget/o/${orgSlug}/e/${eventSlug}/confirmation${query ? `?${query}` : ""}`,
+        );
+        return;
+      }
 
       if (typeof checkoutUrl === "string" && checkoutUrl.startsWith("http")) {
         window.location.assign(checkoutUrl);
@@ -277,8 +339,8 @@ export function WidgetPaymentPage() {
       if (orderId) {
         navigate(
           `/order/${orderId}?token=${encodeURIComponent(bookingToken ?? "")}&org=${encodeURIComponent(
-            orgSlug
-          )}&event=${encodeURIComponent(eventSlug)}`
+            orgSlug,
+          )}&event=${encodeURIComponent(eventSlug)}`,
         );
       }
       return;
@@ -288,8 +350,8 @@ export function WidgetPaymentPage() {
       clearDraft(orgSlug, eventSlug);
       navigate(
         `/order/${orderId}?token=${encodeURIComponent(bookingToken ?? "")}&org=${encodeURIComponent(
-          orgSlug
-        )}&event=${encodeURIComponent(eventSlug)}`
+          orgSlug,
+        )}&event=${encodeURIComponent(eventSlug)}`,
       );
     }
   }
@@ -303,7 +365,9 @@ export function WidgetPaymentPage() {
 
   const canPay =
     picked.length > 0 &&
+    (!requiresOrganizerTerms || paidSalesAvailable) &&
     accepted &&
+    (!requiresOrganizerTerms || (org.salesTermsAccepted && salesTermsRead)) &&
     !registering &&
     !pendingPay &&
     !attendeesMismatch &&
@@ -311,11 +375,22 @@ export function WidgetPaymentPage() {
 
   return (
     <WidgetRoot theme={theme}>
-      <WidgetHeader left={<Button className="widgetButton" variant="ghost" label="← Retour" onClick={goBack} />}
-        title={event.title}/>
+      <WidgetHeader
+        left={
+          <Button
+            className="widgetButton"
+            variant="ghost"
+            label="← Retour"
+            onClick={goBack}
+          />
+        }
+        title={event.title}
+      />
 
       {picked.length === 0 ? (
-        <div className="widgetEmpty">Aucun billet sélectionné. Reviens à l’étape billets.</div>
+        <div className="widgetEmpty">
+          Aucun billet sélectionné. Reviens à l’étape billets.
+        </div>
       ) : (
         <div className="widgetPaymentLayout">
           <div className="widgetPaymentCard">
@@ -351,7 +426,10 @@ export function WidgetPaymentPage() {
             {hasDeposit ? (
               <div className="widgetPaymentInfos">
                 <div>Total commande : {formatMoney(totalCents, currency)}</div>
-                <div>Le solde sera à régler plus tard selon les modalités de l’organisateur.</div>
+                <div>
+                  Le solde sera à régler plus tard selon les modalités de
+                  l’organisateur.
+                </div>
               </div>
             ) : null}
 
@@ -361,10 +439,56 @@ export function WidgetPaymentPage() {
 
             {attendeesMismatch ? (
               <MessageBox variant="error">
-                Oups : le nombre de participants ne correspond pas aux billets sélectionnés. Reviens à l’étape participants.
+                Oups : le nombre de participants ne correspond pas aux billets
+                sélectionnés. Reviens à l’étape participants.
               </MessageBox>
             ) : null}
           </div>
+
+          {requiresOrganizerTerms ? (
+            <div className="widgetPaymentCard">
+              <div className="widgetSectionTitle">Vendeur et conditions</div>
+              {!paidSalesAvailable ? (
+                <MessageBox variant="error">
+                  Les paiements sont temporairement indisponibles pour cet organisateur.
+                </MessageBox>
+              ) : null}
+              <div className="widgetPaymentInfos">
+                Billets vendus par <strong>{org.displayName}</strong>. Paiement
+                encaissé directement sur son compte Stripe. Eventflow n’est pas
+                le vendeur.
+              </div>
+              <div className="widgetPaymentInfos">
+                Contact :{" "}
+                {org.publicEmail ? (
+                  <a href={`mailto:${org.publicEmail}`}>{org.publicEmail}</a>
+                ) : (
+                  "à compléter par l’organisateur"
+                )}
+              </div>
+              <Button
+                className="widgetButton"
+                variant="secondary"
+                label={
+                  salesTermsRead
+                    ? "Relire les conditions"
+                    : "Lire les conditions"
+                }
+                onClick={() => setSalesTermsOpen(true)}
+                disabled={registering || pendingPay || !org.salesTermsAccepted}
+              />
+              {!org.salesTermsAccepted && requiresOrganizerTerms ? (
+                <MessageBox variant="error">
+                  Paiement temporairement indisponible : l’organisateur doit
+                  valider ses conditions et son contact public.
+                </MessageBox>
+              ) : !salesTermsRead && requiresOrganizerTerms ? (
+                <MessageBox variant="info">
+                  Lisez les conditions de l’organisateur avant de confirmer.
+                </MessageBox>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="widgetPaymentCard">
             <div className="widgetSectionTitle">Contact & validation</div>
@@ -391,7 +515,9 @@ export function WidgetPaymentPage() {
                     onError={() => {
                       setPendingPay(false);
                       setTurnstileToken(null);
-                      setTurnstileError("Impossible de valider (Turnstile). Réessaie ou recharge la page.");
+                      setTurnstileError(
+                        "Impossible de valider (Turnstile). Réessaie ou recharge la page.",
+                      );
                     }}
                     onExpired={() => {
                       setPendingPay(false);
@@ -399,10 +525,14 @@ export function WidgetPaymentPage() {
                       setTurnstileError("Validation expirée. Réessaie.");
                     }}
                   />
-                  {turnstileError ? <MessageBox variant="error">{turnstileError}</MessageBox> : null}
+                  {turnstileError ? (
+                    <MessageBox variant="error">{turnstileError}</MessageBox>
+                  ) : null}
                 </div>
               ) : (
-                <MessageBox variant="error">Turnstile non configuré.</MessageBox>
+                <MessageBox variant="error">
+                  Turnstile non configuré.
+                </MessageBox>
               )}
 
               <label className="widgetCheckboxRow">
@@ -410,36 +540,82 @@ export function WidgetPaymentPage() {
                   type="checkbox"
                   checked={accepted}
                   onChange={(e) => setAccepted(e.target.checked)}
-                  disabled={registering || pendingPay}
+                  disabled={
+                    registering ||
+                    pendingPay ||
+                    (requiresOrganizerTerms &&
+                      (!org.salesTermsAccepted || !salesTermsRead))
+                  }
                 />
-                <span>J’accepte les conditions et je confirme l’achat.</span>
+                <span>
+                  J’accepte{" "}
+                  {requiresOrganizerTerms
+                    ? "les conditions de " + org.displayName + ", "
+                    : ""}
+                  les{" "}
+                  <a href="/cgu" target="_blank" rel="noreferrer">
+                    CGU Eventflow
+                  </a>{" "}
+                  et la{" "}
+                  <a
+                    href="/politique-confidentialite"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    politique de confidentialité
+                  </a>
+                  , et je confirme l’achat.
+                </span>
               </label>
 
-              {registerError ? <MessageBox variant="error">Erreur : {registerError}</MessageBox> : null}
+              {registerError ? (
+                <MessageBox variant="error">
+                  Erreur : {registerError}
+                </MessageBox>
+              ) : null}
             </div>
           </div>
         </div>
       )}
 
       <div className="widgetRecap widgetRecapActions">
-        <Button className="widgetButton" variant="secondary" label="Retour" onClick={goBack} disabled={registering || pendingPay} />
         <Button
-        className="widgetButton"
+          className="widgetButton"
+          variant="secondary"
+          label="Retour"
+          onClick={goBack}
+          disabled={registering || pendingPay}
+        />
+        <Button
+          className="widgetButton"
           label={
             totalCents === 0
               ? registering || pendingPay
                 ? "Validation…"
                 : "Confirmer"
               : registering || pendingPay
-              ? "Paiement…"
-              : `Payer ${formatMoney(dueNowCentsUi, currency)}`
+                ? "Paiement…"
+                : `Payer ${formatMoney(dueNowCentsUi, currency)}`
           }
           onClick={pay}
           disabled={!canPay}
         />
       </div>
 
-      <WidgetFooter/>
+      <WidgetFooter />
+      {salesTermsOpen && org.salesTermsAccepted ? (
+        <PublicCharterModal
+          open={salesTermsOpen}
+          markdown={org.salesTerms}
+          title={`Conditions de ${org.displayName}`}
+          confirmLabel="J’ai lu les conditions"
+          onClose={() => setSalesTermsOpen(false)}
+          onConfirmRead={() => {
+            setSalesTermsRead(true);
+            setSalesTermsOpen(false);
+          }}
+        />
+      ) : null}
     </WidgetRoot>
   );
 }

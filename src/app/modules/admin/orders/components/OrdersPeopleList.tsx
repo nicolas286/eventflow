@@ -9,6 +9,7 @@ import type { Attendee } from "@shared/models/db/db.attendee.schema";
 import { formatMoney } from "@helpers/normalize";
 import type { OrderMeta } from "../hooks/useParticipantsViewModel";
 import type { EventFormFieldGroup } from "@shared/models/db/db.eventFormFields.schema";
+import type { BankTransferAdminSummary } from "@contracts/bank-transfer";
 
 export type FilledField = {
   key: string;
@@ -81,6 +82,12 @@ type OrdersPeopleListProps = {
   targetOrderId: string | null;
   deleteOrderLoading: boolean;
   onRequestDeleteOrder: (orderId: string) => void;
+  bankTransferOrderIds: Set<string>;
+  bankTransferSummaryByOrderId: Map<string, BankTransferAdminSummary>;
+  markPaidLoadingOrderId: string | null;
+  onRequestMarkPaid: (orderId: string) => void;
+  expireLoadingOrderId: string | null;
+  onRequestExpire: (orderId: string) => void;
 
   editorOpen: boolean;
   editingAttendeeId: string | null;
@@ -104,6 +111,12 @@ export function OrdersPeopleList(props: OrdersPeopleListProps) {
     targetOrderId,
     deleteOrderLoading,
     onRequestDeleteOrder,
+    bankTransferOrderIds,
+    bankTransferSummaryByOrderId,
+    markPaidLoadingOrderId,
+    onRequestMarkPaid,
+    expireLoadingOrderId,
+    onRequestExpire,
     editorOpen,
     editingAttendeeId,
     inlineEditorProps,
@@ -121,6 +134,17 @@ export function OrdersPeopleList(props: OrdersPeopleListProps) {
           const meta = orderMetaById.get(orderId);
           const orderNumber = meta?.orderNumber ?? orderId.slice(0, 8);
           const isDeletingThisOrder = deleteOrderLoading && targetOrderId === orderId;
+          const canMarkPaid =
+            bankTransferOrderIds.has(orderId) &&
+            ["open", "pending", "awaiting_payment", "partially_paid"].includes(
+              meta?.status ?? "",
+            );
+          const isMarkingPaid = markPaidLoadingOrderId === orderId;
+          const bankTransferSummary = bankTransferSummaryByOrderId.get(orderId);
+          const canExpireBankTransfer =
+            Boolean(bankTransferSummary) &&
+            ["open", "pending", "awaiting_payment"].includes(meta?.status ?? "");
+          const isExpiring = expireLoadingOrderId === orderId;
 
           const total = meta?.totalCents ?? 0;
           const paid = meta?.paidCents ?? 0;
@@ -176,12 +200,65 @@ export function OrdersPeopleList(props: OrdersPeopleListProps) {
                       </span>
                     </div>
                   )}
+
+                  {bankTransferSummary ? (
+                    <div className="adminOrderAmountsCompact">
+                      <span>
+                        <b>Virement attendu</b>{" "}
+                        {formatMoney(
+                          bankTransferSummary.amountCents,
+                          bankTransferSummary.currency,
+                        )}
+                      </span>
+                      <span className="adminDot">•</span>
+                      <span>
+                        <b>Référence</b> {bankTransferSummary.internalReference}
+                      </span>
+                      {bankTransferSummary.communication ? (
+                        <>
+                          <span className="adminDot">•</span>
+                          <span>
+                            <b>Communication</b> {bankTransferSummary.communication}
+                          </span>
+                        </>
+                      ) : null}
+                      <span className="adminDot">•</span>
+                      {bankTransferSummary.confirmedAt ? (
+                        <span>
+                          <b>Confirmé le</b>{" "}
+                          {formatDateTime(bankTransferSummary.confirmedAt)}
+                        </span>
+                      ) : (
+                        <span><b>Expiration</b> manuelle uniquement</span>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="adminOrderHeaderRight">
                   <span className="adminOrderPill">
                     {people.length} inscrit{people.length > 1 ? "s" : ""}
                   </span>
+
+                  {canMarkPaid ? (
+                    <Button
+                      variant="primary"
+                      onClick={() => onRequestMarkPaid(orderId)}
+                      disabled={isMarkingPaid}
+                    >
+                      {isMarkingPaid ? "Confirmation…" : "Marquer comme payé"}
+                    </Button>
+                  ) : null}
+
+                  {canExpireBankTransfer ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => onRequestExpire(orderId)}
+                      disabled={isExpiring || isMarkingPaid}
+                    >
+                      {isExpiring ? "Expiration…" : "Expirer la réservation"}
+                    </Button>
+                  ) : null}
 
                   <Button
                     variant="danger"

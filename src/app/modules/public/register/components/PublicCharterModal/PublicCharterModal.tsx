@@ -6,6 +6,8 @@ type Props = {
   markdown: string;
   onClose: () => void;
   onConfirmRead: () => void;
+  title?: string;
+  confirmLabel?: string;
 };
 
 export function PublicCharterModal({
@@ -13,6 +15,8 @@ export function PublicCharterModal({
   markdown,
   onClose,
   onConfirmRead,
+  title = "Charte de l’événement",
+  confirmLabel = "J’ai lu la charte",
 }: Props) {
   if (!open) return null;
 
@@ -21,9 +25,7 @@ export function PublicCharterModal({
       <div className="publicModalOverlay" role="dialog" aria-modal="true">
         <div className="publicModalCard">
           <div className="publicModalHeader">
-            <div style={{ fontWeight: 900, fontSize: 18 }}>
-              Charte de l’événement
-            </div>
+            <div style={{ fontWeight: 900, fontSize: 18 }}>{title}</div>
           </div>
 
           <div className="publicModalBody">
@@ -34,16 +36,9 @@ export function PublicCharterModal({
           </div>
 
           <div className="publicModalActions">
-            <Button
-              variant="secondary"
-              label="Fermer"
-              onClick={onClose}
-            />
+            <Button variant="secondary" label="Fermer" onClick={onClose} />
 
-            <Button
-              label="J’ai lu la charte"
-              onClick={onConfirmRead}
-            />
+            <Button label={confirmLabel} onClick={onConfirmRead} />
           </div>
         </div>
       </div>

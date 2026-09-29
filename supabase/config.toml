@@ -353,8 +353,8 @@ allow_dynamic_registration = false
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
-# `per_worker` (default) — enables hot reload during local development.
-# `oneshot` — fallback mode if hot reload causes issues (e.g. in large repos or with symlinks).
+# `per_worker` (default) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â enables hot reload during local development.
+# `oneshot` ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â fallback mode if hot reload causes issues (e.g. in large repos or with symlinks).
 policy = "per_worker"
 # Port to attach the Chrome inspector for debugging edge functions.
 inspector_port = 8083
@@ -383,69 +383,38 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
 
-[functions.register-tickets]
+[functions.accounts]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
-[functions.send-invoice-to-billit]
+[functions.invoices]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
-[functions.start-subscription]
+[functions.orders]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
-[functions.admin-register]
+[functions.organization-payment-settings]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
-[functions.send-confirmation-mail]
+[functions.subscriptions]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
-[functions.send-confirmation-mail-tickets]
+[functions.workers]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
-[functions.send-reminder-mail]
+[functions.stripe-connect-start]
 verify_jwt = false
+import_map = "./functions/import_map.json"
 
-[functions.mollie-webhook-tickets]
+[functions.stripe-connect-status]
 verify_jwt = false
-# Matches production inventory of 2026-09-15; handler enforces its own authentication.
-[functions.cancel-suscription]
-verify_jwt = false
+import_map = "./functions/import_map.json"
 
-# Matches production inventory of 2026-09-15; handler enforces its own authentication.
-[functions.delete-account]
+[functions.stripe-webhook-connect]
 verify_jwt = false
-
-# Matches production inventory of 2026-09-15; handler enforces its own authentication.
-[functions.expire-orders]
-verify_jwt = false
-
-# Matches production inventory of 2026-09-15; handler enforces its own authentication.
-[functions.generate-invoice-pdf]
-verify_jwt = false
-
-# Matches production inventory of 2026-09-15; handler enforces its own authentication.
-[functions.get-invoice-pdf-url]
-verify_jwt = false
-
-# Matches production inventory of 2026-09-15; handler enforces its own authentication.
-[functions.mollie-connect-callback]
-verify_jwt = false
-
-# Matches production inventory of 2026-09-15; handler enforces its own authentication.
-[functions.mollie-connect-start]
-verify_jwt = false
-
-# Matches production inventory of 2026-09-15; handler enforces its own authentication.
-[functions.mollie-subscription-webhook]
-verify_jwt = false
-
-# Matches production inventory of 2026-09-15; handler enforces its own authentication.
-[functions.mollie-webhook]
-verify_jwt = false
-
-# Matches production inventory of 2026-09-15; handler enforces its own authentication.
-[functions.order-public]
-verify_jwt = false
-
-# Matches production inventory of 2026-09-15; handler enforces its own authentication.
-[functions.payment-first]
-verify_jwt = false
+import_map = "./functions/import_map.json"

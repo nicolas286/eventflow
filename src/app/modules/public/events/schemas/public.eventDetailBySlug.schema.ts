@@ -2,15 +2,29 @@ import { z } from "zod";
 import { eventProductSchema } from "@shared/models/db/db.eventProducts.schema";
 import { eventDbSchema } from "@shared/models/db/db.event.schema";
 import { organizationProfileSchema } from "@shared/models/db/db.organizationProfile.schema";
-import { eventFormFieldGroupSchema, eventFormFieldSchema } from "@shared/models/db/db.eventFormFields.schema";
+import {
+  eventFormFieldGroupSchema,
+  eventFormFieldSchema,
+} from "@shared/models/db/db.eventFormFields.schema";
 
-export const publicOrgProfileOverviewForEventPageSchema = organizationProfileSchema.pick({
-  slug: true,
-  defaultEventBannerUrl: true,
-  logoUrl: true,
-  displayName: true,
-  primaryColor: true,
-});
+export const publicOrgProfileOverviewForEventPageSchema =
+  organizationProfileSchema
+    .pick({
+      slug: true,
+      defaultEventBannerUrl: true,
+      logoUrl: true,
+      displayName: true,
+      publicEmail: true,
+      phone: true,
+      website: true,
+      primaryColor: true,
+    })
+    .extend({
+      salesTerms: z.string().min(200).max(10_000),
+      salesTermsVersion: z.string().min(3).max(100),
+      salesTermsAccepted: z.boolean(),
+      paidSalesAvailable: z.boolean().default(false),
+    });
 
 export const publicEventSchema = eventDbSchema
   .pick({
@@ -74,6 +88,8 @@ export const publicEventDetailSchema = z.object({
 
 export type PublicEventProduct = z.infer<typeof publicEventProductSchema>;
 export type PublicEvent = z.infer<typeof publicEventSchema>;
-export type PublicOrgProfileOverviewForEventPage = z.infer<typeof publicOrgProfileOverviewForEventPageSchema>;
+export type PublicOrgProfileOverviewForEventPage = z.infer<
+  typeof publicOrgProfileOverviewForEventPageSchema
+>;
 export type PublicFormField = z.infer<typeof publicFormFieldSchema>;
 export type PublicEventDetail = z.infer<typeof publicEventDetailSchema>;

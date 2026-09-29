@@ -7,7 +7,11 @@ import type {
   PublicEvent,
   PublicOrgProfileOverviewForEventPage,
 } from "../../events/schemas/public.eventDetailBySlug.schema";
-import { CalendarIcon, HourglassIcon, PinIcon } from "@shared/ui/components/icon/Icons";
+import {
+  CalendarIcon,
+  HourglassIcon,
+  PinIcon,
+} from "@shared/ui/components/icon/Icons";
 
 type Props = {
   orgSlug: string;
@@ -37,7 +41,11 @@ export function PublicEventHeader({ orgSlug, org, event }: Props) {
             </div>
 
             {org?.logoUrl ? (
-              <img src={org.logoUrl} alt={org.slug} className="publicBannerLogo" />
+              <img
+                src={org.logoUrl}
+                alt={org.slug}
+                className="publicBannerLogo"
+              />
             ) : null}
           </div>
 
@@ -49,7 +57,19 @@ export function PublicEventHeader({ orgSlug, org, event }: Props) {
         <div className="publicTitleBlock">
           <h1 className="publicTitle">{event.title}</h1>
 
-          {(startText || event.location || durationText) ? (
+          {org?.displayName ? (
+            <div className="publicSubtitle" style={{ marginTop: 6 }}>
+              Organisé par <strong>{org.displayName}</strong>
+              {org.publicEmail ? (
+                <>
+                  {" — "}
+                  <a href={`mailto:${org.publicEmail}`}>{org.publicEmail}</a>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+
+          {startText || event.location || durationText ? (
             <div className="publicMetaCard">
               {startText ? (
                 <div className="publicMetaItem">

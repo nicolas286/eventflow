@@ -19,7 +19,7 @@ export default defineConfig({
       "@gateways": path.resolve(__dirname, "src/shared/gateways"),
       "@helpers": path.resolve(__dirname, "src/shared/helpers"),
       "@ui": path.resolve(__dirname, "src/shared/ui"),
-      "@contracts": path.resolve(__dirname, "contracts"),
+      "@contracts": path.resolve(__dirname, "shared/schemas"),
     }
   }
 });

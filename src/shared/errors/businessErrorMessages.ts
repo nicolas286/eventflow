@@ -20,32 +20,45 @@ export function humanBusinessMessage(msg: string): string | null {
     PLAN_LIMIT:
       "Limite de votre abonnement atteinte. Passez sur un plan supérieur pour continuer.",
 
-    FORBIDDEN:
-      "Accès refusé : vous n'avez pas les droits nécessaires.",
+    FORBIDDEN: "Accès refusé : vous n'avez pas les droits nécessaires.",
 
-    NOT_AUTHENTICATED:
-      "Votre session a expiré. Reconnectez-vous.",
+    STRIPE_CONNECT_NOT_ALLOWED:
+      "Stripe Connect n’est pas encore activé pour votre compte.",
 
-    EVENT_MISMATCH:
-      "Ce ticket n’est pas lié à cet événement.",
+    STRIPE_ACCOUNT_REQUIRES_STANDARD_MIGRATION:
+      "Ce compte Stripe n’est pas compatible avec le modèle Eventflow. Connectez un compte Stripe Standard.",
 
-    TICKET_NOT_FOUND:
-      "Ticket introuvable.",
+    ORGANIZER_SALES_TERMS_REQUIRED:
+      "L’organisateur doit valider ses conditions de vente et renseigner un email public avant d’activer les paiements.",
 
-    TICKET_CANCELLED:
-      "Ce ticket a été annulé.",
+    ORGANIZER_PUBLIC_EMAIL_REQUIRED:
+      "Enregistrez une adresse e-mail publique valide avant de valider les conditions organisateur.",
 
-    TICKET_INVALID:
-      "Ce ticket est invalide.",
+    ORGANIZER_SALES_TERMS_INVALID:
+      "Les conditions organisateur doivent contenir entre 200 et 10 000 caractères.",
 
-    CONFLICT:
-      "Vous avez déjà créé une organisation.",
+    BANK_TRANSFER_DISABLED:
+      "Le paiement par virement n’est pas disponible actuellement.",
 
-    ORG_ALREADY_EXISTS:
-      "Vous avez déjà créé une organisation.",
-    
-      INVALID_REGISTER_PAYLOAD:
-    "Certaines informations de réservation sont invalides. Vérifiez le formulaire puis réessayez.",
+    TEST_PAYMENTS_DISABLED:
+      "Une configuration Stripe de test ne peut pas être utilisée en production.",
+
+    NOT_AUTHENTICATED: "Votre session a expiré. Reconnectez-vous.",
+
+    EVENT_MISMATCH: "Ce ticket n’est pas lié à cet événement.",
+
+    TICKET_NOT_FOUND: "Ticket introuvable.",
+
+    TICKET_CANCELLED: "Ce ticket a été annulé.",
+
+    TICKET_INVALID: "Ce ticket est invalide.",
+
+    CONFLICT: "Vous avez déjà créé une organisation.",
+
+    ORG_ALREADY_EXISTS: "Vous avez déjà créé une organisation.",
+
+    INVALID_REGISTER_PAYLOAD:
+      "Certaines informations de réservation sont invalides. Vérifiez le formulaire puis réessayez.",
 
     INVALID_PAYLOAD:
       "Certaines données envoyées sont invalides. Vérifiez le formulaire puis réessayez.",
@@ -58,6 +71,24 @@ export function humanBusinessMessage(msg: string): string | null {
 
     INVALID_JSON:
       "La demande envoyée est invalide. Rechargez la page puis réessayez.",
+
+    ORG_STRIPE_ONBOARDING_INCOMPLETE:
+      "Les paiements de cet événement sont temporairement indisponibles pendant la configuration Stripe de l’organisateur. Veuillez réessayer plus tard.",
+
+    STRIPE_API_ERROR:
+      "Stripe n’a pas pu traiter la demande. Réessayez dans quelques instants.",
+
+    SUBSCRIPTION_START_FAILED:
+      "L’abonnement Stripe n’a pas pu être démarré. Veuillez réessayer dans quelques instants.",
+
+    STRIPE_CANCEL_SUB_FAILED:
+      "L’abonnement Stripe n’a pas pu être annulé. Le compte n’a pas été supprimé afin d’éviter une facturation orpheline. Réessayez dans quelques instants.",
+
+    PAYMENTS_TEMPORARILY_DISABLED:
+      "Les paiements sont temporairement indisponibles. Veuillez réessayer plus tard.",
+
+    MOLLIE_HISTORY_READ_ONLY:
+      "Mollie n’est plus disponible. Configurez Stripe pour réactiver les paiements de vos événements.",
   };
 
   const exact = exactMessages[m];
@@ -88,10 +119,7 @@ export function humanBusinessMessage(msg: string): string | null {
       "Le nom doit contenir entre 3 et 120 caractères.",
     ],
 
-    [
-      /VALIDATION_ERROR:\s*org_id is required/i,
-      "Organisation introuvable.",
-    ],
+    [/VALIDATION_ERROR:\s*org_id is required/i, "Organisation introuvable."],
 
     [
       /VALIDATION_ERROR:\s*name cannot be empty/i,
@@ -153,7 +181,7 @@ export function humanBusinessMessage(msg: string): string | null {
       "Une erreur serveur est survenue pendant la réservation. Veuillez réessayer dans quelques instants.",
     ],
 
-      // ------------------------------------------------------------------
+    // ------------------------------------------------------------------
     // Organization billing
     // ------------------------------------------------------------------
 
@@ -167,10 +195,7 @@ export function humanBusinessMessage(msg: string): string | null {
       "Les champs de validation TVA ne peuvent pas être modifiés manuellement.",
     ],
 
-    [
-      /VALIDATION_ERROR:\s*org_id is required/i,
-      "Organisation introuvable.",
-    ],
+    [/VALIDATION_ERROR:\s*org_id is required/i, "Organisation introuvable."],
 
     [
       /VALIDATION_ERROR:\s*no fields to update/i,
@@ -232,15 +257,9 @@ export function humanBusinessMessage(msg: string): string | null {
       "Le code postal ne peut pas dépasser 20 caractères.",
     ],
 
-    [
-      /VALIDATION_ERROR:\s*city cannot be empty/i,
-      "La ville est obligatoire.",
-    ],
+    [/VALIDATION_ERROR:\s*city cannot be empty/i, "La ville est obligatoire."],
 
-    [
-      /VALIDATION_ERROR:\s*city too short/i,
-      "La ville est trop courte.",
-    ],
+    [/VALIDATION_ERROR:\s*city too short/i, "La ville est trop courte."],
 
     [
       /VALIDATION_ERROR:\s*city too long/i,

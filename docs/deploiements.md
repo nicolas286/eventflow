@@ -4,10 +4,10 @@ Dépôt : https://github.com/nicolas286/eventflow (ancien nom : `eventflow-front
 
 ## Circuit attendu
 
-| Action Git | Front Netlify | Backend Supabase |
-| --- | --- | --- |
-| Push sur `dev` | https://eventflow-staging.netlify.app | `cpcmcxerrsnnjncrhldr` — eventflow-staging |
-| Fusion d'une PR approuvée dans `main` | https://app.useeventflow.eu | `dixirvllhfkvqoahhfqh` — eventflow-prod |
+| Action Git                            | Front Netlify                         | Backend Supabase                           |
+| ------------------------------------- | ------------------------------------- | ------------------------------------------ |
+| Push sur `dev`                        | https://eventflow-staging.netlify.app | `cpcmcxerrsnnjncrhldr` — eventflow-staging |
+| Fusion d'une PR approuvée dans `main` | https://app.useeventflow.eu           | `dixirvllhfkvqoahhfqh` — eventflow-prod    |
 
 Le renommage du dépôt ne renomme pas les sites ni les projets Supabase. Le dossier local peut conserver son nom actuel.
 
@@ -25,16 +25,28 @@ Le renommage du dépôt ne renomme pas les sites ni les projets Supabase. Le dos
 
 Un échec arrête les étapes suivantes. Il n'existe pas de transaction globale entre SQL, Edge Functions et front : les changements backend doivent rester compatibles avec le front encore publié. Une migration déjà appliquée reste appliquée si une étape suivante échoue.
 
+### Migration directe des API — dev uniquement
+
+La tranche du 20 septembre 2026 remplace les anciennes routes sans adaptateur. Le tableau des nouvelles routes est dans [l'architecture](ARCHITECTURE.md). Cette bascule constitue une exception explicite à la compatibilité transitoire ci-dessus : l'ancien bundle ouvert peut appeler des routes retirées jusqu'à son rechargement. Préparer la publication du frontend et surveiller la fenêtre entre les étapes backend/front ; ne pas présenter ce déploiement comme atomique.
+
+Avant suppression distante des anciennes fonctions, mettre à jour le cron rappels vers `workers/reminders` et les URL de webhook enregistrées sur les abonnements Mollie **test** existants. Les paiements initiaux encore en attente doivent également être inventoriés. Les appels SQL directs à `expire_orders` ne sont pas concernés par le changement d'URL. Le worker de maintenance `workers/migrate-subscription-webhooks` est réservé au staging avec authentification interne et clé test.
+
+Le déploiement des nouvelles sources ne supprime pas à lui seul les anciennes fonctions distantes. Consigner séparément publication, migration des consommateurs externes, retrait des anciennes routes et recette métier. Une restauration du seul front précédent peut être incompatible avec les nouvelles API et les webhooks déjà migrés.
+
+Les contrôles CI utilisent Deno `2.9.6` pour tous les modules backend et contrats racine : `npm run check:backend`, `npm run lint:backend`, `npm run test:backend`. La validation locale n'atteste pas la publication. **Aucune promotion production n'est autorisée dans cette tranche.**
+
 ## Configuration
 
 Les environnements GitHub `staging` et `production` limitent l'accès aux secrets à leur branche respective. Ils contiennent :
 
-- Secrets : `SUPABASE_ACCESS_TOKEN`, `NETLIFY_AUTH_TOKEN`, `VITE_SUPABASE_ANON_KEY` (clé publique).
+- Secrets : `SUPABASE_ACCESS_TOKEN`, `NETLIFY_AUTH_TOKEN`, `VITE_SUPABASE_ANON_KEY` (clé publique). L'environnement `staging` contient aussi `SUPABASE_SERVICE_ROLE_KEY`, limitée au test d'intégration de suppression de compte.
 - Variables : `SUPABASE_PROJECT_REF`, `NETLIFY_SITE_ID`, `VITE_SUPABASE_URL`, `PUBLIC_BASE_URL`, `VITE_TURNSTILE_SITEKEY`.
 
-Le CLI Supabase utilise son jeton d'accès et un rôle de connexion temporaire ; le pipeline ne réinitialise pas le mot de passe de production. Les secrets serveur Mollie, messagerie et Billit restent dans chaque projet Supabase. Ils ne sont pas publiés dans le front ni synchronisés automatiquement entre projets.
+Le CLI Supabase utilise son jeton d'accès et un rôle de connexion temporaire ; le pipeline ne réinitialise pas le mot de passe de production. Les secrets serveur Stripe Connect, les références historiques Mollie, la messagerie et Billit restent dans chaque projet Supabase. Ils ne sont pas publiés dans le front ni synchronisés automatiquement entre projets. Les abonnements Eventflow sont facturés en interne, sans Stripe Billing. Voir [la procédure Stripe](stripe-migration.md).
 
 Les variables de dépôt `STAGING_DEPLOY_ENABLED` et `PRODUCTION_DEPLOY_ENABLED` contrôlent les workflows. La propriété `deploymentEnabled` du manifeste est un second contrôle. Un déploiement demande les deux contrôles actifs. L'activation production ne publie rien à elle seule : un push dans `main`, normalement issu d'une PR approuvée, déclenche la publication.
+
+Après le déploiement des fonctions staging, le test d'intégration `accounts` s'exécute uniquement si son API, son transport partagé, son contrat ou ses tests ont changé. Il crée des données synthétiques, vérifie la suppression du compte et nettoie l'organisation restante même en cas d'échec.
 
 Les deux interrupteurs sont actifs depuis la validation staging du 15 septembre 2026. La [PR initiale #181](https://github.com/nicolas286/eventflow/pull/181) a été fusionnée et son déploiement production a réussi. Le correctif Mollie de la [PR #182](https://github.com/nicolas286/eventflow/pull/182) a ensuite suivi le même circuit avec succès.
 

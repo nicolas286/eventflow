@@ -1,4 +1,4 @@
-import { json } from "./http.ts";
+import { json } from "./app/http.ts";
 
 type EdgeLoggerLike = {
   warn: (step: string, data?: Record<string, unknown>) => void;
@@ -21,7 +21,7 @@ export function requireBearer(
 
     return {
       token: null,
-      response: json({ error: "NOT_AUTHENTICATED" }, 401),
+      response: json(req, { error: "NOT_AUTHENTICATED" }, 401),
     };
   }
 
