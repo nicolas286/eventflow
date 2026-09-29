@@ -91,14 +91,6 @@ jobs:
         run: |
           node scripts/deployment/write-runtime-config.mjs "$APP_ENV"
           supabase db query --linked --file .local/runtime-config.sql
-      - name: Apply requested staging account plan
-        if: inputs.target == 'staging' && vars.STAGING_ACCOUNT_EMAIL != ''
-        env:
-          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          STAGING_ACCOUNT_EMAIL: ${{ vars.STAGING_ACCOUNT_EMAIL }}
-          STAGING_ACCOUNT_PLAN: ${{ vars.STAGING_ACCOUNT_PLAN }}
-        run: node scripts/deployment/apply-staging-account-plan.mjs
       - name: Deploy functions
         run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF" --use-api
       - name: Test account deletion on staging
