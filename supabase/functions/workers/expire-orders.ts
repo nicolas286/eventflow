@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { json } from "../_shared/app/http.ts";
+import { reconcileStripeCheckouts } from "../_shared/payments/stripe-checkout-lifecycle.ts";
+import { createConsoleLogger } from "../_shared/modules/logger/mod.ts";
 
 function safeEq(a: string, b: string) {
   if (a.length !== b.length) return false;
@@ -14,6 +16,14 @@ export async function expireOrders(req: Request, admin: SupabaseClient) {
   const got = req.headers.get("x-cron-secret")?.trim() ?? "";
   if (!got || !safeEq(got, expected)) {
     return json(req, { ok: false, error: "Unauthorized" }, 401);
+  }
+  const logger = createConsoleLogger("workers/expire-orders");
+  try {
+    await reconcileStripeCheckouts(admin, logger);
+  } catch (error) {
+    logger.error("stripe_checkout_reconciliation_unavailable", {
+      error: error instanceof Error ? error.message : "UNEXPECTED",
+    });
   }
   const { data, error } = await admin.rpc("expire_orders", { p_limit: 200 });
   if (error) {

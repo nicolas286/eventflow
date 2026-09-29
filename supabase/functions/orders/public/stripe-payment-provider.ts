@@ -29,6 +29,7 @@ export class StripeEventPaymentProvider implements EventPaymentProvider {
     const productName = input.eventTitle?.trim() || "Billet Eventflow";
     const cancelUrl = new URL(input.redirectUrl);
     cancelUrl.searchParams.set("payment", "cancelled");
+    const expiresAt = input.checkoutExpiresAt ?? Math.floor(Date.now() / 1000) + 35 * 60;
 
     // Direct charge: the Checkout Session and PaymentIntent are created in the
     // organizer's connected account. No platform subscription/customer is used.
@@ -39,7 +40,9 @@ export class StripeEventPaymentProvider implements EventPaymentProvider {
         method: "POST",
         connectedAccountId: this.connectedAccountId,
         idempotencyKey: `eventflow-order-${input.orderId}`,
+        timeoutMs: 30_000,
         params: {
+          expires_at: expiresAt,
           ui_mode: "hosted_page",
           mode: "payment",
           "payment_method_types[0]": "bancontact",

@@ -56,7 +56,18 @@ export async function insertProviderPaymentOrRollback(input: {
   currency: string;
 }) {
   const now = new Date().toISOString();
-  const { error } = await input.admin.from("payments").insert({
+  const { error } = input.payment.provider === "stripe"
+    ? await input.admin.rpc("register_stripe_checkout_payment", {
+      p_order_id: input.orderId,
+      p_account_id: input.payment.providerAccountId,
+      p_session_id: input.payment.providerCheckoutSessionId,
+      p_payment_id: input.payment.providerPaymentId,
+      p_amount_cents: input.amountCents,
+      p_currency: input.currency,
+      p_expires_at: input.payment.raw.expires_at,
+      p_raw: input.payment.raw,
+    })
+    : await input.admin.from("payments").insert({
     order_id: input.orderId,
     provider: input.payment.provider,
     provider_payment_id: input.payment.providerPaymentId,

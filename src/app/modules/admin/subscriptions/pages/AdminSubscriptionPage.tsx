@@ -12,6 +12,10 @@ import CountrySelect from "@shared/ui/components/inputs/CountrySelect";
 import type { AdminOutletContext } from "../../dashboard/components/AdminDashboard";
 import { supabase } from "@gateways/supabase/supabaseClient";
 import { useStartSubscription } from "../hooks/useStartSubscription";
+import { useCancelSubscription } from "../hooks/useCancelSubscription";
+import { ConfirmModal } from "@ui/components/modals/ConfirmModal";
+import { MessageBox } from "@ui/components/message/MessageBox";
+import type { StartSubscriptionPayload, StartSubscriptionResponse } from "../schemas/admin.startSubscription.schema";
 import { useMakeOrganizationBilling } from "../hooks/useMakeOrganizationBilling";
 import { useUpsertOrganizationBilling } from "../hooks/useUpsertOrganizationBilling";
 
@@ -130,6 +134,11 @@ function canStartSubscription(target: PlanKey): target is "starter" | "pro" {
   return target === "starter" || target === "pro";
 }
 
+function hasRetryableInvoiceProcessing(result: StartSubscriptionResponse) {
+  return !result.warnings.includes("BILLIT_REVIEW_REQUIRED") &&
+    result.warnings.some((warning) => warning === "INVOICE_PDF_PENDING" || warning === "BILLIT_SEND_PENDING");
+}
+
 /* ------------------------------------------------------------------ */
 /* Page                                                               */
 /* ------------------------------------------------------------------ */
@@ -189,25 +198,38 @@ export default function AdminAbonnementPage() {
     reset,
   } = useStartSubscription({ supabase });
 
+  const cancellation = useCancelSubscription({ supabase });
+  const [cancelOrgId, setCancelOrgId] = useState<string | null>(null);
+  const [pendingInvoiceProcessing, setPendingInvoiceProcessing] = useState<{
+    payload: StartSubscriptionPayload;
+    invoice: StartSubscriptionResponse;
+  } | null>(null);
+
   useEffect(() => {
     if (!startError) return;
     showToast({
-      title: "Erreur",
-      description: startError,
+      title: pendingInvoiceProcessing?.payload.orgId === orgId ? "Traitement de la facture à réessayer" : "Erreur",
+      description: pendingInvoiceProcessing?.payload.orgId === orgId ? `Votre abonnement reste actif. ${startError}` : startError,
       variant: "error",
       duration: 7000,
     });
-  }, [startError, showToast]);
+  }, [startError, showToast, pendingInvoiceProcessing, orgId]);
 
   useEffect(() => {
-    if (!result) return;
-    showToast({
-      title: result.reused ? "Facture déjà disponible" : "Facture créée",
-      description: `La facture ${result.invoiceNumber} est payable par virement avant le ${fmtDate(result.dueAt) ?? result.dueAt}.`,
-      variant: "success",
-      duration: 6000,
+    if (!result || result.orgId !== orgId) return;
+    const warningMessages = result.warnings.map((warning) => {
+      if (warning === "INVOICE_PDF_PENDING") return "Le PDF est en préparation ; réessayez son téléchargement dans Mes factures.";
+      if (warning === "BILLIT_SEND_PENDING") return "La transmission comptable reste à réessayer.";
+      if (warning === "BILLIT_REVIEW_REQUIRED") return "La transmission comptable doit être vérifiée avant un nouvel envoi.";
+      return "Une étape de traitement de la facture reste à vérifier.";
     });
-  }, [result, showToast]);
+    showToast({
+      title: warningMessages.length > 0 ? "Abonnement actif, facture en cours de traitement" : result.reused ? "Facture déjà disponible" : "Facture créée",
+      description: `La facture ${result.invoiceNumber} est payable par virement avant le ${fmtDate(result.dueAt) ?? result.dueAt}. ${warningMessages.join(" ")}`.trim(),
+      variant: warningMessages.length > 0 ? "warning" : "success",
+      duration: warningMessages.length > 0 ? 0 : 6000,
+    });
+  }, [result, showToast, orgId]);
 
   const org = bootstrap.organization;
   const sub = bootstrap.subscription;
@@ -225,6 +247,41 @@ export default function AdminAbonnementPage() {
   }, [sub?.currentPeriodEnd, org?.planExpiresAt]);
 
   const startedAtLabel = fmtDate(org?.planStartedAt ?? null);
+  const pendingInvoiceForCurrentPlan = pendingInvoiceProcessing !== null &&
+    pendingInvoiceProcessing.payload.orgId === orgId &&
+    pendingInvoiceProcessing.payload.plan === plan &&
+    isInternalSubscription && sub?.status === "active" &&
+    Date.parse(sub.currentPeriodEnd ?? "") === Date.parse(pendingInvoiceProcessing.invoice.currentPeriodEnd);
+
+  async function requestSubscription(target: "starter" | "pro") {
+    const payload: StartSubscriptionPayload = {
+      orgId,
+      plan: target,
+      promoCode: promoCode.trim() || null,
+    };
+    setPendingInvoiceProcessing(null);
+    const invoice = await startSubscription(payload);
+    if (invoice && hasRetryableInvoiceProcessing(invoice)) {
+      setPendingInvoiceProcessing({ payload, invoice });
+    }
+    return invoice;
+  }
+
+  async function retryInvoiceProcessing() {
+    const pending = pendingInvoiceProcessing;
+    if (!pending || !pendingInvoiceForCurrentPlan || startLoading) return;
+    if (!(Date.parse(pending.invoice.currentPeriodEnd) > Date.now())) {
+      setPendingInvoiceProcessing(null);
+      showToast({ title: "Facture à vérifier", description: "La période de cette facture est terminée. Consultez vos factures actualisées avant de poursuivre.", variant: "info" });
+      await refetch();
+      return;
+    }
+
+    const invoice = await startSubscription(pending.payload);
+    if (invoice) {
+      setPendingInvoiceProcessing(hasRetryableInvoiceProcessing(invoice) ? { payload: pending.payload, invoice } : null);
+    }
+  }
 
   async function ensureBillingOrGoToTab(
     nextPlan: "starter" | "pro",
@@ -266,11 +323,7 @@ export default function AdminAbonnementPage() {
     const okBilling = await ensureBillingOrGoToTab(target);
     if (!okBilling) return;
 
-    const res = await startSubscription({
-      orgId,
-      plan: target,
-      promoCode: promoCode.trim() ? promoCode.trim() : null,
-    });
+    const res = await requestSubscription(target);
 
     if (!res) {
       showToast({
@@ -286,7 +339,23 @@ export default function AdminAbonnementPage() {
     setTabAndUrl("invoices");
   }
 
-  const anyLoading = startLoading;
+  async function onCancelPlan() {
+    if (cancelOrgId !== orgId || !isInternalSubscription || cancellation.loading) return;
+
+    const canceled = await cancellation.cancelSubscription({ orgId });
+    if (!canceled?.ok) return;
+
+    setCancelOrgId(null);
+    await refetch();
+    showToast({
+      title: "Abonnement résilié",
+      description: "Votre organisation est repassée en Free. Le renouvellement des factures d’abonnement est arrêté.",
+      variant: "success",
+      duration: 6500,
+    });
+  }
+
+  const anyLoading = startLoading || cancellation.loading;
 
   const upgradeTiles =
     plan === "free"
@@ -297,6 +366,25 @@ export default function AdminAbonnementPage() {
 
   return (
     <Container>
+      <ConfirmModal
+        isOpen={cancelOrgId === orgId && isInternalSubscription}
+        title="Résilier votre abonnement Eventflow ?"
+        intent="danger"
+        confirmLabel="Résilier l’abonnement"
+        confirmLoadingLabel="Résiliation…"
+        loading={cancellation.loading}
+        error={cancellation.error}
+        onCancel={() => {
+          if (cancellation.loading) return;
+          setCancelOrgId(null);
+          cancellation.reset();
+        }}
+        onConfirm={onCancelPlan}
+      >
+        Votre organisation repassera immédiatement en Free, avec ses limites.
+        Aucune nouvelle facture d’abonnement ne sera créée par renouvellement.
+        Les factures déjà émises restent disponibles dans « Mes factures ».
+      </ConfirmModal>
       <div className="adminSub__page">
         <div className="adminEventTabs">
           <div className="adminEventTabsInner">
@@ -536,6 +624,19 @@ export default function AdminAbonnementPage() {
                                 ? "Ouverture…"
                                 : "Activer la facturation interne"}
                           </Button>
+                          {isInternalSubscription ? (
+                            <Button
+                              variant="danger"
+                              className="adminSub__fullWidthBtn"
+                              disabled={anyLoading}
+                              onClick={() => {
+                                cancellation.reset();
+                                setCancelOrgId(orgId);
+                              }}
+                            >
+                              Résilier l’abonnement
+                            </Button>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -552,7 +653,7 @@ export default function AdminAbonnementPage() {
                   {plan === "starter" && (
                     <>Passez à Pro ou gérez votre abonnement existant.</>
                   )}
-                  {plan === "pro" && (
+                  {plan === "pro" && isInternalSubscription && (
                     <>
                       Vous pouvez gérer ou résilier votre abonnement à tout
                       moment.
@@ -564,7 +665,28 @@ export default function AdminAbonnementPage() {
           </>
         )}
 
-        {tab === "invoices" && <InvoicesTab orgId={orgId} />}
+        {tab === "invoices" && (
+          <>
+            {pendingInvoiceForCurrentPlan && pendingInvoiceProcessing ? (
+              <Card>
+                <CardHeader title="Traitement de votre facture" />
+                <CardBody>
+                  <MessageBox variant="info">
+                    Votre abonnement est actif. La facture {pendingInvoiceProcessing.invoice.invoiceNumber} nécessite encore une tentative de traitement.
+                  </MessageBox>
+                  <Button
+                    variant="secondary"
+                    disabled={anyLoading}
+                    onClick={retryInvoiceProcessing}
+                  >
+                    {startLoading ? "Traitement…" : "Réessayer le traitement de la facture"}
+                  </Button>
+                </CardBody>
+              </Card>
+            ) : null}
+            <InvoicesTab orgId={orgId} />
+          </>
+        )}
 
         {tab === "billing" && (
           <BillingTab
@@ -586,11 +708,7 @@ export default function AdminAbonnementPage() {
               setPendingPlan(null);
 
               if (planToContinue && canStartSubscription(planToContinue)) {
-                const res = await startSubscription({
-                  orgId,
-                  plan: planToContinue,
-                  promoCode: promoCode.trim() ? promoCode.trim() : null,
-                });
+                const res = await requestSubscription(planToContinue);
 
                 if (!res) {
                   showToast({

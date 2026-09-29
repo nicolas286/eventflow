@@ -4,7 +4,7 @@ import { createEdgeHandler } from "../../_shared/app/edge-handler/mod.ts";
 import { json as baseJson } from "../../_shared/app/http.ts";
 import { resolveRequestClientIp } from "../../_shared/app/client-ip.ts";
 import { consumeRequestRateLimit } from "../../_shared/app/rate-limit/mod.ts";
-import { badRequest, ResponseError } from "../../_shared/errors.ts";
+import { badRequest, internal, ResponseError } from "../../_shared/errors.ts";
 import { serializeError } from "../../_shared/modules/logger/mod.ts";
 
 import { parseRegisterPayload } from "./validation.ts";
@@ -234,6 +234,13 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       currency: order.currency,
     });
 
+    const { data: checkoutExpiresAt, error: reservationError } = await admin.rpc(
+      "prepare_stripe_checkout", { p_order_id: order.orderId },
+    );
+    if (reservationError || typeof checkoutExpiresAt !== "number") {
+      throw internal("STRIPE_RESERVATION_FAILED");
+    }
+
     const payment = await paymentProvider.createPayment({
       orderId: order.orderId,
       orgId,
@@ -244,6 +251,7 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       redirectUrl: checkout.buildRedirectUrl(order.orderId, order.bookingToken),
       eventTitle,
       buyerEmail: buyer.email,
+      checkoutExpiresAt,
     });
 
     logger.info("payment_created", {

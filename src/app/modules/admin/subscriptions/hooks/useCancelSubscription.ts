@@ -39,6 +39,10 @@ export function useCancelSubscription(params: { supabase: SupabaseClient }) {
 
       const result = await repo.cancelSubscription(input);
 
+      if (!result.ok) {
+        throw new Error("Impossible de résilier l’abonnement. Réessayez dans quelques instants.");
+      }
+
       setState({ loading: false, error: null, result });
       return result;
     } catch (e: unknown) {

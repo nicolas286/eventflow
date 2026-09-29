@@ -1,9 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
-import { isRestrictedEnvironment } from "../_shared/environment-safety.ts";
-import { generateInvoicePdf } from "../_shared/services/invoice-pdf/index.ts";
-import { sendInvoiceToBillit } from "../_shared/services/billit/index.ts";
+import { completeManualInvoiceDelivery } from "./invoice-delivery.ts";
 import { parseStartSubscriptionPayload } from "./schema.ts";
-import { applyDiscount, resolvePromo, planToPricing } from "./pricing.ts";
+import { applyDiscount, planToPricing, resolvePromo } from "./pricing.ts";
 import { corsHeaders, getBearer, json, readJson } from "./http.ts";
 
 function envTrim(name: string) {
@@ -102,16 +100,10 @@ export async function handleManualStartSubscription(req: Request) {
     return json(req, { error: "INVOICE_CREATION_EMPTY_RESPONSE" }, 500);
   }
 
-  const warnings: string[] = [];
-  if (!invoice.reused) {
-    const pdfResult = await generateInvoicePdf(admin, invoice.invoice_id);
-    if (pdfResult.error) warnings.push("INVOICE_PDF_PENDING");
-
-    if (!isRestrictedEnvironment()) {
-      const billitResult = await sendInvoiceToBillit(admin, invoice.invoice_id);
-      if (billitResult.error) warnings.push("BILLIT_SEND_PENDING");
-    }
-  }
+  const warnings = await completeManualInvoiceDelivery(
+    admin,
+    invoice.invoice_id,
+  );
 
   return json(req, {
     ok: true,

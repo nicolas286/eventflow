@@ -623,6 +623,9 @@ BEGIN
   UPDATE public.subscriptions
   SET current_period_end = now() - interval '1 minute'
   WHERE org_id = invoice_row.org_id;
+  UPDATE public.organizations
+  SET plan_expires_at = now() - interval '1 minute'
+  WHERE id = invoice_row.org_id;
 
   renewal_result := public.renew_manual_subscriptions();
 
@@ -754,9 +757,9 @@ BEGIN
     SELECT 1
     FROM cron.job
     WHERE jobname = 'eventflow-manual-subscription-renewals'
-      AND schedule = '15 2 * * *'
+      AND schedule = '*/5 * * * *'
   ) THEN
-    RAISE EXCEPTION 'The daily manual subscription renewal job is missing';
+    RAISE EXCEPTION 'The five-minute manual subscription renewal job is missing';
   END IF;
 
   IF to_regprocedure(

@@ -21,6 +21,7 @@ type StripeRequestOptions = {
   params?: Record<string, string | number | boolean | null | undefined>;
   connectedAccountId?: string | null;
   idempotencyKey?: string | null;
+  timeoutMs?: number;
 };
 
 function encodeParams(params: StripeRequestOptions["params"]): URLSearchParams {
@@ -69,6 +70,7 @@ export async function stripeRequest<T extends StripeRecord>(
     method,
     headers,
     body: method === "GET" ? undefined : params.toString(),
+    signal: options.timeoutMs ? AbortSignal.timeout(options.timeoutMs) : undefined,
   });
 
   const requestId = response.headers.get("request-id");

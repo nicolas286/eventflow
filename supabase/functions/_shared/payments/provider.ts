@@ -18,6 +18,7 @@ export type CreateEventPaymentInput = {
   redirectUrl: string;
   eventTitle: string | null;
   buyerEmail: string | null;
+  checkoutExpiresAt?: number;
 };
 
 export type CreatedEventPayment = {

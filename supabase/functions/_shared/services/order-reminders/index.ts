@@ -4,6 +4,7 @@ import { sendEmailOrThrow } from "../../app/email.ts";
 import { type EdgeLogger } from "../../modules/logger/mod.ts";
 
 import { buildOrderReminderHtml } from "./templates/order-reminder.ts";
+import { retryBankTransferInstructions } from "../order-confirmation/index.ts";
 
 import {
   loadOrderDiscountCents,
@@ -189,6 +190,10 @@ export async function runCron(input: {
 }) {
   const limit = 250;
   const horizonDays = 60;
+  const bankTransferEmails = await retryBankTransferInstructions(
+    input.admin,
+    input.logger,
+  );
 
   const now = new Date();
   const max = new Date(now);
@@ -266,6 +271,7 @@ export async function runCron(input: {
   }
 
   return {
+    bankTransferEmails,
     scanned,
     eligible,
     sent,
