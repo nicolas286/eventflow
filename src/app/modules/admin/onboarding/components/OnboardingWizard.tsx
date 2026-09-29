@@ -3,14 +3,13 @@ import { useNavigate, useOutletContext } from "react-router-dom";
 import { z } from "zod";
 
 import "./OnboardingWizard.desktop.css";
-import "./OnboardingWizard.mobile.css"
+import "./OnboardingWizard.mobile.css";
 
 import type { AdminOutletContext } from "../../dashboard/components/AdminDashboard";
 import { supabase } from "@gateways/supabase/supabaseClient";
 
 import { useSaveAdminProfile } from "../../profile/hooks/useUpdateAdminProfile";
 import { useCreateOrganization } from "../hooks/useCreateOrganization";
-
 
 import type { AdminProfileForm } from "../../profile/schemas/admin.updateAdminProfile.schema";
 import type { CreateOrganizationForm } from "../schemas/admin.createOrganization.schema";
@@ -20,7 +19,10 @@ import { Button, Input, Badge, Select } from "@ui/components";
 
 import CountrySelect from "@shared/ui/components/inputs/CountrySelect";
 import PhoneInput from "@shared/ui/components/inputs/PhoneInput";
-import { parseE164, buildE164 } from "@shared/ui/components/inputs/countryPhoneData";
+import {
+  parseE164,
+  buildE164,
+} from "@shared/ui/components/inputs/countryPhoneData";
 
 import { MessageBox } from "@shared/ui/components/message/MessageBox";
 import { useLiveForm } from "@shared/hooks/useLiveZodForm";
@@ -54,8 +56,16 @@ function isValidE164(e164: string) {
 /* -------------------- ZOD -------------------- */
 
 const wizardSchema = z.object({
-  firstName: z.string().trim().min(2, "Prénom trop court").max(120, "Prénom trop long"),
-  lastName: z.string().trim().min(2, "Nom trop court").max(120, "Nom trop long"),
+  firstName: z
+    .string()
+    .trim()
+    .min(2, "Prénom trop court")
+    .max(120, "Prénom trop long"),
+  lastName: z
+    .string()
+    .trim()
+    .min(2, "Nom trop court")
+    .max(120, "Nom trop long"),
 
   phone: z
     .string()
@@ -76,13 +86,26 @@ const wizardSchema = z.object({
       { message: "Téléphone invalide" },
     ),
 
-  countryLabel: z.string().trim().min(1, "Pays requis").max(120, "Pays invalide"),
+  countryLabel: z
+    .string()
+    .trim()
+    .min(1, "Pays requis")
+    .max(120, "Pays invalide"),
 
   orgType: z.enum(["person", "association"], { message: "Type requis" }),
-  orgName: z.string().trim().min(3, "Nom d’organisation trop court").max(120, "Nom d’organisation trop long"),
+  orgName: z
+    .string()
+    .trim()
+    .min(3, "Nom d’organisation trop court")
+    .max(120, "Nom d’organisation trop long"),
 });
 
-const step1Keys: (keyof WizardForm)[] = ["firstName", "lastName", "phone", "countryLabel"];
+const step1Keys: (keyof WizardForm)[] = [
+  "firstName",
+  "lastName",
+  "phone",
+  "countryLabel",
+];
 
 const step1Schema = wizardSchema.pick({
   firstName: true,
@@ -119,7 +142,15 @@ export default function OnboardingWizard() {
     orgName: "",
   });
 
-  const { form, fieldErrors, handleChange, handleBlur, shouldShowFieldError, touchAll, validateAll } = live;
+  const {
+    form,
+    fieldErrors,
+    handleChange,
+    handleBlur,
+    shouldShowFieldError,
+    touchAll,
+    validateAll,
+  } = live;
 
   const canGoNext = useMemo(() => {
     if (step === 1) return step1Schema.safeParse(form).success;
@@ -156,7 +187,14 @@ export default function OnboardingWizard() {
   async function onSubmitFinal() {
     if (!userId) return;
 
-    touchAll(["firstName", "lastName", "phone", "countryLabel", "orgType", "orgName"]);
+    touchAll([
+      "firstName",
+      "lastName",
+      "phone",
+      "countryLabel",
+      "orgType",
+      "orgName",
+    ]);
 
     const parsed = validateAll();
     if (!parsed.ok) return;
@@ -179,7 +217,10 @@ export default function OnboardingWizard() {
       countryCode: inferCountryCode(parsed.data.countryLabel),
     };
 
-    const saved = await saveProfile.saveAdminProfile({ userId, form: profileForm });
+    const saved = await saveProfile.saveAdminProfile({
+      userId,
+      form: profileForm,
+    });
     if (!saved) return;
 
     const createdOrgId = await createOrg.createOrganization({
@@ -195,149 +236,213 @@ export default function OnboardingWizard() {
   return (
     <div className="onboardingPage">
       <div className="onboardingCard">
-        <div className="onboardingHeader">
+        <aside className="onboardingIntro">
+          <span className="onboardingIntro__mark" aria-hidden="true">
+            EF
+          </span>
           <div>
-            <h1>Bienvenue sur EventFlow</h1>
-            <p>Remplissez quelques infos, créez votre organisation et commencez à organiser vos événements !</p>
+            <span className="onboardingIntro__eyebrow">Premiers pas</span>
+            <h2>Préparons votre espace organisateur.</h2>
+            <p>
+              Ces informations permettent de personnaliser votre compte et de
+              créer votre première organisation.
+            </p>
           </div>
-        </div>
-
-        {error ? <div className="onboardingError">{error}</div> : null}
-
-        {/* -------------------- STEP 1 -------------------- */}
-        {step === 1 && (
-          <div className="onboardingStep">
-            <div className="onboardingStep__titleRow">
-              <h2>Votre profil</h2>
-            </div>
-
-            <div className="onboardingGrid2">
-              <div>
-                <Input
-                  label="Prénom"
-                  placeholder="Votre prénom"
-                  value={form.firstName}
-                  onChange={(e) => handleChange("firstName", e.target.value)}
-                  onBlur={() => handleBlur("firstName")}
-                  disabled={loading}
-                  required
-                />
-                {shouldShowFieldError("firstName") && fieldErrors.firstName ? (
-                  <MessageBox variant="error">{fieldErrors.firstName}</MessageBox>
-                ) : null}
-              </div>
-
-              <div>
-                <Input
-                  label="Nom"
-                  placeholder="Votre nom"
-                  value={form.lastName}
-                  onChange={(e) => handleChange("lastName", e.target.value)}
-                  onBlur={() => handleBlur("lastName")}
-                  disabled={loading}
-                  required
-                />
-                {shouldShowFieldError("lastName") && fieldErrors.lastName ? (
-                  <MessageBox variant="error">{fieldErrors.lastName}</MessageBox>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="onboardingGrid2">
-              {/* Téléphone */}
-              <div
-                // ✅ assure qu’on “touche” même si PhoneInput ne déclenche pas un blur propre
-                onBlurCapture={() => handleBlur("phone")}
-              >
-                <PhoneInput
-                  label="Téléphone (optionnel)"
-                  value={form.phone}
-                  onChange={(v) => handleChange("phone", v)}
-                  required={false}
-                />
-                {shouldShowFieldError("phone") && fieldErrors.phone ? (
-                  <MessageBox variant="error">{fieldErrors.phone}</MessageBox>
-                ) : null}
-              </div>
-
-              {/* Pays */}
-              <div onBlurCapture={() => handleBlur("countryLabel")}>
-                <CountrySelect
-                  label="Pays"
-                  value={form.countryLabel}
-                  onChange={(v) => handleChange("countryLabel", v || "")}
-                  required
-                />
-                {shouldShowFieldError("countryLabel") && fieldErrors.countryLabel ? (
-                  <MessageBox variant="error">{fieldErrors.countryLabel}</MessageBox>
-                ) : null}
-              </div>
-            </div>
+          <div className="onboardingIntro__help">
+            Vous pourrez compléter l’adresse, l’identité visuelle et les moyens
+            de paiement plus tard.
           </div>
-        )}
+        </aside>
 
-        {/* -------------------- STEP 2 -------------------- */}
-        {step === 2 && (
-          <div className="onboardingStep">
-            <div className="onboardingStep__titleRow">
-              <h2>Votre organisation</h2>
-              <Badge tone="info" label="Création" />
-            </div>
-
-            <div className="onboardingRow">
-              <div>
-                <Select
-                  label="Type"
-                  value={form.orgType}
-                  onChange={(e) => handleChange("orgType", e.target.value as WizardForm["orgType"])}
-                  onBlur={() => handleBlur("orgType")}
-                  disabled={loading}
-                >
-                  <option value="person">Personne physique</option>
-                  <option value="association">Personne morale</option>
-                </Select>
-
-                {shouldShowFieldError("orgType") && fieldErrors.orgType ? (
-                  <MessageBox variant="error">{fieldErrors.orgType}</MessageBox>
-                ) : null}
-              </div>
-            </div>
-
+        <main className="onboardingContent">
+          <div className="onboardingHeader">
             <div>
-              <Input
-                label="Nom de l’organisation"
-                placeholder="Ex: Maison des Jeunes de…"
-                value={form.orgName}
-                onChange={(e) => handleChange("orgName", e.target.value)}
-                onBlur={() => handleBlur("orgName")}
-                disabled={loading}
-              />
-              {shouldShowFieldError("orgName") && fieldErrors.orgName ? (
-                <MessageBox variant="error">{fieldErrors.orgName}</MessageBox>
+              <span>Configuration du compte</span>
+              <h1>Bienvenue sur Eventflow</h1>
+              <p>Deux étapes rapides avant de créer votre premier événement.</p>
+            </div>
+          </div>
+
+          <ol className="onboardingProgress" aria-label="Progression">
+            <li className={step === 1 ? "isActive" : "isComplete"}>
+              <span>1</span>
+              <div>
+                <strong>Votre profil</strong>
+                <small>Coordonnées personnelles</small>
+              </div>
+            </li>
+            <li className={step === 2 ? "isActive" : ""}>
+              <span>2</span>
+              <div>
+                <strong>Organisation</strong>
+                <small>Nom et structure</small>
+              </div>
+            </li>
+          </ol>
+
+          {error ? <div className="onboardingError">{error}</div> : null}
+
+          {/* -------------------- STEP 1 -------------------- */}
+          {step === 1 && (
+            <div className="onboardingStep">
+              <div className="onboardingStep__titleRow">
+                <h2>Votre profil</h2>
+              </div>
+
+              <div className="onboardingGrid2">
+                <div>
+                  <Input
+                    label="Prénom"
+                    placeholder="Votre prénom"
+                    value={form.firstName}
+                    onChange={(e) => handleChange("firstName", e.target.value)}
+                    onBlur={() => handleBlur("firstName")}
+                    disabled={loading}
+                    required
+                  />
+                  {shouldShowFieldError("firstName") &&
+                  fieldErrors.firstName ? (
+                    <MessageBox variant="error">
+                      {fieldErrors.firstName}
+                    </MessageBox>
+                  ) : null}
+                </div>
+
+                <div>
+                  <Input
+                    label="Nom"
+                    placeholder="Votre nom"
+                    value={form.lastName}
+                    onChange={(e) => handleChange("lastName", e.target.value)}
+                    onBlur={() => handleBlur("lastName")}
+                    disabled={loading}
+                    required
+                  />
+                  {shouldShowFieldError("lastName") && fieldErrors.lastName ? (
+                    <MessageBox variant="error">
+                      {fieldErrors.lastName}
+                    </MessageBox>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="onboardingGrid2">
+                {/* Téléphone */}
+                <div
+                  // ✅ assure qu’on “touche” même si PhoneInput ne déclenche pas un blur propre
+                  onBlurCapture={() => handleBlur("phone")}
+                >
+                  <PhoneInput
+                    label="Téléphone (optionnel)"
+                    value={form.phone}
+                    onChange={(v) => handleChange("phone", v)}
+                    required={false}
+                  />
+                  {shouldShowFieldError("phone") && fieldErrors.phone ? (
+                    <MessageBox variant="error">{fieldErrors.phone}</MessageBox>
+                  ) : null}
+                </div>
+
+                {/* Pays */}
+                <div onBlurCapture={() => handleBlur("countryLabel")}>
+                  <CountrySelect
+                    label="Pays"
+                    value={form.countryLabel}
+                    onChange={(v) => handleChange("countryLabel", v || "")}
+                    required
+                  />
+                  {shouldShowFieldError("countryLabel") &&
+                  fieldErrors.countryLabel ? (
+                    <MessageBox variant="error">
+                      {fieldErrors.countryLabel}
+                    </MessageBox>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* -------------------- STEP 2 -------------------- */}
+          {step === 2 && (
+            <div className="onboardingStep">
+              <div className="onboardingStep__titleRow">
+                <h2>Votre organisation</h2>
+                <Badge tone="info" label="Création" />
+              </div>
+
+              <div className="onboardingRow">
+                <div>
+                  <Select
+                    label="Type"
+                    value={form.orgType}
+                    onChange={(e) =>
+                      handleChange(
+                        "orgType",
+                        e.target.value as WizardForm["orgType"],
+                      )
+                    }
+                    onBlur={() => handleBlur("orgType")}
+                    disabled={loading}
+                  >
+                    <option value="person">Personne physique</option>
+                    <option value="association">Personne morale</option>
+                  </Select>
+
+                  {shouldShowFieldError("orgType") && fieldErrors.orgType ? (
+                    <MessageBox variant="error">
+                      {fieldErrors.orgType}
+                    </MessageBox>
+                  ) : null}
+                </div>
+              </div>
+
+              <div>
+                <Input
+                  label="Nom de l’organisation"
+                  placeholder="Ex: Maison des Jeunes de…"
+                  value={form.orgName}
+                  onChange={(e) => handleChange("orgName", e.target.value)}
+                  onBlur={() => handleBlur("orgName")}
+                  disabled={loading}
+                />
+                {shouldShowFieldError("orgName") && fieldErrors.orgName ? (
+                  <MessageBox variant="error">{fieldErrors.orgName}</MessageBox>
+                ) : null}
+              </div>
+            </div>
+          )}
+
+          {/* -------------------- ACTIONS -------------------- */}
+          <div className="onboardingActionsBar">
+            <div className="onboardingStatus">
+              {!userId ? (
+                <div className="onboardingError">
+                  Utilisateur non chargé (bootstrap incomplet)
+                </div>
               ) : null}
             </div>
-          </div>
-        )}
 
-        {/* -------------------- ACTIONS -------------------- */}
-        <div className="onboardingActionsBar">
-          <div className="onboardingStatus">
-            {!userId ? <div className="onboardingError">Utilisateur non chargé (bootstrap incomplet)</div> : null}
-          </div>
+            <div className="onboardingActions">
+              {step > 1 ? (
+                <Button
+                  variant="secondary"
+                  label="Précédent"
+                  onClick={goPrev}
+                  disabled={loading}
+                />
+              ) : null}
 
-          <div className="onboardingActions">
-            {step > 1 ? (
-              <Button variant="secondary" label="Précédent" onClick={goPrev} disabled={loading} />
-            ) : null}
-
-            <Button
-              variant="primary"
-              label={step === 2 ? (loading ? "Création…" : "Terminer") : "Suivant"}
-              onClick={goNext}
-              disabled={loading || !canGoNext || (step === 2 && !userId)}
-            />
+              <Button
+                variant="primary"
+                label={
+                  step === 2 ? (loading ? "Création…" : "Terminer") : "Suivant"
+                }
+                onClick={goNext}
+                disabled={loading || !canGoNext || (step === 2 && !userId)}
+              />
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

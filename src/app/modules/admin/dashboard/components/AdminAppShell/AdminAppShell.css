@@ -297,7 +297,7 @@
   gap: 20px;
   padding: 12px 32px;
   border-bottom: 1px solid var(--ef-border-default);
-  background: rgb(248 250 252 / 0.86);
+  background: color-mix(in srgb, var(--ef-bg-app) 86%, transparent);
   backdrop-filter: blur(16px);
 }
 

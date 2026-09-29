@@ -1,6 +1,11 @@
 import { orderPublicSchema } from "@contracts/orders-read";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  Navigate,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 
 import { supabase } from "@gateways/supabase/supabaseClient";
 import { usePublicEventDetail } from "../../events/hooks/usePublicEventDetail";
@@ -110,6 +115,10 @@ async function fetchOrder(
     currency: j.currency,
     paymentMethod: j.paymentMethod,
     bankTransfer: j.bankTransfer ?? null,
+    orgSlug: j.orgSlug ?? undefined,
+    eventSlug: j.eventSlug ?? undefined,
+    buyerEmail: j.buyerEmail ?? undefined,
+    items: j.items,
   };
 }
 
@@ -121,6 +130,7 @@ async function fetchOrder(
  */
 export function OrderPage() {
   const { orderId } = useParams<{ orderId: string }>();
+  const navigate = useNavigate();
 
   const [search] = useSearchParams();
 
@@ -141,9 +151,11 @@ export function OrderPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
   const intervalRef = useRef<number | null>(null);
   const timeoutRef = useRef<number | null>(null);
+  const copyFeedbackTimeoutRef = useRef<number | null>(null);
 
   const orgSlug = useMemo(
     () => order?.orgSlug ?? orgSlugFromQuery ?? null,
@@ -264,6 +276,46 @@ export function OrderPage() {
     };
   }, [orderId, bookingToken, isReturn, stopPolling]);
 
+  useEffect(
+    () => () => {
+      if (copyFeedbackTimeoutRef.current) {
+        window.clearTimeout(copyFeedbackTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
+  async function copyTransferValue(label: string, value: string) {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = value;
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const copied = document.execCommand("copy");
+        document.body.removeChild(textarea);
+        if (!copied) throw new Error("COPY_FAILED");
+      }
+
+      setCopyFeedback(`${label} copié dans le presse-papier.`);
+    } catch {
+      setCopyFeedback(`Impossible de copier ${label.toLowerCase()}.`);
+    }
+
+    if (copyFeedbackTimeoutRef.current) {
+      window.clearTimeout(copyFeedbackTimeoutRef.current);
+    }
+    copyFeedbackTimeoutRef.current = window.setTimeout(
+      () => setCopyFeedback(null),
+      3500,
+    );
+  }
+
   /* ---------------- Derived UI states ---------------- */
 
   const statusPill = useMemo(() => {
@@ -284,7 +336,11 @@ export function OrderPage() {
       return {
         kind: "success" as const,
         label:
-          order.status === "paid" ? "Paiement confirmé ✅" : "Acompte reçu ✅",
+          order.status === "paid" && (order.totalCents ?? 0) === 0
+            ? "Inscription confirmée"
+            : order.status === "paid"
+              ? "Paiement confirmé"
+              : "Acompte reçu",
       };
     }
 
@@ -303,9 +359,11 @@ export function OrderPage() {
     if (!order) return null;
 
     if (isSuccessStatus(order.status)) {
-      return order.status === "paid"
-        ? "Votre commande est bien enregistrée."
-        : "Votre acompte a bien été reçu.";
+      return order.status === "paid" && (order.totalCents ?? 0) === 0
+        ? "Votre inscription est bien enregistrée."
+        : order.status === "paid"
+          ? "Votre commande est bien enregistrée."
+          : "Votre acompte a bien été reçu.";
     }
 
     if (order.status === "refunded") {
@@ -416,6 +474,21 @@ export function OrderPage() {
 
   const orgForHeader = eventData?.org;
   const eventForHeader = eventData?.event ?? null;
+  const organizationEventsHref = orgSlug
+    ? `/o/${encodeURIComponent(orgSlug)}`
+    : "/";
+  const isBankTransferPending =
+    order.paymentMethod === "bank_transfer" &&
+    order.status === "awaiting_payment";
+  const bankTransfer = order.bankTransfer;
+  const isFreeOrder = (order.totalCents ?? 0) === 0;
+  const confirmationTitle = isSuccessStatus(order.status)
+    ? isFreeOrder
+      ? "Votre inscription est confirmée"
+      : "Merci, tout est confirmé"
+    : isBankTransferPending
+      ? "Votre réservation est enregistrée"
+      : "Suivi de votre commande";
 
   const pillClass =
     statusPill?.kind === "success"
@@ -438,206 +511,240 @@ export function OrderPage() {
           />
         ) : null}
 
-        <div className="orderReturnCenter">
-          <Card className="orderReturnCard">
-            <CardBody>
-              {statusPill ? (
-                <div className={pillClass}>{statusPill.label}</div>
-              ) : null}
+        <div className="orderReturnShell">
+          <main className="orderReturnMain">
+            <Card className="orderReturnCard orderReturnHeroCard">
+              <CardBody>
+                <div className="orderReturnHero">
+                  <div
+                    className={`orderReturnHeroIcon ${isSuccessStatus(order.status) ? "isSuccess" : isFailureStatus(order.status) ? "isWarning" : "isPending"}`}
+                    aria-hidden="true"
+                  >
+                    {isSuccessStatus(order.status)
+                      ? "✓"
+                      : isFailureStatus(order.status)
+                        ? "!"
+                        : "…"}
+                  </div>
+                  <div className="orderReturnHeroCopy">
+                    {statusPill ? (
+                      <div className={pillClass}>{statusPill.label}</div>
+                    ) : null}
+                    <h1 className="orderReturnTitle">{confirmationTitle}</h1>
+                    <p className="orderReturnSubtitle">{subtitle}</p>
+                  </div>
+                </div>
 
-              <div
-                className={`orderReturnHeroIcon ${isSuccessStatus(order.status) ? "isSuccess" : isFailureStatus(order.status) ? "isWarning" : "isPending"}`}
-                aria-hidden="true"
-              >
-                {isSuccessStatus(order.status)
-                  ? "✓"
-                  : isFailureStatus(order.status)
-                    ? "!"
-                    : "…"}
-              </div>
-
-              <h2 className="orderReturnTitle">
-                {isSuccessStatus(order.status)
-                  ? "Merci !"
-                  : "Récapitulatif de la commande"}
-              </h2>
-
-              <p className="orderReturnSubtitle">{subtitle}</p>
-              <p className="orderReturnSubtitle">
-                {order.paymentMethod === "bank_transfer" &&
-                order.status === "awaiting_payment"
-                  ? "Les coordonnées de paiement viennent de vous être envoyées par e-mail."
-                  : "Vous recevrez un mail de confirmation dans quelques instants."}
-              </p>
-              <p className="orderReturnSubtitle">
-                Pour toutes questions, contactez l'organisateur de l'événement.
-              </p>
-
-              {isReturn && !isFinalStatus(order.status) ? (
-                <div className="orderReturnLoading" style={{ marginTop: 10 }}>
-                  <span className="orderReturnSpinner" aria-hidden="true" />
+                <div className="orderReturnNotice">
+                  <span className="orderReturnNoticeIcon" aria-hidden="true">
+                    ↗
+                  </span>
                   <div>
+                    <strong>
+                      {isBankTransferPending
+                        ? "Consultez les instructions de paiement ci-dessous"
+                        : "Gardez un œil sur votre boîte e-mail"}
+                    </strong>
+                    <p>
+                      {isBankTransferPending
+                        ? "Les coordonnées de virement vous ont également été envoyées par e-mail."
+                        : "Votre confirmation et vos billets vous seront envoyés dans quelques instants."}
+                    </p>
+                  </div>
+                </div>
+
+                {isReturn && !isFinalStatus(order.status) ? (
+                  <div className="orderReturnLoading orderReturnPolling">
+                    <span className="orderReturnSpinner" aria-hidden="true" />
                     <div className="orderReturnLoadingSub">
-                      Cela peut prendre quelques secondes. Statut :{" "}
-                      <strong>{order.status}</strong>
+                      Validation en cours. Cela peut prendre quelques secondes.
                     </div>
                   </div>
+                ) : null}
+
+                {orgSlug && eventSlug && eventLoading ? (
+                  <div className="orderReturnHint">
+                    Chargement des informations de l’événement…
+                  </div>
+                ) : null}
+
+                <div className="orderReturnFooter">
+                  <Button
+                    variant="primary"
+                    onClick={() => navigate(organizationEventsHref)}
+                  >
+                    Voir les événements de l’organisation
+                  </Button>
+                  <Button
+                    onClick={() => loadOnce({ silent: false })}
+                    disabled={isRefreshing}
+                    variant="secondary"
+                  >
+                    {isRefreshing ? "Actualisation…" : "Actualiser le statut"}
+                  </Button>
                 </div>
-              ) : null}
 
-              {orgSlug && eventSlug && eventLoading ? (
-                <div className="orderReturnHint">
-                  Chargement des infos de l’événement…
-                </div>
-              ) : null}
-
-              {/* --------- Détails commande --------- */}
-              <div className="orderReturnSection">
-                <div className="orderReturnSectionTitle">
-                  Détail de la commande
-                </div>
-
-                <div className="orderReturnMeta">
-                  <div>
-                    <span className="orderReturnLabel">Commande :</span>
-                    <span className="orderReturnStrong">{order.id}</span>
+                {error ? (
+                  <div className="orderReturnHint" role="status">
+                    La dernière actualisation a échoué. Vous pouvez réessayer.
                   </div>
+                ) : null}
+              </CardBody>
+            </Card>
 
-                  {order.buyerEmail ? (
-                    <div>
-                      <span className="orderReturnLabel">Email :</span>
-                      <span className="orderReturnStrong">
-                        {order.buyerEmail}
-                      </span>
-                    </div>
-                  ) : null}
-
-                  <div>
-                    <span className="orderReturnLabel">Statut :</span>
-                    <span className="orderReturnStrong">
-                      {statusPill?.label ?? order.status}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="orderReturnLabel">Total :</span>
-                    <span className="orderReturnStrong">
-                      {formatMoney(order.totalCents, order.currency)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* --------- Articles --------- */}
-              {order.paymentMethod === "bank_transfer" &&
-              order.status === "awaiting_payment" &&
-              order.bankTransfer ? (
-                <div className="orderReturnSection">
-                  <div className="orderReturnSectionTitle">
-                    Instructions de virement
-                  </div>
-                  <p className="orderReturnSubtitle">
-                    Votre réservation est enregistrée et reste en attente de
-                    paiement.
-                  </p>
-                  <div className="orderReturnMeta">
-                    <div>
-                      <span className="orderReturnLabel">Montant :</span>
-                      <span className="orderReturnStrong">
-                        {formatMoney(
-                          order.bankTransfer.amountCents,
-                          order.bankTransfer.currency,
-                        )}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="orderReturnLabel">Bénéficiaire :</span>
-                      <span className="orderReturnStrong">
-                        {order.bankTransfer.beneficiary}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="orderReturnLabel">IBAN :</span>
-                      <span className="orderReturnStrong">
-                        {order.bankTransfer.iban}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="orderReturnLabel">Communication :</span>
-                      <span className="orderReturnStrong">
-                        {order.bankTransfer.communication}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="orderReturnLabel">
-                        Référence Eventflow :
-                      </span>
-                      <span className="orderReturnStrong">
-                        {order.bankTransfer.internalReference}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="orderReturnSubtitle">
-                    Votre place sera définitivement confirmée après réception du
-                    paiement.
+            {isBankTransferPending && bankTransfer ? (
+              <section
+                className="orderReturnTransfer"
+                aria-labelledby="transfer-title"
+              >
+                <div className="orderReturnSectionHeading">
+                  <span>À faire maintenant</span>
+                  <h2 id="transfer-title">Effectuer le virement</h2>
+                  <p>
+                    Utilisez exactement la communication ci-dessous afin que
+                    votre paiement soit rapproché automatiquement.
                   </p>
                 </div>
-              ) : null}
+                <div className="orderReturnTransferGrid">
+                  <div className="orderReturnTransferValue">
+                    <span>Montant</span>
+                    <strong>
+                      {formatMoney(
+                        bankTransfer.amountCents,
+                        bankTransfer.currency,
+                      )}
+                    </strong>
+                    <button
+                      type="button"
+                      className="orderReturnCopyButton"
+                      onClick={() =>
+                        void copyTransferValue(
+                          "Montant",
+                          formatMoney(
+                            bankTransfer.amountCents,
+                            bankTransfer.currency,
+                          ),
+                        )
+                      }
+                    >
+                      Copier
+                    </button>
+                  </div>
+                  <div>
+                    <span>Bénéficiaire</span>
+                    <strong>{bankTransfer.beneficiary}</strong>
+                  </div>
+                  <div className="orderReturnTransferValue">
+                    <span>IBAN</span>
+                    <strong>{bankTransfer.iban}</strong>
+                    <button
+                      type="button"
+                      className="orderReturnCopyButton"
+                      onClick={() =>
+                        void copyTransferValue("IBAN", bankTransfer.iban)
+                      }
+                    >
+                      Copier
+                    </button>
+                  </div>
+                  <div className="orderReturnTransferCommunication orderReturnTransferValue">
+                    <span>Communication</span>
+                    <strong>{bankTransfer.communication}</strong>
+                    <button
+                      type="button"
+                      className="orderReturnCopyButton"
+                      onClick={() =>
+                        void copyTransferValue(
+                          "Communication",
+                          bankTransfer.communication,
+                        )
+                      }
+                    >
+                      Copier
+                    </button>
+                  </div>
+                </div>
+                <div className="orderReturnCopyFeedback" aria-live="polite">
+                  {copyFeedback}
+                </div>
+              </section>
+            ) : null}
 
-              {order.items?.length ? (
-                <div className="orderReturnSection">
-                  <div className="orderReturnSectionTitle">Articles</div>
-                  <div className="orderReturnItems">
-                    {order.items.map((it, idx) => (
-                      <div key={idx} className="orderReturnItemRow">
-                        <div className="orderReturnItemLeft">
-                          <div className="orderReturnItemName">
-                            {it.name ?? "Article"}
-                          </div>
-                          <div className="orderReturnItemQty">
-                            Quantité : {it.quantity ?? 1}
-                          </div>
+            {order.items?.length ? (
+              <section className="orderReturnSection">
+                <div className="orderReturnSectionTitle">Votre commande</div>
+                <div className="orderReturnItems">
+                  {order.items.map((item, index) => (
+                    <div key={index} className="orderReturnItemRow">
+                      <div className="orderReturnItemLeft">
+                        <div className="orderReturnItemName">
+                          {item.name ?? "Article"}
                         </div>
-                        <div className="orderReturnItemPrice">
-                          {formatMoney(
-                            it.totalCents ??
-                              (it.unitPriceCents ?? 0) * (it.quantity ?? 1),
-                            it.currency ?? order.currency,
-                          )}
+                        <div className="orderReturnItemQty">
+                          Quantité : {item.quantity ?? 1}
                         </div>
                       </div>
-                    ))}
-                  </div>
+                      <div className="orderReturnItemPrice">
+                        {formatMoney(
+                          item.totalCents ??
+                            (item.unitPriceCents ?? 0) * (item.quantity ?? 1),
+                          item.currency ?? order.currency,
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ) : null}
+              </section>
+            ) : null}
+          </main>
 
-              {/* --------- Footer actions --------- */}
-              <div
-                className="orderReturnFooter"
-                style={{ gap: 10, flexWrap: "wrap" }}
-              >
-                <Button
-                  onClick={() => loadOnce({ silent: false })}
-                  disabled={isRefreshing}
-                  variant="secondary"
-                >
-                  {isRefreshing ? "Rafraîchissement…" : "Rafraîchir"}
-                </Button>
-
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    window.location.href = "https://www.useeventflow.eu";
-                  }}
-                >
-                  Retourner à l'accueil
-                </Button>
-              </div>
-
-              {/* petit hint si tu veux */}
-              {error ? <div className="orderReturnHint">⚠️ {error}</div> : null}
-            </CardBody>
-          </Card>
+          <aside
+            className="orderReturnSummary"
+            aria-label="Résumé de la commande"
+          >
+            <Card className="orderReturnCard orderReturnSummaryCard">
+              <CardBody>
+                <div className="orderReturnSummaryHeader">
+                  <span>Montant total</span>
+                  <strong>
+                    {formatMoney(order.totalCents, order.currency)}
+                  </strong>
+                </div>
+                <div className="orderReturnSummaryStatus">
+                  <span className={pillClass}>{statusPill?.label}</span>
+                </div>
+                <details className="orderReturnTechnical">
+                  <summary>Informations de la commande</summary>
+                  <dl>
+                    <div>
+                      <dt>Numéro</dt>
+                      <dd>{order.id}</dd>
+                    </div>
+                    {order.buyerEmail ? (
+                      <div>
+                        <dt>E-mail</dt>
+                        <dd>{order.buyerEmail}</dd>
+                      </div>
+                    ) : null}
+                    <div>
+                      <dt>Statut technique</dt>
+                      <dd>{order.status}</dd>
+                    </div>
+                    {bankTransfer?.internalReference ? (
+                      <div>
+                        <dt>Référence Eventflow</dt>
+                        <dd>{bankTransfer.internalReference}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                </details>
+                <p className="orderReturnSupport">
+                  Une question ? Contactez directement l’organisateur de
+                  l’événement.
+                </p>
+              </CardBody>
+            </Card>
+          </aside>
         </div>
       </Container>
     </div>

@@ -93,9 +93,7 @@ export default function EventCardActionsMenu({
     base.push({
       kind: "action",
       key: "toggleEdit",
-      label: isSelected
-        ? "Fermer la modification rapide"
-        : "Modification rapide",
+      label: isSelected ? "Fermer l’éditeur rapide" : "Modifier rapidement",
       icon: isSelected ? <CloseIcon /> : <EditIcon />,
       onClick: onToggleInlineEdit,
     });

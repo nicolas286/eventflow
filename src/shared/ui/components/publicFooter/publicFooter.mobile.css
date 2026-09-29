@@ -4,4 +4,13 @@
     text-align: center;
     gap: 8px;
   }
+
+  .publicFooterLeft {
+    white-space: normal;
+  }
+
+  .publicFooterRight {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
 }

@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { Button } from "@ui/components";
 import { MessageBox } from "@ui/components/message/MessageBox";
-import PublicFooter from "@ui/components/publicFooter/PublicFooter";
+import { AuthScaffold } from "../components/AuthScaffold";
 
 import { authRepo } from "../data/authRepo";
 import { supabase } from "@gateways/supabase/supabaseClient";
@@ -61,7 +61,10 @@ function parseSupabaseHashError(): string | null {
     return "Lien invalide ou expiré. Recommencez une demande “Mot de passe oublié”.";
   }
 
-  return desc ?? "Lien invalide ou expiré. Recommencez une demande “Mot de passe oublié”.";
+  return (
+    desc ??
+    "Lien invalide ou expiré. Recommencez une demande “Mot de passe oublié”."
+  );
 }
 
 function clearHashFromUrl() {
@@ -82,71 +85,80 @@ export function AdminResetPasswordPage() {
     confirmPassword: "",
   });
 
-  const { form, fieldErrors, handleChange, handleBlur, shouldShowFieldError } = live;
+  const { form, fieldErrors, handleChange, handleBlur, shouldShowFieldError } =
+    live;
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
 
   useEffect(() => {
-  let mounted = true;
+    let mounted = true;
 
-  const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-    if (!mounted) return;
-    if (event === "PASSWORD_RECOVERY") setCanReset(true);
-  });
-
-  async function bootstrapRecovery() {
-    try {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (!mounted) return;
-      setCanReset(false);
-      setRecoveryError(null);
+      if (event === "PASSWORD_RECOVERY") setCanReset(true);
+    });
 
-      const hashErr = parseSupabaseHashError();
-      if (hashErr) {
+    async function bootstrapRecovery() {
+      try {
         if (!mounted) return;
-        setRecoveryError(hashErr);
         setCanReset(false);
-        clearHashFromUrl();
-        return;
-      }
+        setRecoveryError(null);
 
-      // ✅ 1) si une session existe déjà (ex: implicit hash déjà traité), on autorise
-      const { data: sess } = await supabase.auth.getSession();
-      if (!mounted) return;
-      if (sess.session) {
+        const hashErr = parseSupabaseHashError();
+        if (hashErr) {
+          if (!mounted) return;
+          setRecoveryError(hashErr);
+          setCanReset(false);
+          clearHashFromUrl();
+          return;
+        }
+
+        // ✅ 1) si une session existe déjà (ex: implicit hash déjà traité), on autorise
+        const { data: sess } = await supabase.auth.getSession();
+        if (!mounted) return;
+        if (sess.session) {
+          setCanReset(true);
+          return;
+        }
+
+        // ✅ 2) sinon, si on est en PKCE avec ?code=..., on échange
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get("code");
+        if (!code) return;
+
+        const { error } = await supabase.auth.exchangeCodeForSession(
+          window.location.href,
+        );
+        if (error) throw error;
+
+        // (optionnel mais recommandé) enlever le code de l'URL pour éviter double-consommation au refresh
+        url.searchParams.delete("code");
+        window.history.replaceState(
+          {},
+          document.title,
+          url.pathname + url.search,
+        );
+
+        if (!mounted) return;
         setCanReset(true);
-        return;
+      } catch {
+        if (!mounted) return;
+        setCanReset(false);
+        setRecoveryError(
+          "Lien invalide ou expiré. Recommencez une demande “Mot de passe oublié”.",
+        );
       }
-
-      // ✅ 2) sinon, si on est en PKCE avec ?code=..., on échange
-      const url = new URL(window.location.href);
-      const code = url.searchParams.get("code");
-      if (!code) return;
-
-      const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
-      if (error) throw error;
-
-      // (optionnel mais recommandé) enlever le code de l'URL pour éviter double-consommation au refresh
-      url.searchParams.delete("code");
-      window.history.replaceState({}, document.title, url.pathname + url.search);
-
-      if (!mounted) return;
-      setCanReset(true);
-    } catch {
-      if (!mounted) return;
-      setCanReset(false);
-      setRecoveryError("Lien invalide ou expiré. Recommencez une demande “Mot de passe oublié”.");
     }
-  }
 
-  bootstrapRecovery();
+    bootstrapRecovery();
 
-  return () => {
-    mounted = false;
-    sub.subscription.unsubscribe();
-  };
-}, []);
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -171,68 +183,68 @@ export function AdminResetPasswordPage() {
 
   if (!canReset) {
     return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <MessageBox variant="error">
-            {recoveryError ?? "Lien invalide ou expiré. Recommencez une demande “Mot de passe oublié”."}
-          </MessageBox>
-
-          <div className="auth-links">
-            <Link to="/admin/login" className="auth-link">
-              Se connecter
-            </Link>
-          </div>
-        </div>
-
-        <PublicFooter />
-      </div>
+      <AuthScaffold
+        eyebrow="Lien de récupération"
+        title="Ce lien n’est plus disponible"
+        subtitle="Demandez un nouveau lien pour protéger l’accès à votre compte."
+        footer={
+          <Link to="/admin/login" className="auth-link">
+            Retour à la connexion
+          </Link>
+        }
+      >
+        <MessageBox variant="error">
+          {recoveryError ??
+            "Lien invalide ou expiré. Recommencez une demande “Mot de passe oublié”."}
+        </MessageBox>
+      </AuthScaffold>
     );
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h1 className="auth-title">Réinitialisation de votre mot de passe</h1>
-          <p className="auth-subtitle">Modifiez votre mot de passe ci-dessous.</p>
-        </div>
+    <AuthScaffold
+      eyebrow="Sécurité du compte"
+      title="Choisissez un nouveau mot de passe"
+      subtitle="Utilisez un mot de passe unique que vous n’employez pas ailleurs."
+      footer={
+        <Link to="/admin/login" className="auth-link">
+          Retour à la connexion
+        </Link>
+      }
+    >
+      <form onSubmit={handleSubmit} className="auth-form">
+        <PasswordConfirmFields
+          live={{
+            form,
+            fieldErrors,
+            handleChange,
+            handleBlur,
+            shouldShowFieldError,
+          }}
+          passwordKey="password"
+          confirmKey="confirmPassword"
+          labels={{
+            password: "Nouveau mot de passe",
+            confirm: "Confirmer le mot de passe",
+          }}
+          placeholders={{
+            password: "Nouveau mot de passe",
+            confirm: "Confirmez le mot de passe",
+          }}
+          autoComplete="new-password"
+          onAnyChange={() => {
+            setErrorMsg(null);
+            setOkMsg(null);
+          }}
+        />
 
-        <form onSubmit={handleSubmit} className="auth-form">
-            <PasswordConfirmFields
-              live={{
-                form,
-                fieldErrors,
-                handleChange,
-                handleBlur,
-                shouldShowFieldError,
-              }}
-              passwordKey="password"
-              confirmKey="confirmPassword"
-              labels={{ password: "Nouveau mot de passe", confirm: "Confirmer le mot de passe" }}
-              placeholders={{ password: "Nouveau mot de passe", confirm: "Confirmez le mot de passe" }}
-              autoComplete="new-password"
-              onAnyChange={() => {
-                setErrorMsg(null);
-                setOkMsg(null);
-              }}
-            />
+        {errorMsg && <MessageBox variant="error">{errorMsg}</MessageBox>}
+        {okMsg && <MessageBox variant="success">{okMsg}</MessageBox>}
 
-            {errorMsg && <MessageBox variant="error">{errorMsg}</MessageBox>}
-            {okMsg && <MessageBox variant="success">{okMsg}</MessageBox>}
-
-          <div className="auth-links">
-            <Link to="/admin/login" className="auth-link">
-              Se connecter
-            </Link>
-          </div>
-
-          <Button type="submit" variant="primary" disabled={loading}>
-            {loading ? "Mise à jour..." : "Mettre à jour"}
-          </Button>
-        </form>
-      </div>
-
-      <PublicFooter />
-    </div>
+        <Button type="submit" variant="primary" disabled={loading}>
+          {loading ? "Mise à jour…" : "Mettre à jour le mot de passe"}
+        </Button>
+      </form>
+    </AuthScaffold>
   );
 }

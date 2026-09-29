@@ -1,0 +1,111 @@
+.adminThemeRoot {
+  min-height: 100dvh;
+  color-scheme: light;
+}
+
+.adminThemeRoot[data-theme="dark"] {
+  --ef-bg-app: #0b111b;
+  --ef-bg-surface: #151d29;
+  --ef-bg-subtle: #111924;
+  --ef-bg-muted: #1c2634;
+  --ef-text-primary: #f3f6fb;
+  --ef-text-secondary: #c1cad8;
+  --ef-text-muted: #8f9caf;
+  --ef-border-default: #293548;
+  --ef-border-strong: #3a485e;
+  --ef-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --ef-shadow-sm: 0 10px 30px rgba(0, 0, 0, 0.24);
+  --ef-shadow-md: 0 22px 58px rgba(0, 0, 0, 0.32);
+  --ef-success: #52d39f;
+  --ef-warning: #f4bb64;
+  --ef-danger: #ff8484;
+  --ef-info: #78a7ff;
+
+  color-scheme: dark;
+  background: var(--ef-bg-app);
+}
+
+.adminThemeToggle {
+  position: fixed;
+  z-index: 95;
+  top: 16px;
+  right: 208px;
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid var(--ef-border-default);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ef-bg-surface) 92%, transparent);
+  box-shadow: var(--ef-shadow-xs);
+  color: var(--ef-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(14px);
+  transition:
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
+}
+
+.adminThemeToggle:hover {
+  border-color: rgb(var(--primary) / 0.4);
+  color: rgb(var(--primary-strong));
+  transform: translateY(-1px);
+}
+
+.adminThemeToggle:focus-visible {
+  outline: 3px solid rgb(var(--primary) / 0.22);
+  outline-offset: 2px;
+}
+
+.adminThemeRoot:has(.onboardingPage) .adminThemeToggle {
+  right: 18px;
+}
+
+.adminThemeRoot[data-theme="dark"] .adminAppShell__topbar {
+  background: color-mix(in srgb, var(--ef-bg-app) 86%, transparent);
+}
+
+.adminThemeRoot[data-theme="dark"] .adminAppShell input,
+.adminThemeRoot[data-theme="dark"] .adminAppShell textarea,
+.adminThemeRoot[data-theme="dark"] .adminAppShell select {
+  color-scheme: dark;
+}
+
+.adminThemeRoot[data-theme="dark"] .eventEditor__footer {
+  background: color-mix(in srgb, var(--ef-bg-surface) 96%, transparent);
+}
+
+@media (max-width: 1040px) {
+  .adminThemeToggle {
+    top: 12px;
+    right: 70px;
+    width: 42px;
+    height: 42px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .adminThemeRoot:has(.onboardingPage) .adminThemeToggle {
+    right: 12px;
+  }
+
+  .adminThemeToggle .colorSchemeToggle__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adminThemeToggle {
+    transition: none;
+  }
+}

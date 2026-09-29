@@ -45,6 +45,18 @@ describe("shared order boundary contracts", () => {
       currency: null,
       paymentStatus: null,
       paymentMethod: null,
+      orgSlug: "emberfox",
+      eventSlug: "concert-2026",
+      buyerEmail: "participant@example.com",
+      items: [
+        {
+          name: "Billet standard",
+          quantity: 2,
+          unitPriceCents: 1000,
+          totalCents: 2000,
+          currency: "EUR",
+        },
+      ],
     });
     expect(result.status).toBe(status);
   });
@@ -107,6 +119,10 @@ describe("shared order boundary contracts", () => {
         currency: "EUR",
         paymentStatus: "paid",
         paymentMethod: "bank_transfer",
+        orgSlug: "emberfox",
+        eventSlug: "concert-2026",
+        buyerEmail: "participant@example.com",
+        items: [],
       }).success,
     ).toBe(true);
     expect(bookingTokenSchema.safeParse(" ").success).toBe(false);

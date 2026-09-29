@@ -1,197 +1,321 @@
-/* onboardingWizard.css */
-
 .onboardingPage {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 72px 28px 40px;
+  color: var(--ef-text-primary);
+  background:
+    radial-gradient(
+      circle at 12% 8%,
+      rgb(var(--primary) / 0.12),
+      transparent 30rem
+    ),
+    var(--ef-bg-app);
 }
 
 .onboardingCard {
-  width: 100%;
-  max-width: 600px;
-  background: white;
-  padding: 24px;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(520px, 1.28fr);
+  width: min(1050px, 100%);
+  min-height: 650px;
+  border: 1px solid var(--ef-border-default);
+  border-radius: 26px;
+  background: var(--ef-bg-surface);
+  box-shadow: var(--ef-shadow-md);
+  overflow: hidden;
 }
 
-.onboardingStep {
-  margin: 20px 0;
+.onboardingIntro {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.onboardingActions {
-  display: flex;
   justify-content: space-between;
-  margin-top: 24px;
+  padding: 38px;
+  color: #f5f7fb;
+  background:
+    radial-gradient(
+      circle at 80% 10%,
+      rgb(var(--primary) / 0.38),
+      transparent 18rem
+    ),
+    #111827;
+  isolation: isolate;
 }
 
-.onboardingActions button {
-  padding: 8px 16px;
+.onboardingIntro::after {
+  position: absolute;
+  z-index: -1;
+  right: -90px;
+  bottom: -110px;
+  width: 300px;
+  height: 300px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+  box-shadow: 0 0 0 58px rgba(255, 255, 255, 0.025);
+  content: "";
 }
 
-/* --- Add-ons pour version avec composants UI --- */
+.onboardingIntro__mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid rgb(var(--primary) / 0.45);
+  border-radius: 13px;
+  background: rgb(var(--primary) / 0.17);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 850;
+}
 
-.onboardingHeader {
+.onboardingIntro__eyebrow,
+.onboardingHeader > div > span {
+  color: rgb(var(--primary));
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.onboardingIntro h2 {
+  margin: 12px 0 0;
+  color: #ffffff;
+  font-family: "Poppins", sans-serif;
+  font-size: clamp(26px, 3vw, 36px);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+}
+
+.onboardingIntro p,
+.onboardingIntro__help {
+  color: #aeb9c9;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.onboardingIntro p {
+  margin: 15px 0 0;
+}
+
+.onboardingIntro__help {
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.onboardingContent {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  min-width: 0;
+  flex-direction: column;
+  padding: clamp(34px, 5vw, 56px);
 }
 
 .onboardingHeader h1 {
-  margin: 0;
+  margin: 8px 0 0;
+  color: var(--ef-text-primary);
+  font-family: "Poppins", sans-serif;
+  font-size: clamp(28px, 4vw, 36px);
+  font-weight: 680;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
 }
 
 .onboardingHeader p {
-  margin: 6px 0 0;
-  opacity: 0.85;
+  margin: 9px 0 0;
+  color: var(--ef-text-muted);
+  font-size: 13px;
+  line-height: 1.55;
 }
 
-.onboardingHeader__right {
+.onboardingProgress {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 28px 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.onboardingProgress li {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  padding-top: 2px;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--ef-border-default);
+  border-radius: 12px;
+  background: var(--ef-bg-subtle);
 }
 
-/* titres de section */
+.onboardingProgress li > span {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--ef-border-strong);
+  border-radius: 9px;
+  color: var(--ef-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.onboardingProgress li > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.onboardingProgress strong {
+  color: var(--ef-text-secondary);
+  font-size: 12px;
+}
+
+.onboardingProgress small {
+  color: var(--ef-text-muted);
+  font-size: 10px;
+}
+
+.onboardingProgress li.isActive {
+  border-color: rgb(var(--primary) / 0.35);
+  background: rgb(var(--primary) / 0.07);
+}
+
+.onboardingProgress li.isActive > span,
+.onboardingProgress li.isComplete > span {
+  border-color: rgb(var(--primary-strong));
+  background: rgb(var(--primary-strong));
+  color: rgb(var(--primary-strong-contrast));
+}
+
+.onboardingProgress li.isActive strong {
+  color: var(--ef-text-primary);
+}
+
+.onboardingStep {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 18px;
+  margin: 22px 0 0;
+}
+
 .onboardingStep__titleRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--ef-border-default);
 }
 
 .onboardingStep__titleRow h2 {
   margin: 0;
+  color: var(--ef-text-primary);
+  font-size: 16px;
+  font-weight: 720;
 }
 
-/* grille 2 colonnes (Inputs) */
 .onboardingGrid2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
 }
 
-/* row label + pills */
 .onboardingRow {
+  display: block;
+}
+
+.onboardingRow > div {
+  width: 100%;
+}
+
+.onboardingPage .ui-field__label,
+.onboardingPage .ui-select__label {
+  color: var(--ef-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.onboardingPage .ui-input,
+.onboardingPage select,
+.onboardingPage .profilePanel__phoneInput,
+.onboardingPage .profilePanel__select {
+  min-height: 46px;
+  border-color: var(--ef-border-default);
+  border-radius: 11px;
+  background: var(--ef-bg-subtle);
+  color: var(--ef-text-primary);
+}
+
+.onboardingPage .ui-input:focus,
+.onboardingPage select:focus,
+.onboardingPage .profilePanel__phoneInput:focus {
+  border-color: rgb(var(--primary) / 0.62);
+  background: var(--ef-bg-surface);
+  box-shadow: 0 0 0 3px rgb(var(--primary) / 0.13);
+}
+
+.onboardingPage .profilePanel__phoneRow {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 6px;
+  width: 100%;
+  align-items: stretch;
+  gap: 9px;
 }
 
-.onboardingLabel {
-  font-size: 14px;
-  opacity: 0.85;
-  min-width: 48px;
+.onboardingPage .profilePanel__phoneRow select.profilePanel__select,
+.onboardingPage .profilePanel__phoneRow .profilePanel__select {
+  width: 104px !important;
+  min-width: 104px !important;
+  max-width: 104px !important;
+  flex: 0 0 104px !important;
 }
 
-/* boutons type “tabs” */
-.onboardingPills {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.onboardingPage .profilePanel__phoneRow input.profilePanel__phoneInput,
+.onboardingPage .profilePanel__phoneRow .profilePanel__phoneInput {
+  width: 100% !important;
+  min-width: 0;
+  flex: 1 1 auto !important;
 }
 
-/* hint country code */
-.onboardingHintRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 6px;
-}
-
-.onboardingHintLabel {
-  font-size: 13px;
-  opacity: 0.75;
-}
-
-/* barre d’actions */
 .onboardingActionsBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 24px;
+  gap: 16px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ef-border-default);
 }
 
 .onboardingStatus {
-  min-height: 20px; /* évite les sauts */
   display: flex;
+  min-height: 20px;
   align-items: center;
 }
 
 .onboardingActions {
   display: flex;
-  gap: 10px;
   justify-content: flex-end;
+  gap: 9px;
 }
 
-/* messages */
+.onboardingActions .ui-button {
+  min-width: 112px;
+}
+
 .onboardingError {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(239, 68, 68, 0.10);
-  color: #b91c1c;
-  font-size: 14px;
+  margin-top: 14px;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--ef-danger) 28%, transparent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--ef-danger) 6%, var(--ef-bg-surface));
+  color: var(--ef-danger);
+  font-size: 12px;
 }
 
 .onboardingMuted {
-  opacity: 0.8;
-  font-size: 14px;
-  line-height: 1.35;
-}
-
-/* --- PhoneInput inline layout (onboarding) --- */
-
-.onboardingPage .profilePanel__phoneRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.onboardingPage .profilePanel__select {
-  flex: 0 0 auto;
-  min-width: 96px;
-}
-
-.onboardingPage .profilePanel__phoneInput {
-  flex: 1;
-}
-
-/* --- PhoneInput inline layout (onboarding) --- */
-.onboardingPage .profilePanel__phoneRow {
-  display: flex;
-  align-items: stretch;
-  gap: 10px;
-  width: 100%;
-}
-
-/* le select ne doit PAS prendre 100% */
-.onboardingPage .profilePanel__phoneRow select.profilePanel__select,
-.onboardingPage .profilePanel__phoneRow .profilePanel__select {
-  width: 110px !important;
-  min-width: 110px !important;
-  max-width: 110px !important;
-  flex: 0 0 110px !important;
-}
-
-/* l'input prend le reste */
-.onboardingPage .profilePanel__phoneRow input.profilePanel__phoneInput,
-.onboardingPage .profilePanel__phoneRow .profilePanel__phoneInput {
-  flex: 1 1 auto !important;
-  width: 100% !important;
-  min-width: 0; /* important pour que flex fonctionne */
-}
-
-/* sécurité : si un wrapper interne force du 100% */
-.onboardingPage .profilePanel__phoneRow > * {
-  min-width: 0;
+  color: var(--ef-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
 }

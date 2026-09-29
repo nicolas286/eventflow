@@ -342,9 +342,12 @@ Les statuts techniques comme `awaiting_payment` doivent toujours être traduits 
 - Les parcours métier, routes, hooks et repositories sont inchangés.
 - Le parcours public utilise désormais des tokens sémantiques compatibles clair/sombre, tout en conservant la couleur d’accent choisie par chaque organisation.
 - Le choix clair/sombre est local au navigateur, initialisé depuis la préférence système puis mémorisé sans écriture en base.
+- Le même choix clair/sombre couvre désormais le parcours public, l’authentification, l’onboarding et l’espace organisateur, avec des surfaces administratives neutres et la couleur de l’organisation conservée comme accent.
+- Les écrans de connexion, création de compte, mot de passe oublié et réinitialisation partagent une composition responsive plus claire ; l’onboarding distingue maintenant la progression, le contexte et le formulaire.
 - Le checkout partage un stepper navigable vers les étapes déjà validées, un en-tête compact après la sélection des billets et un récapitulatif sticky sur desktop.
 - La page organisation, les cartes événements et billets, les formulaires participants, le paiement, la confirmation et le widget utilisent une hiérarchie et des surfaces harmonisées.
-- La validation navigateur connectée reste à effectuer : aucun navigateur contrôlable n’était disponible dans la session d’implémentation.
+- Le retour de commande expose la prochaine action utile, l’adresse acheteur et les articles lorsque disponibles, permet de copier les informations de virement et renvoie vers l’organisation concernée plutôt que vers l’accueil générique.
+- Une recette visuelle non connectée a été effectuée sur l’authentification desktop/mobile. La recette connectée avec des données staging réelles reste à effectuer côté organisateur et checkout.
 
 ### Lot 0 — Inventaire et maquettes
 

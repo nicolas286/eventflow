@@ -12,10 +12,35 @@ export const handleReadOrderRequest = createEdgeHandler({
   const bookingToken = bookingTokenSchema.safeParse(token);
   if (!bookingToken.success) return json(req, { error: "MISSING_TOKEN" }, 401);
   const { data: order, error } = await admin.from("orders")
-    .select("id, status, total_cents, currency").eq("id", orderId)
+    .select("id, status, total_cents, currency, event_id, org_id, buyer_email").eq("id", orderId)
     .eq("booking_token", bookingToken.data).maybeSingle();
   if (error) return json(req, { error: "DB_ERROR", details: error.message }, 500);
   if (!order) return json(req, { error: "NOT_FOUND" }, 404);
+  const [{ data: event }, { data: organization }, { data: itemRows }] = await Promise.all([
+    order.event_id
+      ? admin.from("events").select("slug").eq("id", order.event_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    order.org_id
+      ? admin.from("organizations").select("slug").eq("id", order.org_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    admin.from("order_items")
+      .select("product_name_snapshot, unit_price_cents_snapshot, quantity")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: true }),
+  ]);
+  const items = (Array.isArray(itemRows) ? itemRows : []).flatMap((row) => {
+    const quantity = Number(row.quantity ?? 0);
+    const unitPriceCents = Number(row.unit_price_cents_snapshot ?? 0);
+    if (!Number.isInteger(quantity) || quantity <= 0) return [];
+    if (!Number.isInteger(unitPriceCents) || unitPriceCents < 0) return [];
+    return [{
+      name: String(row.product_name_snapshot ?? "").trim() || "Billet",
+      quantity,
+      unitPriceCents,
+      totalCents: unitPriceCents * quantity,
+      currency: String(order.currency ?? "EUR"),
+    }];
+  });
   const { data: payment } = await admin.from("payments")
     .select("provider, provider_payment_id, status, amount_cents, currency, raw")
     .eq("order_id", orderId).eq("is_refund", false)
@@ -52,5 +77,9 @@ export const handleReadOrderRequest = createEdgeHandler({
     currency: order.currency ?? null, paymentStatus: payment?.status ?? null,
     paymentMethod,
     bankTransfer,
+    orgSlug: organization?.slug ?? null,
+    eventSlug: event?.slug ?? null,
+    buyerEmail: order.buyer_email ?? null,
+    items,
   }));
 });

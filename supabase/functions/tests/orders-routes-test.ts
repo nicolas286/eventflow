@@ -185,8 +185,15 @@ Deno.test("public bank-transfer instructions require the matching booking token"
 Deno.test("public order read preserves the database cancelled spelling", () => withRuntime(async () => {
   const previous = globalThis.fetch;
   globalThis.fetch = (input) => {
-    const data = String(input).includes("/orders?")
-      ? { id: orderId, status: "cancelled", total_cents: 2000, currency: "EUR" }
+    const url = String(input);
+    const data = url.includes("/orders?")
+      ? { id: orderId, status: "cancelled", total_cents: 2000, currency: "EUR", event_id: "22222222-2222-4222-8222-222222222222", org_id: "33333333-3333-4333-8333-333333333333", buyer_email: "participant@example.com" }
+      : url.includes("/events?")
+      ? { slug: "concert-2026" }
+      : url.includes("/organizations?")
+      ? { slug: "emberfox" }
+      : url.includes("/order_items?")
+      ? [{ product_name_snapshot: "Billet standard", unit_price_cents_snapshot: 1000, quantity: 2 }]
       : { provider: "offline", provider_payment_id: `bank_transfer:${orderId}`, status: "open" };
     return Promise.resolve(Response.json(data));
   };
@@ -195,6 +202,9 @@ Deno.test("public order read preserves the database cancelled spelling", () => w
     assertEquals(response.status, 200);
     assertEquals(await response.json(), {
       id: orderId, status: "cancelled", totalCents: 2000, currency: "EUR", paymentStatus: "open", paymentMethod: "bank_transfer", bankTransfer: null,
+      orgSlug: "emberfox", eventSlug: "concert-2026",
+      buyerEmail: "participant@example.com",
+      items: [{ name: "Billet standard", quantity: 2, unitPriceCents: 1000, totalCents: 2000, currency: "EUR" }],
     });
   } finally { globalThis.fetch = previous; }
 }));

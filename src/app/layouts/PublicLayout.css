@@ -112,7 +112,7 @@
     padding: 8px;
   }
 
-  .publicThemeToggleLabel {
+  .publicThemeToggle .colorSchemeToggle__label {
     position: absolute;
     width: 1px;
     height: 1px;

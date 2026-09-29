@@ -1,8 +1,110 @@
+@media (max-width: 820px) {
+  .orderReturnShell {
+    grid-template-columns: 1fr;
+    margin-top: 22px;
+  }
+
+  .orderReturnSummary {
+    position: static;
+  }
+
+  .orderReturnSummaryCard > .ui-cardBody {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 20px;
+    align-items: center;
+  }
+
+  .orderReturnSummaryHeader {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .orderReturnSummaryStatus {
+    border-bottom: 0;
+    padding: 0;
+  }
+
+  .orderReturnTechnical,
+  .orderReturnSupport {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 560px) {
-  .orderReturnTitle { font-size: 26px; }
-  .orderReturnCard { padding: 16px; }
+  .orderReturnCenter {
+    padding: 20px 0;
+  }
+
+  .orderReturnShell {
+    gap: 14px;
+    margin: 16px auto 32px;
+  }
+
+  .orderReturnCard,
+  .orderReturnTransfer,
+  .orderReturnSection {
+    border-radius: 17px;
+  }
+
+  .orderReturnHeroCard > .ui-cardBody {
+    padding: 24px 20px 20px;
+  }
+
+  .orderReturnHero {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .orderReturnHeroIcon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    font-size: 21px;
+  }
+
+  .orderReturnTitle {
+    font-size: 29px;
+  }
+
+  .orderReturnSubtitle {
+    font-size: 15px;
+  }
+
+  .orderReturnNotice {
+    margin-top: 22px;
+  }
+
   .orderReturnFooter {
-    justify-content: center;
-    text-align: center;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .orderReturnFooter .ui-button,
+  .orderReturnFooter .ui-button:first-child {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .orderReturnSummaryCard > .ui-cardBody {
+    display: block;
+    padding: 20px;
+  }
+
+  .orderReturnSummaryStatus {
+    padding-top: 14px;
+  }
+
+  .orderReturnTransfer,
+  .orderReturnSection {
+    padding: 20px;
+  }
+
+  .orderReturnTransferGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .orderReturnTransferCommunication {
+    grid-column: auto;
   }
 }

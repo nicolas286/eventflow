@@ -6,7 +6,10 @@ import EventEditorForm from "./EventEditorForm";
 import type { AdminEventDetailEvent } from "@app/modules/admin/singleEvent/schemas/admin.eventDetail.schema";
 
 export type EditableEventFields = Partial<
-  Pick<EventOverviewRow["event"], "title" | "isPublished" | "startsAt" | "endsAt">
+  Pick<
+    EventOverviewRow["event"],
+    "title" | "isPublished" | "startsAt" | "endsAt"
+  >
 > & { location?: string | null };
 
 type Props = {
@@ -17,8 +20,12 @@ type Props = {
 export default function EventEditor({ event, onUpdateEvent }: Props) {
   if (!event) {
     return (
-      <Card>
-        <CardHeader title="Modification rapide" subtitle="Sélectionnez un événement" />
+      <Card className="eventEditorCard">
+        <CardHeader
+          className="eventEditorCard__header"
+          title="Modification rapide"
+          subtitle="Sélectionnez un événement"
+        />
         <CardBody>
           <div className="eventEditor__empty">Aucun événement sélectionné.</div>
         </CardBody>
@@ -29,9 +36,18 @@ export default function EventEditor({ event, onUpdateEvent }: Props) {
   const ev = event.event as Partial<AdminEventDetailEvent>;
 
   return (
-    <Card>
-      <CardHeader title="Modification rapide" subtitle={ev.title} />
-      <CardBody>
+    <Card className="eventEditorCard">
+      <CardHeader
+        className="eventEditorCard__header"
+        title={
+          <div className="eventEditorCard__heading">
+            <span>Modification rapide</span>
+            <strong>{ev.title}</strong>
+          </div>
+        }
+        subtitle="Modifiez les informations essentielles sans quitter la liste."
+      />
+      <CardBody className="eventEditorCard__body">
         <EventEditorForm key={ev.id} event={ev} onConfirm={onUpdateEvent} />
       </CardBody>
     </Card>

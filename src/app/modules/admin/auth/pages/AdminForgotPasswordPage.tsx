@@ -6,7 +6,8 @@ import { authRepo } from "../data/authRepo";
 import { normalizeError } from "@errors/errors";
 import "./auth.desktop.css";
 import "./auth.mobile.css";
-import PublicFooter from "@ui/components/publicFooter/PublicFooter";
+import { Link } from "react-router-dom";
+import { AuthScaffold } from "../components/AuthScaffold";
 
 export function AdminForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -25,7 +26,9 @@ export function AdminForgotPasswordPage() {
         redirectTo: `${window.location.origin}/admin/reset-password`,
       });
 
-      setOkMsg("Si un compte existe pour cette adresse, un email de réinitialisation vient d’être envoyé.");
+      setOkMsg(
+        "Si un compte existe pour cette adresse, un email de réinitialisation vient d’être envoyé.",
+      );
     } catch (e) {
       const err = normalizeError(e, "Erreur inconnue.");
       setErrorMsg(err.message);
@@ -35,33 +38,34 @@ export function AdminForgotPasswordPage() {
   }
 
   return (
-    <div className="auth-page">
-        <div className="auth-card">
-                <div className="auth-header">
-          <h1 className="auth-title">Mot de passe oublié ?</h1>
-          <p className="auth-subtitle">
-            Nous envoyons un lien de récupération à votre adresse e-mail.
-          </p>
-        </div>
-            <form onSubmit={handleSubmit} className="auth-form">
-            <Input
-                label="Email"
-                type="email"
-                placeholder="Adresse email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-            />
+    <AuthScaffold
+      eyebrow="Récupération"
+      title="Retrouvez l’accès à votre espace"
+      subtitle="Indiquez votre adresse e-mail. Nous vous enverrons un lien sécurisé."
+      footer={
+        <Link to="/admin/login" className="auth-link">
+          Retour à la connexion
+        </Link>
+      }
+    >
+      <form onSubmit={handleSubmit} className="auth-form">
+        <Input
+          label="E-mail"
+          type="email"
+          placeholder="vous@organisation.be"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+          required
+        />
 
-            {errorMsg && <MessageBox variant="error">{errorMsg}</MessageBox>}
-            {okMsg && <MessageBox variant="success">{okMsg}</MessageBox>}
+        {errorMsg && <MessageBox variant="error">{errorMsg}</MessageBox>}
+        {okMsg && <MessageBox variant="success">{okMsg}</MessageBox>}
 
-            <Button type="submit" variant="primary" disabled={loading}>
-                {loading ? "Envoi..." : "Envoyer le lien"}
-            </Button>
-            </form>
-        </div>
-        <PublicFooter/>
-    </div>
+        <Button type="submit" variant="primary" disabled={loading}>
+          {loading ? "Envoi…" : "Recevoir le lien"}
+        </Button>
+      </form>
+    </AuthScaffold>
   );
 }

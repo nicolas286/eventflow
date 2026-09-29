@@ -1,5 +1,29 @@
-@media (max-width: 700px){
-  .eventEditor__row2{
+@media (max-width: 1050px) {
+  .adminEventsEditorPanel {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .eventEditorCard {
+    box-shadow: var(--ef-shadow-sm) !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .eventEditor__section--publication {
     grid-template-columns: 1fr;
+  }
+
+  .eventEditor__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .eventEditor__footer > span {
+    max-width: none;
+  }
+
+  .eventEditor__footer .ui-button {
+    width: 100%;
   }
 }

@@ -55,8 +55,8 @@
 }
 
 .adminWorkspaceState--error {
-  border-color: #fecaca;
-  background: #fffafa;
+  border-color: color-mix(in srgb, var(--ef-danger) 28%, transparent);
+  background: color-mix(in srgb, var(--ef-danger) 6%, var(--ef-bg-surface));
 }
 
 @keyframes adminWorkspaceSpin {
@@ -81,7 +81,11 @@
   padding: 20px 24px;
   border-color: var(--ef-border-default);
   border-radius: var(--ef-radius-xl) var(--ef-radius-xl) 0 0;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+  background: linear-gradient(
+    180deg,
+    var(--ef-bg-surface) 0%,
+    var(--ef-bg-subtle) 100%
+  );
 }
 
 .adminAppShell .ui-cardHeader__title {
@@ -206,7 +210,7 @@
 .adminAppShell .adminSearchInput:focus,
 .adminAppShell .adminSearchSelect:focus {
   border-color: rgb(var(--primary) / 0.65);
-  background: #ffffff;
+  background: var(--ef-bg-surface);
   box-shadow: 0 0 0 3px rgb(var(--primary) / 0.13);
   outline: none;
 }
@@ -504,7 +508,7 @@
 }
 
 .adminAppShell .adminEventTab:hover {
-  background: rgb(255 255 255 / 0.7);
+  background: color-mix(in srgb, var(--ef-bg-surface) 72%, transparent);
   color: var(--ef-text-primary);
 }
 
@@ -567,7 +571,7 @@
 .adminAppShell .adminOrderCard:hover,
 .adminAppShell .adminTicketRow:hover {
   border-color: rgb(var(--primary) / 0.24);
-  background: #ffffff;
+  background: var(--ef-bg-surface);
 }
 
 .adminAppShell .adminTicketsEditorCard,
@@ -575,7 +579,7 @@
 .adminAppShell .editorCard {
   border-color: var(--ef-border-default);
   border-radius: 16px;
-  background: #ffffff;
+  background: var(--ef-bg-surface);
   box-shadow: var(--ef-shadow-md);
 }
 
@@ -599,7 +603,7 @@
 }
 
 .adminAppShell .adminSubtab.isActive {
-  background: #ffffff;
+  background: var(--ef-bg-surface);
   color: rgb(var(--primary-strong));
   box-shadow: var(--ef-shadow-xs);
 }
@@ -663,7 +667,7 @@
 .adminAppShell .widgetPanel__previewWrap {
   border-color: var(--ef-border-default);
   border-radius: 13px;
-  background: #ffffff;
+  background: var(--ef-bg-surface);
 }
 
 .adminAppShell .brandingPanel__actionsBar,
@@ -676,13 +680,13 @@
 
 .adminAppShell .profilePanel__danger {
   padding: 16px !important;
-  border: 1px solid #fecaca !important;
+  border: 1px solid color-mix(in srgb, var(--ef-danger) 28%, transparent) !important;
   border-radius: 13px;
-  background: #fff7f7;
+  background: color-mix(in srgb, var(--ef-danger) 6%, var(--ef-bg-surface));
 }
 
 .adminAppShell .widgetPanel__code {
-  color: #334155;
+  color: var(--ef-text-secondary);
   font-size: 12px;
 }
 

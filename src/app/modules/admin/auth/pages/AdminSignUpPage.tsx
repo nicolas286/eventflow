@@ -3,33 +3,23 @@ import "./auth.mobile.css";
 
 import { Link } from "react-router-dom";
 import { SignUpForm } from "@app/modules/admin/auth/components/SignupForm";
-import { EventFlowLogo } from "@ui/components/branding/EventFlowLogo";
-import PublicFooter from "@ui/components/publicFooter/PublicFooter";
+import { AuthScaffold } from "../components/AuthScaffold";
 
 export function AdminSignUpPage() {
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        
-        <EventFlowLogo/>
-
-        <div className="auth-header">
-          <h1 className="auth-title">Créer un compte Eventflow</h1>
-          <p className="auth-subtitle">
-            Inscrivez-vous pour commencer à gérer vos événements
-          </p>
-        </div>
-
-        <SignUpForm />
-
-        <div className="auth-links">
+    <AuthScaffold
+      eyebrow="Créer votre espace"
+      title="Lancez votre prochain événement"
+      subtitle="Créez votre compte, puis personnalisez votre organisation en quelques minutes."
+      footer={
+        <>
           <Link to="/admin/login" className="auth-link">
             Déjà un compte ? Se connecter
           </Link>
-        </div>
-      </div>
-              <PublicFooter />
-      
-    </div>
+        </>
+      }
+    >
+      <SignUpForm />
+    </AuthScaffold>
   );
 }
