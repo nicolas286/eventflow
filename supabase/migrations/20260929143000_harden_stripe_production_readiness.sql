@@ -1,7 +1,7 @@
 begin;
 
 /*
- * Stripe production-readiness hardening.
+ * Eventflow Stripe production-readiness hardening.
  *
  * Existing bank details, bank-transfer orders and connected-account IDs are
  * preserved. New event payments are switched to Stripe, while every existing
