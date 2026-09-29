@@ -2,7 +2,7 @@ import { Outlet, useLocation, Navigate } from "react-router-dom";
 import "./AdminDashBoard.desktop.css";
 import "./AdminDashBoard.mobile.css";
 
-import { TopNav } from "@shared/ui/components";
+import { Button } from "@shared/ui/components";
 import type { OrgInfo } from "@shared/ui/components/navigation/TopNav";
 import { supabase } from "@gateways/supabase/supabaseClient";
 import { useAdminDashboardData } from "../hooks/useAdminDashboardData";
@@ -49,13 +49,24 @@ export default function AdminDashboard() {
   const userRole = bootstrap?.membership?.[0]?.role ?? null;
 
   if (loading && !bootstrap) {
+    const loadingContent = (
+      <div className="adminPageRight">
+        <div className="adminWorkspaceState" aria-live="polite">
+          <span className="adminWorkspaceState__spinner" aria-hidden="true" />
+          <strong>Préparation de votre espace</strong>
+          <span>Nous chargeons vos événements et vos réglages.</span>
+        </div>
+      </div>
+    );
+
     return (
       <div className="adminPage">
         <OrgThemeSync primaryColor={primaryHex} />
-        <TopNav mode="admin" org={topNavOrg} />
-        <div className="adminPageGrid">
-          <div className="adminPageRight">Chargement…</div>
-        </div>
+        {isOnboarding ? (
+          loadingContent
+        ) : (
+          <AdminAppShell org={topNavOrg}>{loadingContent}</AdminAppShell>
+        )}
       </div>
     );
   }
@@ -66,28 +77,58 @@ export default function AdminDashboard() {
       "Une erreur est survenue. Réessayez dans quelques instants.",
     );
 
+    const errorContent = (
+      <div className="adminPageRight">
+        <div
+          className="adminWorkspaceState adminWorkspaceState--error"
+          role="alert"
+        >
+          <strong>Impossible de charger l’espace organisateur</strong>
+          <span>{appError.message}</span>
+          <Button variant="secondary" onClick={() => void refetch()}>
+            Réessayer
+          </Button>
+        </div>
+      </div>
+    );
+
     return (
       <div className="adminPage">
         <OrgThemeSync primaryColor={primaryHex} />
-        {!isOnboarding && <TopNav mode="admin" org={topNavOrg} />}
-
-        <div className="adminPageGrid">
-          <div className="adminPageRight">{appError.message}</div>
-        </div>
+        {isOnboarding ? (
+          errorContent
+        ) : (
+          <AdminAppShell
+            org={topNavOrg}
+            userName={userName}
+            userRole={userRole}
+          >
+            {errorContent}
+          </AdminAppShell>
+        )}
       </div>
     );
   }
 
   // ✅ bootstrap devrait exister ici (sinon on garde un fallback safe)
   if (!bootstrap) {
+    const fallbackContent = (
+      <div className="adminPageRight">
+        <div className="adminWorkspaceState" aria-live="polite">
+          <span className="adminWorkspaceState__spinner" aria-hidden="true" />
+          <strong>Chargement en cours</strong>
+        </div>
+      </div>
+    );
+
     return (
       <div className="adminPage">
         <OrgThemeSync primaryColor={primaryHex} />
-        {!isOnboarding && <TopNav mode="admin" org={topNavOrg} />}
-
-        <div className="adminPageGrid">
-          <div className="adminPageRight">Chargement…</div>
-        </div>
+        {isOnboarding ? (
+          fallbackContent
+        ) : (
+          <AdminAppShell org={topNavOrg}>{fallbackContent}</AdminAppShell>
+        )}
       </div>
     );
   }

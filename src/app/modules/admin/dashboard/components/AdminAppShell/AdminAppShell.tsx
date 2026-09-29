@@ -6,6 +6,7 @@ import { useToast } from "@ui/components/toast/useToast";
 import type { OrgInfo } from "@ui/components/navigation/TopNav";
 import {
   CalendarIcon,
+  BoltIcon,
   CloseIcon,
   CoinsIcon,
   EyeIcon,
@@ -29,9 +30,16 @@ type NavigationItem = {
   label: string;
   path: string;
   icon: ReactNode;
+  end?: boolean;
 };
 
 const managementItems: NavigationItem[] = [
+  {
+    label: "Vue d’ensemble",
+    path: "/admin",
+    icon: <BoltIcon />,
+    end: true,
+  },
   {
     label: "Événements",
     path: "/admin/events",
@@ -112,6 +120,7 @@ function NavigationGroup({
           <NavLink
             key={item.path}
             to={item.path}
+            end={item.end}
             className={({ isActive }) =>
               `adminSidebar__navLink${isActive ? " isActive" : ""}`
             }
@@ -144,11 +153,16 @@ export function AdminAppShell({
 
   const publicPath = getPublicPath(org);
   const activeLabel = useMemo(() => {
+    if (location.pathname === "/admin" || location.pathname === "/admin/") {
+      return "Vue d’ensemble";
+    }
     if (location.pathname.startsWith("/admin/events/")) return "Événement";
 
     return (
-      allItems.find((item) => location.pathname.startsWith(item.path))?.label ??
-      "Administration"
+      allItems.find(
+        (item) =>
+          item.path !== "/admin" && location.pathname.startsWith(item.path),
+      )?.label ?? "Administration"
     );
   }, [location.pathname]);
 

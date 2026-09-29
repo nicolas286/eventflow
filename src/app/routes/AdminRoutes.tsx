@@ -1,4 +1,4 @@
-import { Route, Navigate } from "react-router-dom";
+import { Route } from "react-router-dom";
 
 import AdminAbonnementPage from "@app/modules/admin/subscriptions/pages/AdminSubscriptionPage";
 import AdminBrandingPage from "@app/modules/admin/branding/pages/AdminBrandingPage";
@@ -16,6 +16,7 @@ import { AdminSingleEventPage } from "@app/modules/admin/singleEvent/pages/Admin
 import { AdminAuthLayout } from "../layouts/AdminAuthLayout";
 import { AdminLayout } from "../layouts/AdminLayout";
 import AdminWidgetPage from "@app/modules/admin/widget/pages/AdminWidgetPage";
+import { AdminOverviewPage } from "@app/modules/admin/dashboard/pages/AdminOverviewPage";
 
 export const AdminRoutes = (
   <>
@@ -23,17 +24,23 @@ export const AdminRoutes = (
     <Route element={<AdminAuthLayout />}>
       <Route path="/admin/login" element={<AdminLoginPage />} />
       <Route path="/admin/signup" element={<AdminSignUpPage />} />
-      <Route path="/admin/forgot-password" element={<AdminForgotPasswordPage />} />
-      <Route path="/admin/reset-password" element={<AdminResetPasswordPage />} />
+      <Route
+        path="/admin/forgot-password"
+        element={<AdminForgotPasswordPage />}
+      />
+      <Route
+        path="/admin/reset-password"
+        element={<AdminResetPasswordPage />}
+      />
     </Route>
 
     {/* ADMIN – PROTÉGÉ */}
     <Route path="/admin" element={<AdminLayout />}>
       <Route element={<AdminDashboard />}>
-        <Route index element={<Navigate to="events" replace />} />
+        <Route index element={<AdminOverviewPage />} />
         <Route path="events" element={<AdminEventsPage />} />
         <Route path="events/:eventSlug" element={<AdminSingleEventPage />} />
-        <Route path="widget" element={<AdminWidgetPage/>}/>
+        <Route path="widget" element={<AdminWidgetPage />} />
         <Route path="branding" element={<AdminBrandingPage />} />
         <Route path="structure" element={<AdminStructurePage />} />
         <Route path="profil" element={<AdminProfilPage />} />

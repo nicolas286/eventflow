@@ -1,5 +1,8 @@
-import { useEffect } from "react";
+import { useId } from "react";
 import Button from "../button/Button";
+import { useDialogFocus } from "./useDialogFocus";
+
+import "./modal.css";
 
 export function ConfirmDeleteModal(props: {
   open: boolean;
@@ -11,104 +14,55 @@ export function ConfirmDeleteModal(props: {
   onConfirm: () => void;
 }) {
   const { open, title, eventName, busy, error, onCancel, onConfirm } = props;
-
-  useEffect(() => {
-    if (!open) return;
-
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
-    }
-
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onCancel]);
-
-  useEffect(() => {
-    if (!open) return;
-    // lock scroll (simple)
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  const titleId = useId();
+  const descriptionId = useId();
+  const dialogRef = useDialogFocus({
+    open,
+    onClose: onCancel,
+    closeDisabled: Boolean(busy),
+  });
 
   if (!open) return null;
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
+      className="uiModalBackdrop"
       onMouseDown={(e) => {
-        // click outside = cancel
-        if (e.target === e.currentTarget) onCancel();
-      }}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(17, 24, 39, 0.55)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-        zIndex: 50,
+        if (e.target === e.currentTarget && !busy) onCancel();
       }}
     >
       <div
-        style={{
-          width: "min(520px, 100%)",
-          background: "#fff",
-          borderRadius: 16,
-          boxShadow:
-            "0 20px 25px -5px rgba(0,0,0,0.15), 0 10px 10px -5px rgba(0,0,0,0.08)",
-          padding: 18,
-        }}
+        ref={dialogRef}
+        className="uiModalPanel uiModalPanel--danger"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        tabIndex={-1}
+        onMouseDown={(e) => e.stopPropagation()}
       >
-        <div style={{ fontSize: 16, fontWeight: 900, color: "#111827" }}>
+        <h2 id={titleId} className="uiModalTitle">
           {title}
-        </div>
+        </h2>
 
-        <div style={{ marginTop: 10, fontSize: 14, color: "#374151", lineHeight: 1.45 }}>
+        <div id={descriptionId} className="uiModalDescription">
           Vous êtes sur le point de supprimer{" "}
-          <b style={{ color: "#111827" }}>{eventName || "cet événement"}</b>.
+          <strong>{eventName || "cet événement"}</strong>.
           <br />
           Cette action est définitive.
         </div>
 
-        {error && (
-          <div
-            style={{
-              marginTop: 12,
-              background: "#FEF2F2",
-              border: "1px solid #FECACA",
-              color: "#991B1B",
-              borderRadius: 12,
-              padding: "10px 12px",
-              fontSize: 13,
-            }}
-          >
-            {error}
-          </div>
-        )}
+        {error ? <div className="uiModalError">{error}</div> : null}
 
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            justifyContent: "flex-end",
-            marginTop: 16,
-          }}
-        >
-          <Button label="Annuler" onClick={onCancel} disabled={!!busy} variant="secondary">
+        <div className="uiModalActions">
+          <Button
+            onClick={onCancel}
+            disabled={Boolean(busy)}
+            variant="secondary"
+          >
             Annuler
           </Button>
-          <Button
-            label={busy ? "Suppression…" : "Supprimer"}
-            onClick={onConfirm}
-            disabled={!!busy}
-            variant="danger"
-          >
+          <Button onClick={onConfirm} disabled={Boolean(busy)} variant="danger">
             {busy ? "Suppression…" : "Supprimer"}
           </Button>
         </div>

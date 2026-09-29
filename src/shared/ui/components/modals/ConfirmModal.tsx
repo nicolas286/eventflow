@@ -1,5 +1,8 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import Button from "../button/Button";
+import { useDialogFocus } from "./useDialogFocus";
+
+import "./modal.css";
 
 type ConfirmIntent = "primary" | "danger";
 
@@ -7,7 +10,7 @@ type ConfirmModalProps = {
   isOpen: boolean;
 
   title: ReactNode;
-  children: ReactNode; 
+  children: ReactNode;
 
   confirmLabel?: ReactNode;
   confirmLoadingLabel?: ReactNode;
@@ -38,70 +41,53 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  const titleId = useId();
+  const descriptionId = useId();
+  const dialogRef = useDialogFocus({
+    open: isOpen,
+    onClose: onCancel,
+    closeDisabled: loading,
+  });
+
   if (!isOpen) return null;
 
   const confirmVariant = intent === "danger" ? "danger" : "primary";
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999,
-        background: "rgba(0,0,0,0.45)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
+      className="uiModalBackdrop"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !loading) onCancel();
       }}
     >
       <div
-        style={{
-          width: "min(520px, 100%)",
-          background: "white",
-          borderRadius: 12,
-          padding: 16,
-          boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
-        }}
+        ref={dialogRef}
+        className={`uiModalPanel${intent === "danger" ? " uiModalPanel--danger" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        tabIndex={-1}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>
+        <h2 id={titleId} className="uiModalTitle">
           {title}
-        </div>
+        </h2>
 
-        <div style={{ fontSize: 14, opacity: 0.85, marginBottom: 12, lineHeight: 1.4 }}>
+        <div id={descriptionId} className="uiModalDescription">
           {children}
         </div>
 
-        {error ? (
-          <div
-            style={{
-              background: "rgba(255,0,0,0.06)",
-              border: "1px solid rgba(255,0,0,0.12)",
-              color: "#b00020",
-              borderRadius: 10,
-              padding: "10px 12px",
-              fontSize: 13,
-              marginBottom: 12,
-            }}
-          >
-            {error}
-          </div>
-        ) : null}
+        {error ? <div className="uiModalError">{error}</div> : null}
 
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <div className="uiModalActions">
           <Button variant="secondary" onClick={onCancel} disabled={loading}>
             {cancelLabel}
           </Button>
 
           <Button
-            variant={confirmVariant as any}
-            onClick={onConfirm as any}
+            variant={confirmVariant}
+            onClick={() => void onConfirm()}
             disabled={loading}
           >
             {loading ? confirmLoadingLabel : confirmLabel}

@@ -1,6 +1,6 @@
 # Refonte visuelle Eventflow — administration et parcours client
 
-**Statut : shell et refonte visuelle de l’espace organisateur implémentés sur `dev`. La recette visuelle connectée et la refonte du parcours public restent à terminer.**
+**Statut : shell, vue d’ensemble et refonte visuelle de l’espace organisateur implémentés sur `dev`. La recette visuelle connectée et la refonte du parcours public restent à terminer.**
 
 Ce chantier concerne à la fois l’espace utilisé par les organisateurs et le parcours public utilisé par leurs clients pour découvrir un événement, choisir des billets et terminer une inscription. Il est distinct du futur back-office interne Eventflow décrit dans [platform-admin.md](platform-admin.md).
 
@@ -18,8 +18,8 @@ La refonte ne doit pas seulement « embellir » les écrans. Elle doit clarifier
 
 ## État observé
 
-- `/admin` redirige directement vers la liste des événements : il n’existe pas encore de vraie page d’accueil ou de pilotage.
-- Le shell repose sur `TopNav` et un menu hamburger, y compris sur grand écran. Les destinations principales restent donc cachées.
+- `/admin` propose désormais une vue d’ensemble fondée sur les données déjà chargées : événements, commandes, recettes, prochains rendez-vous et préparation de l’espace public.
+- Le shell organisateur repose désormais sur une sidebar desktop et un drawer mobile. Les destinations principales et la route active restent visibles.
 - Les pages sont une succession de cartes de même poids visuel, avec peu de distinction entre contexte, actions primaires, données et réglages.
 - Les valeurs visuelles sont dispersées dans de nombreux fichiers CSS : rayons, ombres, bordures, couleurs de texte, espacements et états ne forment pas encore un système cohérent.
 - Le fond global combine gradients et plusieurs couches de grain. Il donne du caractère aux pages publiques, mais charge visuellement un outil de gestion dense.
@@ -334,8 +334,11 @@ Les statuts techniques comme `awaiting_payment` doivent toujours être traduits 
 
 - Le shell desktop/mobile, la sidebar, la topbar et le focus du drawer mobile sont en place.
 - Le footer public a été retiré du layout organisateur afin que la sidebar reste attachée au viewport sur toute la page.
+- La route `/admin` affiche une vraie vue d’ensemble avec les indicateurs fiables déjà disponibles, les prochains événements et les réglages publics à compléter, sans nouvel appel backend.
 - Les écrans Événements, détail d’événement, Apparence, Widget, Profil organisateur, Profil personnel et Abonnement utilisent un en-tête de page commun.
 - Une couche visuelle limitée à `.adminAppShell` harmonise cartes, formulaires, boutons, badges, listes, onglets, factures, éditeurs et états vides sans modifier le thème des pages publiques.
+- Les états initiaux de chargement et d’erreur utilisent le même shell afin d’éviter le retour visuel à l’ancienne navigation.
+- Les modales partagées de confirmation, suppression et changement de mot de passe utilisent un style commun, un focus initial, un piège de focus, la fermeture par Échap et la restitution du focus.
 - Les parcours métier, routes, hooks et repositories sont inchangés.
 - La validation navigateur connectée reste à effectuer : aucun navigateur contrôlable n’était disponible dans la session d’implémentation.
 

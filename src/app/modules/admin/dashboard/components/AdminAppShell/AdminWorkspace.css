@@ -8,6 +8,63 @@
   padding: 0;
 }
 
+.adminWorkspaceState {
+  display: flex;
+  width: 100%;
+  max-width: 620px;
+  min-height: 260px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 9px;
+  margin: 8vh auto 0;
+  padding: 32px;
+  border: 1px solid var(--ef-border-default);
+  border-radius: var(--ef-radius-xl);
+  background: var(--ef-bg-surface);
+  box-shadow: var(--ef-shadow-sm);
+  color: var(--ef-text-muted);
+  text-align: center;
+}
+
+.adminWorkspaceState strong {
+  color: var(--ef-text-primary);
+  font-family: "Poppins", sans-serif;
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.adminWorkspaceState > span:not(.adminWorkspaceState__spinner) {
+  max-width: 48ch;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.adminWorkspaceState .ui-button {
+  margin-top: 10px;
+}
+
+.adminWorkspaceState__spinner {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 8px;
+  border: 3px solid rgb(var(--primary) / 0.16);
+  border-top-color: rgb(var(--primary-strong));
+  border-radius: 999px;
+  animation: adminWorkspaceSpin 750ms linear infinite;
+}
+
+.adminWorkspaceState--error {
+  border-color: #fecaca;
+  background: #fffafa;
+}
+
+@keyframes adminWorkspaceSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .adminAppShell .ui-card,
 .adminAppShell .flexPanel,
 .adminAppShell .adminAllEventsCard,
@@ -812,5 +869,9 @@
   .adminAppShell .adminSub__planTile,
   .adminAppShell .ui-button {
     transition: none;
+  }
+
+  .adminWorkspaceState__spinner {
+    animation: none;
   }
 }

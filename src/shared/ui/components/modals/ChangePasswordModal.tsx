@@ -1,5 +1,4 @@
-import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useId, type ReactNode } from "react";
 import { z } from "zod";
 
 import Button from "../button/Button";
@@ -8,6 +7,9 @@ import { MessageBox } from "../message/MessageBox"; // adapte si ton chemin est 
 
 import { signupSchema } from "../../../../app/modules/admin/auth/schemas/admin.auth.schema";
 import { useLiveForm } from "../../../hooks/useLiveZodForm"; // adapte le chemin chez toi
+import { useDialogFocus } from "./useDialogFocus";
+
+import "./modal.css";
 
 type ChangePasswordModalProps = {
   isOpen: boolean;
@@ -21,7 +23,10 @@ type ChangePasswordModalProps = {
   loading?: boolean;
   error?: ReactNode;
 
-  onConfirm: (payload: { currentPassword: string; newPassword: string }) => void | Promise<void>;
+  onConfirm: (payload: {
+    currentPassword: string;
+    newPassword: string;
+  }) => void | Promise<void>;
   onCancel: () => void;
 };
 
@@ -41,7 +46,11 @@ const changePasswordSchema = z
         message: "Les mots de passe ne correspondent pas.",
       });
     }
-    if (val.currentPassword && val.newPassword && val.currentPassword === val.newPassword) {
+    if (
+      val.currentPassword &&
+      val.newPassword &&
+      val.currentPassword === val.newPassword
+    ) {
       ctx.addIssue({
         code: "custom",
         path: ["newPassword"],
@@ -66,13 +75,21 @@ export function ChangePasswordModal({
   onConfirm,
   onCancel,
 }: ChangePasswordModalProps) {
+  const titleId = useId();
+  const descriptionId = useId();
+  const dialogRef = useDialogFocus({
+    open: isOpen,
+    onClose: onCancel,
+    closeDisabled: loading,
+  });
   const live = useLiveForm<ChangePasswordForm>(changePasswordSchema, {
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
 
-  const { form, fieldErrors, handleChange, handleBlur, shouldShowFieldError } = live;
+  const { form, fieldErrors, handleChange, handleBlur, shouldShowFieldError } =
+    live;
 
   // reset quand on ouvre/ferme, pour éviter de revoir les champs remplis
   useEffect(() => {
@@ -102,39 +119,31 @@ export function ChangePasswordModal({
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999,
-        background: "rgba(0,0,0,0.45)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
+      className="uiModalBackdrop"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !loading) onCancel();
       }}
     >
       <div
-        style={{
-          width: "min(520px, 100%)",
-          background: "white",
-          borderRadius: 12,
-          padding: 16,
-          boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
-        }}
+        ref={dialogRef}
+        className="uiModalPanel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        tabIndex={-1}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>{title}</div>
+        <h2 id={titleId} className="uiModalTitle">
+          {title}
+        </h2>
 
-        <div style={{ fontSize: 14, opacity: 0.85, marginBottom: 12, lineHeight: 1.4 }}>
-          Entrez votre mot de passe actuel, puis choisissez un nouveau mot de passe.
+        <div id={descriptionId} className="uiModalDescription">
+          Entrez votre mot de passe actuel, puis choisissez un nouveau mot de
+          passe.
         </div>
 
-        <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+        <div className="uiModalFields">
           <PasswordInput
             label="Mot de passe actuel"
             value={form.currentPassword}
@@ -142,8 +151,11 @@ export function ChangePasswordModal({
             onBlur={() => handleBlur("currentPassword")}
             autoComplete="current-password"
           />
-          {shouldShowFieldError("currentPassword") && fieldErrors.currentPassword ? (
-            <MessageBox variant="error">{fieldErrors.currentPassword}</MessageBox>
+          {shouldShowFieldError("currentPassword") &&
+          fieldErrors.currentPassword ? (
+            <MessageBox variant="error">
+              {fieldErrors.currentPassword}
+            </MessageBox>
           ) : null}
 
           <PasswordInput
@@ -152,7 +164,8 @@ export function ChangePasswordModal({
             onChange={(e) => {
               handleChange("newPassword", e.target.value);
               // si confirm déjà rempli, on revalide visuellement
-              if (form.confirmPassword) handleChange("confirmPassword", form.confirmPassword);
+              if (form.confirmPassword)
+                handleChange("confirmPassword", form.confirmPassword);
             }}
             onBlur={() => handleBlur("newPassword")}
             autoComplete="new-password"
@@ -168,23 +181,30 @@ export function ChangePasswordModal({
             onBlur={() => handleBlur("confirmPassword")}
             autoComplete="new-password"
           />
-          {shouldShowFieldError("confirmPassword") && fieldErrors.confirmPassword ? (
-            <MessageBox variant="error">{fieldErrors.confirmPassword}</MessageBox>
+          {shouldShowFieldError("confirmPassword") &&
+          fieldErrors.confirmPassword ? (
+            <MessageBox variant="error">
+              {fieldErrors.confirmPassword}
+            </MessageBox>
           ) : null}
         </div>
 
         {error ? (
-          <div style={{ marginBottom: 12 }}>
+          <div className="uiModalFeedback">
             <MessageBox variant="error">{error}</MessageBox>
           </div>
         ) : null}
 
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <div className="uiModalActions">
           <Button variant="secondary" onClick={onCancel} disabled={loading}>
             {cancelLabel}
           </Button>
 
-          <Button variant={"primary" as any} onClick={handleConfirm as any} disabled={loading}>
+          <Button
+            variant="primary"
+            onClick={() => void handleConfirm()}
+            disabled={loading}
+          >
             {loading ? confirmLoadingLabel : confirmLabel}
           </Button>
         </div>
