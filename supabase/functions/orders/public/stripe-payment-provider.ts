@@ -48,7 +48,7 @@ export class StripeEventPaymentProvider implements EventPaymentProvider {
         timeoutMs: 30_000,
         params: {
           expires_at: expiresAt,
-          ui_mode: "hosted",
+          ui_mode: "hosted_page",
           mode: "payment",
           "payment_method_types[0]": "bancontact",
           billing_address_collection: "auto",
