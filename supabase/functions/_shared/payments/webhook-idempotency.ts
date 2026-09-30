@@ -10,7 +10,7 @@ export async function claimWebhookEvent(
     eventType: string;
     payload: Record<string, unknown>;
   },
-): Promise<boolean> {
+): Promise<"claimed" | "duplicate" | "busy"> {
   const { data, error } = await admin.rpc("claim_payment_webhook_event", {
     p_provider: input.provider,
     p_event_id: input.eventId,
@@ -22,12 +22,10 @@ export async function claimWebhookEvent(
 
   if (error) throw new Error(error.message ?? "WEBHOOK_CLAIM_FAILED");
 
-  return Boolean(
-    typeof data === "object" &&
-    data !== null &&
-    "should_process" in data &&
-    (data as { should_process?: unknown }).should_process,
-  );
+  if (typeof data !== "object" || data === null) return "busy";
+  if ("should_process" in data && data.should_process === true) return "claimed";
+  if ("already_processed" in data && data.already_processed === true) return "duplicate";
+  return "busy";
 }
 
 export async function completeWebhookEvent(

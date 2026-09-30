@@ -260,7 +260,7 @@ export const handleStripeWebhookConnect = createEdgeHandler(
       return json(req, { error: "CONNECTED_ACCOUNT_MISSING" }, 400);
 
     try {
-      const shouldProcess = await claimWebhookEvent(admin, {
+      const claim = await claimWebhookEvent(admin, {
         provider: "stripe",
         eventId: event.id,
         scope: "connect",
@@ -268,10 +268,18 @@ export const handleStripeWebhookConnect = createEdgeHandler(
         eventType: event.type,
         payload: event as unknown as Record<string, unknown>,
       });
-      if (!shouldProcess) {
+      if (claim === "duplicate") {
         return json(req, { received: true, duplicate: true });
       }
+      if (claim === "busy") {
+        return json(req, { error: "WEBHOOK_PROCESSING_IN_PROGRESS" }, 503);
+      }
+    } catch (error) {
+      logger.error("claim_failed", { error: serializeError(error) });
+      return json(req, { error: "WEBHOOK_CLAIM_FAILED" }, 503);
+    }
 
+    try {
       const object = event.data.object as StripeObject;
       if (
         event.type === "checkout.session.completed" &&

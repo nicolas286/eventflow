@@ -147,6 +147,16 @@ les remboursements et leurs répétitions. Les tests Edge couvrent aussi la
 première connexion concurrente et le filtrage du Checkout réutilisé. Ces tests
 ne remplacent pas une recette Bancontact sandbox après déploiement.
 
+## Reprises des remboursements
+
+La migration `20260930135913` accepte les identifiants Stripe `re_` et `pyr_`
+(Bancontact). Un webhook en erreur conserve son horodatage obligatoire et libère
+son verrou pour permettre une reprise. Un traitement en cours renvoie HTTP 503 ;
+seul un traitement terminé est acquitté comme doublon. La migration ne modifie
+aucun paiement ou remboursement existant. Un ancien événement interrompu puis
+acquitté doit être renvoyé depuis Stripe, sans créer un second remboursement.
+Les tests `stripe-webhook-retries.sql` couvrent ces transitions et les droits SQL.
+
 ## Retour arrière
 
 - Mettre `EVENT_PAYMENT_PROVIDER=disabled` pour bloquer les nouveaux paiements de billets.
