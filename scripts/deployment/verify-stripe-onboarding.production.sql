@@ -1,8 +1,6 @@
 -- Read-only production guard: preserve the existing Stripe Connect pilot.
 -- The rollout migration must have run already; running it now would reset the pilot flag.
 DO $$
-DECLARE
-  allowed_count bigint;
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM supabase_migrations.schema_migrations
@@ -21,16 +19,7 @@ BEGIN
     RAISE EXCEPTION 'Stripe Connect must be disabled by default';
   END IF;
 
-  SELECT count(*) INTO allowed_count
-  FROM public.user_profile
-  WHERE stripe_connect_allowed IS TRUE;
-
-  -- Read-only baseline checked on 2026-09-30 before the Stripe promotion.
-  -- Two users are already authorized; this guard does not grant access.
-  IF allowed_count <> 2 THEN
-    RAISE EXCEPTION 'Expected two existing Stripe Connect authorized users, found %', allowed_count;
-  END IF;
-
+  -- Operators may authorize more users progressively. Do not cap their count.
   IF NOT EXISTS (
     SELECT 1 FROM public.organizations
     WHERE id = '64ee721d-3806-49f1-a351-feb0807c73da'

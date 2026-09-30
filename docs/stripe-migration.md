@@ -173,7 +173,7 @@ accède directement à la configuration Stripe.
 
 Le contrôle préalable a confirmé le compte Connect existant, trois paiements
 payés et un paiement ouvert. Le garde de déploiement conserve cette association
-et vérifie les deux utilisateurs déjà autorisés, sans modifier leurs droits.
+sans limiter le nombre d'utilisateurs autorisés ni modifier leurs droits.
 Les inscriptions publiques restent fermées par le mécanisme production existant.
 
 ## Retour arrière
