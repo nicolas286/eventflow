@@ -202,7 +202,7 @@ describe("Stripe provider boundaries", () => {
     );
   });
 
-  it("creates a Standard account requesting only Bancontact for ticket payments", async () => {
+  it("creates a Standard account with base capabilities and Bancontact", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -236,7 +236,11 @@ describe("Stripe provider boundaries", () => {
     const params = new URLSearchParams(String(init.body));
     expect(
       [...params.entries()].filter(([key]) => key.startsWith("capabilities[")),
-    ).toEqual([["capabilities[bancontact_payments][requested]", "true"]]);
+    ).toEqual([
+      ["capabilities[card_payments][requested]", "true"],
+      ["capabilities[transfers][requested]", "true"],
+      ["capabilities[bancontact_payments][requested]", "true"],
+    ]);
   });
 
   it("loads the real capabilities when resuming an existing account", async () => {

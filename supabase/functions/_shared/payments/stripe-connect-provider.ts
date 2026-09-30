@@ -104,7 +104,10 @@ export class StripeConnectedAccountProvider implements ConnectedAccountProvider 
           email: input.email,
           "business_profile[name]": input.displayName,
           "metadata[eventflow_org_id]": input.orgId,
-          // Ticket payments use Bancontact direct charges only.
+          // Stripe requires the base payment and transfer capabilities for
+          // connected accounts; Checkout still offers Bancontact only.
+          "capabilities[card_payments][requested]": true,
+          "capabilities[transfers][requested]": true,
           "capabilities[bancontact_payments][requested]": true,
         },
       },
