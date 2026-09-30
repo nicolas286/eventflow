@@ -192,6 +192,12 @@ Le back-office permet de préparer, prévisualiser, publier, planifier et retire
 
 L’édition d’un brouillon n’a aucun effet externe. La publication, le remplacement ou le retrait d’un message global exige une confirmation, un step-up récent et une entrée d’audit. Le frontend récupère le message actif via une Edge Function avec un contrat public minimal ; les brouillons et métadonnées internes ne sont jamais exposés.
 
+### Campagnes e-mail aux organisations
+
+Le même espace de communication permet d’envoyer un message à une organisation précise ou à toutes les organisations. Les destinataires sont reconstruits côté serveur à partir des propriétaires confirmés, dédupliqués et limités à 100 par campagne. Le navigateur ne fournit jamais une liste libre d’adresses.
+
+Chaque campagne exige un objet, un message en texte, un motif interne et une clé d’idempotence. L’envoi est une action critique liée à sa cible, avec step-up TOTP à usage unique. La campagne et chaque livraison sont conservées dans des tables privées avec auteur, cible, compteurs et statut, sans exposer les adresses dans les réponses d’historique. Sur staging, les e-mails restent obligatoirement capturés dans `mail-previews` et aucun prestataire live n’est appelé.
+
 ### Ouverture et coupure des inscriptions
 
 Un contrôle global permet d’autoriser ou de refuser la création de nouvelles inscriptions et commandes sur l’ensemble de la plateforme :
@@ -333,6 +339,7 @@ Chaque mutation doit avoir une confirmation adaptée, un motif lorsque pertinent
 
 - Exposer l’état courant et le message actif via des Edge Functions à contrats minimaux.
 - Ajouter l’éditeur, l’aperçu et la publication du message global.
+- Ajouter les campagnes e-mail ciblées ou globales avec destinataires serveur, idempotence, capture staging et historique privé.
 - Ajouter le contrôle global des inscriptions en conservant `closed` comme état initial.
 - Faire appliquer la fermeture par le serveur au point de création des inscriptions et commandes, sans dépendre de l’interface.
 - Protéger publication, retrait, ouverture et coupure par confirmation, step-up et audit.
@@ -363,6 +370,7 @@ Chaque mutation doit avoir une confirmation adaptée, un motif lorsque pertinent
 - inscriptions fermées : toute création est refusée côté serveur, y compris par appel direct, tandis que les données existantes restent consultables ;
 - déploiement ou migration de la configuration : les inscriptions restent fermées jusqu’à une réouverture explicite ;
 - message global : brouillon invisible publiquement, contenu assaini, dates et audiences respectées, publication/retrait audités ;
+- campagne e-mail : destinataires imposés par le serveur, limite respectée, preuve de step-up obligatoire, contenu HTML échappé, reprise idempotente et capture staging sans envoi live ;
 - deux organisations synthétiques : aucune fuite via les routes organisateur ;
 - pagination, filtres, limites et payloads invalides ;
 - onboarding répété avec la même clé : pas de doublon ;
@@ -378,6 +386,7 @@ Chaque mutation doit avoir une confirmation adaptée, un motif lorsque pertinent
 - Le navigateur ne peut obtenir aucune donnée plateforme par accès direct aux tables, vues, RPC ou fichiers ; toutes les fonctionnalités passent par les Edge Functions prévues.
 - Toute action critique exige une réauthentification récente vérifiée côté serveur et sa preuve ne peut être ni rejouée ni utilisée pour une autre action.
 - Un administrateur peut publier ou retirer un message global, avec aperçu, audience, planification et historique audité.
+- Un administrateur peut envoyer un e-mail à une organisation ou à toutes les organisations, avec ciblage serveur, step-up, idempotence et historique de livraison.
 - Un administrateur peut ouvrir ou couper les inscriptions globalement ; la fermeture est appliquée côté serveur et l’état initial reste fermé pendant la refonte.
 - La liste des organisations est paginée, filtrable et ne révèle pas de données inutiles.
 - L’onboarding crée ou invite le propriétaire attendu et ne rattache jamais l’administrateur Eventflow comme owner.

@@ -8,6 +8,7 @@ export const platformActionSchema = z.enum([
   "settings.registrations.set",
   "announcements.publish",
   "announcements.retire",
+  "communications.email.send",
   "organizations.onboard",
   "organizations.status",
   "organizations.plan",
@@ -106,9 +107,7 @@ export const platformOrganizationSummarySchema = z.object({
 
 export const platformOrganizationsPageSchema = z.object({
   items: z.array(platformOrganizationSummarySchema),
-  nextCursor: z
-    .object({ createdAt: isoDateSchema, id: z.uuid() })
-    .nullable(),
+  nextCursor: z.object({ createdAt: isoDateSchema, id: z.uuid() }).nullable(),
 });
 
 const platformMemberSchema = z.object({
@@ -199,6 +198,52 @@ export const platformConfigurationSchema = z.object({
   announcements: z.array(platformAnnouncementSchema),
 });
 
+export const platformEmailCampaignRequestSchema = z
+  .object({
+    target: z.enum(["all", "organization"]),
+    organizationId: z.uuid().nullable(),
+    subject: z
+      .string()
+      .trim()
+      .min(1)
+      .max(160)
+      .regex(/^[^\r\n]+$/),
+    body: z.string().trim().min(1).max(10000),
+    reason: z.string().trim().min(3).max(1000),
+    idempotencyKey: z.uuid(),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      (value.target === "all" && value.organizationId === null) ||
+      (value.target === "organization" && value.organizationId !== null),
+    { message: "PLATFORM_EMAIL_TARGET_INVALID", path: ["organizationId"] },
+  );
+
+export const platformEmailCampaignResultSchema = z.object({
+  id: z.uuid(),
+  status: z.enum(["sending", "completed", "partial", "failed"]),
+  recipientCount: z.number().int().min(1).max(100),
+  sentCount: z.number().int().nonnegative(),
+  failedCount: z.number().int().nonnegative(),
+  createdAt: isoDateSchema,
+  completedAt: nullableIsoDateSchema,
+});
+
+export const platformEmailCampaignSchema =
+  platformEmailCampaignResultSchema.extend({
+    target: z.enum(["all", "organization"]),
+    organizationId: z.uuid().nullable(),
+    organizationName: z.string().nullable(),
+    subject: z.string(),
+    reason: z.string(),
+    actorEmail: z.email(),
+  });
+
+export const platformCommunicationsSchema = z.object({
+  items: z.array(platformEmailCampaignSchema),
+});
+
 export const platformPublicConfigSchema = z.object({
   registrationsOpen: z.boolean(),
   registrationPublicMessage: z.string(),
@@ -253,7 +298,8 @@ export const platformAnnouncementDraftRequestSchema = z
   .strict()
   .refine(
     (value) =>
-      !value.startsAt || !value.endsAt ||
+      !value.startsAt ||
+      !value.endsAt ||
       Date.parse(value.endsAt) > Date.parse(value.startsAt),
     { message: "ANNOUNCEMENT_WINDOW_INVALID", path: ["endsAt"] },
   );
@@ -313,29 +359,33 @@ export const platformAuditSchema = z.object({
 });
 
 export const platformFinanceSchema = z.object({
-  subscriptions: z.array(z.object({
-    orgId: z.uuid(),
-    organizationName: z.string(),
-    provider: z.string(),
-    plan: z.string().nullable(),
-    status: z.string(),
-    currentPeriodStart: nullableIsoDateSchema,
-    currentPeriodEnd: nullableIsoDateSchema,
-    updatedAt: isoDateSchema,
-  })),
-  invoices: z.array(z.object({
-    id: z.uuid(),
-    orgId: z.uuid(),
-    organizationName: z.string(),
-    number: z.string().nullable(),
-    status: z.string(),
-    totalCents: moneySchema,
-    currency: z.string().length(3),
-    issuedAt: nullableIsoDateSchema,
-    dueAt: nullableIsoDateSchema,
-    paidAt: nullableIsoDateSchema,
-    createdAt: isoDateSchema,
-  })),
+  subscriptions: z.array(
+    z.object({
+      orgId: z.uuid(),
+      organizationName: z.string(),
+      provider: z.string(),
+      plan: z.string().nullable(),
+      status: z.string(),
+      currentPeriodStart: nullableIsoDateSchema,
+      currentPeriodEnd: nullableIsoDateSchema,
+      updatedAt: isoDateSchema,
+    }),
+  ),
+  invoices: z.array(
+    z.object({
+      id: z.uuid(),
+      orgId: z.uuid(),
+      organizationName: z.string(),
+      number: z.string().nullable(),
+      status: z.string(),
+      totalCents: moneySchema,
+      currency: z.string().length(3),
+      issuedAt: nullableIsoDateSchema,
+      dueAt: nullableIsoDateSchema,
+      paidAt: nullableIsoDateSchema,
+      createdAt: isoDateSchema,
+    }),
+  ),
   paymentTotals: z.object({
     paidCents: moneySchema,
     refundedCents: moneySchema,
@@ -350,56 +400,81 @@ const platformOperationBaseSchema = z.object({
 });
 
 export const platformOperationsSchema = z.object({
-  staleOrders: z.array(platformOperationBaseSchema.extend({
-    id: z.uuid(),
-    status: z.string(),
-    totalCents: moneySchema,
-    createdAt: isoDateSchema,
-  })),
-  emailFailures: z.array(platformOperationBaseSchema.extend({
-    id: z.uuid(),
-    error: z.string(),
-    updatedAt: isoDateSchema,
-  })),
-  invoiceFailures: z.array(platformOperationBaseSchema.extend({
-    invoiceId: z.uuid(),
-    status: z.string(),
-    errorCode: z.string().nullable(),
-    errorMessage: z.string().nullable(),
-    updatedAt: isoDateSchema,
-  })),
-  paymentConnections: z.array(z.object({
-    id: z.uuid(),
-    name: z.string(),
-    paymentsProvider: z.string(),
-    paymentsStatus: z.string(),
-    paymentsLiveReady: z.boolean(),
-    paymentsAccountUpdatedAt: nullableIsoDateSchema,
-    updatedAt: isoDateSchema,
-  })),
+  staleOrders: z.array(
+    platformOperationBaseSchema.extend({
+      id: z.uuid(),
+      status: z.string(),
+      totalCents: moneySchema,
+      createdAt: isoDateSchema,
+    }),
+  ),
+  emailFailures: z.array(
+    platformOperationBaseSchema.extend({
+      id: z.uuid(),
+      error: z.string(),
+      updatedAt: isoDateSchema,
+    }),
+  ),
+  invoiceFailures: z.array(
+    platformOperationBaseSchema.extend({
+      invoiceId: z.uuid(),
+      status: z.string(),
+      errorCode: z.string().nullable(),
+      errorMessage: z.string().nullable(),
+      updatedAt: isoDateSchema,
+    }),
+  ),
+  paymentConnections: z.array(
+    z.object({
+      id: z.uuid(),
+      name: z.string(),
+      paymentsProvider: z.string(),
+      paymentsStatus: z.string(),
+      paymentsLiveReady: z.boolean(),
+      paymentsAccountUpdatedAt: nullableIsoDateSchema,
+      updatedAt: isoDateSchema,
+    }),
+  ),
 });
 
 export const platformAdminsSchema = z.object({
-  items: z.array(z.object({
-    userId: z.uuid(),
-    email: z.email(),
-    firstName: z.string().nullable(),
-    lastName: z.string().nullable(),
-    grantedAt: isoDateSchema,
-    grantedBy: z.uuid().nullable(),
-    revokedAt: nullableIsoDateSchema,
-    note: z.string().nullable(),
-  })),
+  items: z.array(
+    z.object({
+      userId: z.uuid(),
+      email: z.email(),
+      firstName: z.string().nullable(),
+      lastName: z.string().nullable(),
+      grantedAt: isoDateSchema,
+      grantedBy: z.uuid().nullable(),
+      revokedAt: nullableIsoDateSchema,
+      note: z.string().nullable(),
+    }),
+  ),
 });
 
 export type PlatformAction = z.infer<typeof platformActionSchema>;
 export type PlatformAccess = z.infer<typeof platformAccessSchema>;
 export type PlatformOverview = z.infer<typeof platformOverviewSchema>;
-export type PlatformOrganizationsPage = z.infer<typeof platformOrganizationsPageSchema>;
-export type PlatformOrganizationDetail = z.infer<typeof platformOrganizationDetailSchema>;
+export type PlatformOrganizationsPage = z.infer<
+  typeof platformOrganizationsPageSchema
+>;
+export type PlatformOrganizationDetail = z.infer<
+  typeof platformOrganizationDetailSchema
+>;
 export type PlatformConfiguration = z.infer<typeof platformConfigurationSchema>;
+export type PlatformEmailCampaignRequest = z.infer<
+  typeof platformEmailCampaignRequestSchema
+>;
+export type PlatformEmailCampaignResult = z.infer<
+  typeof platformEmailCampaignResultSchema
+>;
+export type PlatformCommunications = z.infer<
+  typeof platformCommunicationsSchema
+>;
 export type PlatformPublicConfig = z.infer<typeof platformPublicConfigSchema>;
-export type PlatformOnboardingRequest = z.infer<typeof platformOnboardingRequestSchema>;
+export type PlatformOnboardingRequest = z.infer<
+  typeof platformOnboardingRequestSchema
+>;
 export type PlatformFinance = z.infer<typeof platformFinanceSchema>;
 export type PlatformOperations = z.infer<typeof platformOperationsSchema>;
 export type PlatformAdmins = z.infer<typeof platformAdminsSchema>;

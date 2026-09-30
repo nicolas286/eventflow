@@ -7,6 +7,9 @@ import {
   platformAnnouncementDraftRequestSchema,
   platformAuditSchema,
   platformConfigurationSchema,
+  platformCommunicationsSchema,
+  platformEmailCampaignRequestSchema,
+  platformEmailCampaignResultSchema,
   platformFinanceSchema,
   platformOnboardingRequestSchema,
   platformOrganizationDetailSchema,
@@ -25,6 +28,7 @@ import {
 import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
 import { platformAdminRateLimits } from "../_shared/app/config/rate-limits.ts";
 import { json } from "../_shared/app/http.ts";
+import { sendEmailOrThrow } from "../_shared/app/email.ts";
 import {
   BodyTooLargeError,
   readLimitedJson,
@@ -46,21 +50,56 @@ import {
 
 const MAX_BODY_BYTES = 64 * 1024;
 const overviewQuerySchema = z.coerce.number().int().min(7).max(365);
-const organizationsQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(25),
-  search: z.string().trim().max(120).default(""),
-  status: z.union([z.enum(["trial", "active", "suspended"]), z.literal("")]).default(""),
-  plan: z.union([z.enum(["free", "starter", "pro"]), z.literal("")]).default(""),
-  paymentsProvider: z.union([z.enum(["mollie", "stripe", "bank_transfer"]), z.literal("")]).default(""),
-  paymentsStatus: z.union([z.enum(["not_connected", "pending", "connected", "revoked"]), z.literal("")]).default(""),
-  cursorCreatedAt: z.union([z.iso.datetime({ offset: true }), z.literal("")]).default(""),
-  cursorId: z.union([z.uuid(), z.literal("")]).default(""),
-}).refine((value) => Boolean(value.cursorCreatedAt) === Boolean(value.cursorId), {
-  message: "PLATFORM_CURSOR_INCOMPLETE",
-});
+const organizationsQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(100).default(25),
+    search: z.string().trim().max(120).default(""),
+    status: z
+      .union([z.enum(["trial", "active", "suspended"]), z.literal("")])
+      .default(""),
+    plan: z
+      .union([z.enum(["free", "starter", "pro"]), z.literal("")])
+      .default(""),
+    paymentsProvider: z
+      .union([z.enum(["mollie", "stripe", "bank_transfer"]), z.literal("")])
+      .default(""),
+    paymentsStatus: z
+      .union([
+        z.enum(["not_connected", "pending", "connected", "revoked"]),
+        z.literal(""),
+      ])
+      .default(""),
+    cursorCreatedAt: z
+      .union([z.iso.datetime({ offset: true }), z.literal("")])
+      .default(""),
+    cursorId: z.union([z.uuid(), z.literal("")]).default(""),
+  })
+  .refine(
+    (value) => Boolean(value.cursorCreatedAt) === Boolean(value.cursorId),
+    {
+      message: "PLATFORM_CURSOR_INCOMPLETE",
+    },
+  );
 const auditQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
-  cursorCreatedAt: z.union([z.iso.datetime({ offset: true }), z.literal("")]).default(""),
+  cursorCreatedAt: z
+    .union([z.iso.datetime({ offset: true }), z.literal("")])
+    .default(""),
+});
+const emailCampaignDeliverySchema = z.object({
+  id: z.uuid(),
+  subject: z.string().min(1).max(160),
+  body: z.string().min(1).max(10000),
+  deliveries: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        email: z.email(),
+        organizationId: z.uuid(),
+        organizationName: z.string(),
+      }),
+    )
+    .max(100),
 });
 
 function camelize(value: unknown): unknown {
@@ -118,15 +157,32 @@ async function rpcJson(
     throw conflict("PLATFORM_CONFLICT");
   }
   if (message.includes("PLATFORM_")) {
-    throw badRequest(message.match(/PLATFORM_[A-Z0-9_]+/)?.[0] ?? "PLATFORM_INVALID_REQUEST");
+    throw badRequest(
+      message.match(/PLATFORM_[A-Z0-9_]+/)?.[0] ?? "PLATFORM_INVALID_REQUEST",
+    );
   }
   throw error;
 }
 
 function stepUpToken(req: Request): string {
   const token = req.headers.get("x-platform-step-up")?.trim();
-  if (!token || token.length > 512) throw forbidden("PLATFORM_STEP_UP_REQUIRED");
+  if (!token || token.length > 512)
+    throw forbidden("PLATFORM_STEP_UP_REQUIRED");
   return token;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function campaignHtml(body: string, organizationName: string): string {
+  const safeBody = escapeHtml(body).replaceAll("\n", "<br>");
+  return `<!doctype html><html lang="fr"><body style="margin:0;background:#f4f7fb;color:#14213d;font-family:Arial,sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td style="padding:32px 16px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;margin:auto;background:#fff;border:1px solid #dce4ef;border-radius:16px"><tr><td style="padding:28px"><p style="margin:0 0 20px;color:#3157d5;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase">Eventflow · Information plateforme</p><p style="margin:0 0 18px;font-size:16px">Bonjour ${escapeHtml(organizationName)},</p><div style="font-size:16px;line-height:1.65">${safeBody}</div><p style="margin:28px 0 0;padding-top:18px;border-top:1px solid #e7edf5;color:#66758c;font-size:13px">L’équipe Eventflow</p></td></tr></table></td></tr></table></body></html>`;
 }
 
 async function mutate(input: {
@@ -157,7 +213,8 @@ async function mutate(input: {
       aal: input.aal,
       action: input.action,
       targetId: mutationTarget(input.payload),
-      reason: typeof input.payload.reason === "string" ? input.payload.reason : null,
+      reason:
+        typeof input.payload.reason === "string" ? input.payload.reason : null,
       error,
     });
     throw error;
@@ -181,9 +238,10 @@ async function auditFailure(input: {
   reason: string | null;
   error: unknown;
 }) {
-  const errorCode = input.error instanceof ResponseError
-    ? input.error.code
-    : "UNEXPECTED_ERROR";
+  const errorCode =
+    input.error instanceof ResponseError
+      ? input.error.code
+      : "UNEXPECTED_ERROR";
   try {
     await input.serviceClient.rpc("platform_admin_mutate", {
       p_user_id: input.userId,
@@ -209,9 +267,13 @@ async function findAuthUserByEmail(
   serviceClient: SupabaseClient,
   email: string,
 ): Promise<{ id: string; email: string } | null> {
-  const result = await rpcJson(serviceClient, "platform_find_auth_user_by_email", {
-    p_email: email,
-  });
+  const result = await rpcJson(
+    serviceClient,
+    "platform_find_auth_user_by_email",
+    {
+      p_email: email,
+    },
+  );
   if (!result) return null;
   const parsed = z.object({ id: z.uuid(), email: z.email() }).safeParse(result);
   if (!parsed.success) throw new Error("PLATFORM_AUTH_USER_RESPONSE_INVALID");
@@ -225,9 +287,8 @@ async function inviteOwner(input: {
   lastName: string;
 }) {
   const appBaseUrl = Deno.env.get("APP_BASE_URL")?.trim();
-  const { data, error } = await input.serviceClient.auth.admin.inviteUserByEmail(
-    input.email,
-    {
+  const { data, error } =
+    await input.serviceClient.auth.admin.inviteUserByEmail(input.email, {
       data: {
         first_name: input.firstName,
         last_name: input.lastName,
@@ -236,8 +297,7 @@ async function inviteOwner(input: {
       ...(appBaseUrl
         ? { redirectTo: `${appBaseUrl.replace(/\/$/, "")}/admin/login` }
         : {}),
-    },
-  );
+    });
   if (error || !data.user) throw conflict("PLATFORM_INVITATION_FAILED");
   return data.user;
 }
@@ -312,7 +372,10 @@ export const handlePlatformAdminRequest = createEdgeHandler(
         p_target_id: body.targetId,
         p_expires_at: expiresAt,
       });
-      return json(req, platformStepUpResponseSchema.parse({ token, expiresAt }));
+      return json(
+        req,
+        platformStepUpResponseSchema.parse({ token, expiresAt }),
+      );
     }
 
     if (req.method === "GET" && path.length === 1 && path[0] === "overview") {
@@ -326,7 +389,11 @@ export const handlePlatformAdminRequest = createEdgeHandler(
       return json(req, platformOverviewSchema.parse(data));
     }
 
-    if (req.method === "GET" && path.length === 1 && path[0] === "organizations") {
+    if (
+      req.method === "GET" &&
+      path.length === 1 &&
+      path[0] === "organizations"
+    ) {
       const query = new URL(req.url).searchParams;
       const filters = organizationsQuerySchema.parse({
         limit: query.get("limit") ?? undefined,
@@ -346,7 +413,11 @@ export const handlePlatformAdminRequest = createEdgeHandler(
       return json(req, platformOrganizationsPageSchema.parse(data));
     }
 
-    if (req.method === "GET" && path.length === 2 && path[0] === "organizations") {
+    if (
+      req.method === "GET" &&
+      path.length === 2 &&
+      path[0] === "organizations"
+    ) {
       const orgId = z.uuid().parse(path[1]);
       const data = await rpcJson(serviceClient, "platform_admin_read", {
         ...baseReadArgs,
@@ -356,27 +427,52 @@ export const handlePlatformAdminRequest = createEdgeHandler(
       return json(req, platformOrganizationDetailSchema.parse(data));
     }
 
-    if (req.method === "GET" && path.length === 1 && ["finance", "operations", "admins"].includes(path[0])) {
+    if (
+      req.method === "GET" &&
+      path.length === 1 &&
+      ["finance", "operations", "admins"].includes(path[0])
+    ) {
       const data = await rpcJson(serviceClient, "platform_admin_read", {
         ...baseReadArgs,
         p_resource: path[0],
         p_params: { limit: 50 },
       });
-      const schema = path[0] === "finance"
-        ? platformFinanceSchema
-        : path[0] === "operations"
-        ? platformOperationsSchema
-        : platformAdminsSchema;
+      const schema =
+        path[0] === "finance"
+          ? platformFinanceSchema
+          : path[0] === "operations"
+            ? platformOperationsSchema
+            : platformAdminsSchema;
       return json(req, schema.parse(data));
     }
 
-    if (req.method === "GET" && path.length === 1 && path[0] === "configuration") {
+    if (
+      req.method === "GET" &&
+      path.length === 1 &&
+      path[0] === "configuration"
+    ) {
       const data = await rpcJson(serviceClient, "platform_admin_read", {
         ...baseReadArgs,
         p_resource: "configuration",
         p_params: {},
       });
       return json(req, platformConfigurationSchema.parse(data));
+    }
+
+    if (
+      req.method === "GET" &&
+      path.length === 1 &&
+      path[0] === "communications"
+    ) {
+      const data = await rpcJson(
+        serviceClient,
+        "platform_admin_read_email_campaigns",
+        {
+          ...baseReadArgs,
+          p_limit: 30,
+        },
+      );
+      return json(req, platformCommunicationsSchema.parse(data));
     }
 
     if (req.method === "GET" && path.length === 1 && path[0] === "audit") {
@@ -393,7 +489,11 @@ export const handlePlatformAdminRequest = createEdgeHandler(
       return json(req, platformAuditSchema.parse(data));
     }
 
-    if (req.method === "POST" && path.length === 1 && path[0] === "onboarding") {
+    if (
+      req.method === "POST" &&
+      path.length === 1 &&
+      path[0] === "onboarding"
+    ) {
       const body = await parseBody(req, platformOnboardingRequestSchema);
       const payloadHash = await sha256Hex(JSON.stringify(body));
       await rpcJson(serviceClient, "platform_admin_authorize_onboarding", {
@@ -447,7 +547,11 @@ export const handlePlatformAdminRequest = createEdgeHandler(
       return json(req, { ...(result as object), invitationSent }, 201);
     }
 
-    if (req.method === "PATCH" && path.length === 3 && path[0] === "organizations") {
+    if (
+      req.method === "PATCH" &&
+      path.length === 3 &&
+      path[0] === "organizations"
+    ) {
       const orgId = z.uuid().parse(path[1]);
       const action = path[2];
       let mutationAction: string;
@@ -455,13 +559,22 @@ export const handlePlatformAdminRequest = createEdgeHandler(
 
       if (action === "status") {
         mutationAction = "organizations.status";
-        payload = { ...(await parseBody(req, platformOrganizationStatusRequestSchema)), orgId };
+        payload = {
+          ...(await parseBody(req, platformOrganizationStatusRequestSchema)),
+          orgId,
+        };
       } else if (action === "plan") {
         mutationAction = "organizations.plan";
-        payload = { ...(await parseBody(req, platformOrganizationPlanRequestSchema)), orgId };
+        payload = {
+          ...(await parseBody(req, platformOrganizationPlanRequestSchema)),
+          orgId,
+        };
       } else if (action === "owner") {
         mutationAction = "organizations.owner";
-        const body = await parseBody(req, platformOrganizationOwnerRequestSchema);
+        const body = await parseBody(
+          req,
+          platformOrganizationOwnerRequestSchema,
+        );
         const owner = await findAuthUserByEmail(serviceClient, body.ownerEmail);
         if (!owner) throw notFound("PLATFORM_OWNER_NOT_FOUND");
         payload = { ...body, orgId, ownerUserId: owner.id };
@@ -469,71 +582,211 @@ export const handlePlatformAdminRequest = createEdgeHandler(
         throw notFound("NOT_FOUND");
       }
 
-      return json(req, await mutate({
-        serviceClient,
-        userId: user.id,
-        sessionId: claims.sessionId,
-        aal: claims.aal,
-        action: mutationAction,
-        payload,
-        rawStepUpToken: stepUpToken(req),
-      }));
+      return json(
+        req,
+        await mutate({
+          serviceClient,
+          userId: user.id,
+          sessionId: claims.sessionId,
+          aal: claims.aal,
+          action: mutationAction,
+          payload,
+          rawStepUpToken: stepUpToken(req),
+        }),
+      );
     }
 
-    if (req.method === "PATCH" && path.length === 2 && path[0] === "configuration" && path[1] === "registrations") {
-      const body = await parseBody(req, platformRegistrationSettingsRequestSchema);
-      return json(req, await mutate({
-        serviceClient,
-        userId: user.id,
-        sessionId: claims.sessionId,
-        aal: claims.aal,
-        action: "settings.registrations.set",
-        payload: body,
-        rawStepUpToken: stepUpToken(req),
-      }));
+    if (
+      req.method === "PATCH" &&
+      path.length === 2 &&
+      path[0] === "configuration" &&
+      path[1] === "registrations"
+    ) {
+      const body = await parseBody(
+        req,
+        platformRegistrationSettingsRequestSchema,
+      );
+      return json(
+        req,
+        await mutate({
+          serviceClient,
+          userId: user.id,
+          sessionId: claims.sessionId,
+          aal: claims.aal,
+          action: "settings.registrations.set",
+          payload: body,
+          rawStepUpToken: stepUpToken(req),
+        }),
+      );
     }
 
-    if (req.method === "POST" && path.length === 2 && path[0] === "announcements" && path[1] === "draft") {
+    if (
+      req.method === "POST" &&
+      path.length === 2 &&
+      path[0] === "announcements" &&
+      path[1] === "draft"
+    ) {
       const body = await parseBody(req, platformAnnouncementDraftRequestSchema);
-      return json(req, await mutate({
-        serviceClient,
-        userId: user.id,
-        sessionId: claims.sessionId,
-        aal: claims.aal,
-        action: "announcements.save",
-        payload: body,
-      }));
+      return json(
+        req,
+        await mutate({
+          serviceClient,
+          userId: user.id,
+          sessionId: claims.sessionId,
+          aal: claims.aal,
+          action: "announcements.save",
+          payload: body,
+        }),
+      );
     }
 
-    if (req.method === "POST" && path.length === 3 && path[0] === "announcements" && ["publish", "retire"].includes(path[2])) {
+    if (
+      req.method === "POST" &&
+      path.length === 2 &&
+      path[0] === "communications" &&
+      path[1] === "email"
+    ) {
+      const body = await parseBody(req, platformEmailCampaignRequestSchema);
+      const rawStepUpToken = stepUpToken(req);
+      let created;
+      try {
+        created = platformEmailCampaignResultSchema.parse(
+          await rpcJson(
+            serviceClient,
+            "platform_admin_create_email_campaign",
+            {
+              ...baseReadArgs,
+              p_payload: body,
+              p_step_up_hash: await sha256Hex(rawStepUpToken),
+            },
+          ),
+        );
+      } catch (error) {
+        await auditFailure({
+          serviceClient,
+          userId: user.id,
+          sessionId: claims.sessionId,
+          aal: claims.aal,
+          action: "communications.email.send",
+          targetId:
+            body.target === "all"
+              ? "all-organizations"
+              : body.organizationId,
+          reason: body.reason,
+          error,
+        });
+        throw error;
+      }
+      const campaign = emailCampaignDeliverySchema.parse(
+        await rpcJson(
+          serviceClient,
+          "platform_admin_email_campaign_deliveries",
+          { p_campaign_id: created.id },
+        ),
+      );
+
+      for (let offset = 0; offset < campaign.deliveries.length; offset += 5) {
+        await Promise.all(
+          campaign.deliveries.slice(offset, offset + 5).map(async (delivery) => {
+            let result: Awaited<ReturnType<typeof sendEmailOrThrow>>;
+            try {
+              result = await sendEmailOrThrow({
+                to: delivery.email,
+                subject: campaign.subject,
+                text: `Bonjour ${delivery.organizationName},\n\n${campaign.body}\n\nL’équipe Eventflow`,
+                html: campaignHtml(campaign.body, delivery.organizationName),
+                tags: {
+                  source: "platform-admin",
+                  campaign: created.id,
+                },
+                idempotencyKey: `platform-email/${created.id}/${delivery.id}`,
+              });
+            } catch {
+              await rpcJson(
+                serviceClient,
+                "platform_admin_record_email_delivery",
+                {
+                  p_campaign_id: created.id,
+                  p_delivery_id: delivery.id,
+                  p_success: false,
+                  p_provider: null,
+                  p_provider_message_id: null,
+                  p_error_code: "MAIL_SERVICE_FAILED",
+                },
+              );
+              return;
+            }
+            await rpcJson(
+              serviceClient,
+              "platform_admin_record_email_delivery",
+              {
+                p_campaign_id: created.id,
+                p_delivery_id: delivery.id,
+                p_success: true,
+                p_provider: result.provider,
+                p_provider_message_id: result.id,
+                p_error_code: null,
+              },
+            );
+          }),
+        );
+      }
+
+      const result = await rpcJson(
+        serviceClient,
+        "platform_admin_finish_email_campaign",
+        {
+          p_campaign_id: created.id,
+        },
+      );
+      return json(req, platformEmailCampaignResultSchema.parse(result), 201);
+    }
+
+    if (
+      req.method === "POST" &&
+      path.length === 3 &&
+      path[0] === "announcements" &&
+      ["publish", "retire"].includes(path[2])
+    ) {
       const id = z.uuid().parse(path[1]);
       const body = await parseBody(req, platformSimpleMutationSchema);
       const action = `announcements.${path[2]}`;
-      return json(req, await mutate({
-        serviceClient,
-        userId: user.id,
-        sessionId: claims.sessionId,
-        aal: claims.aal,
-        action,
-        payload: { ...body, id },
-        rawStepUpToken: stepUpToken(req),
-      }));
+      return json(
+        req,
+        await mutate({
+          serviceClient,
+          userId: user.id,
+          sessionId: claims.sessionId,
+          aal: claims.aal,
+          action,
+          payload: { ...body, id },
+          rawStepUpToken: stepUpToken(req),
+        }),
+      );
     }
 
-    if (req.method === "POST" && path.length === 2 && path[0] === "admins" && ["grant", "revoke"].includes(path[1])) {
+    if (
+      req.method === "POST" &&
+      path.length === 2 &&
+      path[0] === "admins" &&
+      ["grant", "revoke"].includes(path[1])
+    ) {
       const body = await parseBody(req, platformAdminAccessRequestSchema);
       const target = await findAuthUserByEmail(serviceClient, body.email);
       if (!target) throw notFound("PLATFORM_ADMIN_USER_NOT_FOUND");
       const action = `admins.${path[1]}`;
-      return json(req, await mutate({
-        serviceClient,
-        userId: user.id,
-        sessionId: claims.sessionId,
-        aal: claims.aal,
-        action,
-        payload: { ...body, userId: target.id },
-        rawStepUpToken: stepUpToken(req),
-      }));
+      return json(
+        req,
+        await mutate({
+          serviceClient,
+          userId: user.id,
+          sessionId: claims.sessionId,
+          aal: claims.aal,
+          action,
+          payload: { ...body, userId: target.id },
+          rawStepUpToken: stepUpToken(req),
+        }),
+      );
     }
 
     throw notFound("NOT_FOUND");

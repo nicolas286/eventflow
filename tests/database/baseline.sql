@@ -163,7 +163,9 @@ BEGIN
     'platform_step_up_grants',
     'platform_settings',
     'platform_announcements',
-    'platform_onboarding_operations'
+    'platform_onboarding_operations',
+    'platform_email_campaigns',
+    'platform_email_deliveries'
   ] LOOP
     IF to_regclass('private.' || v_table) IS NULL THEN
       RAISE EXCEPTION 'Missing private platform table: %', v_table;
@@ -187,6 +189,16 @@ BEGIN
   IF has_function_privilege('anon', 'public.platform_admin_read(uuid,uuid,text,text,jsonb)', 'EXECUTE')
      OR has_function_privilege('authenticated', 'public.platform_admin_read(uuid,uuid,text,text,jsonb)', 'EXECUTE')
      OR has_function_privilege('authenticated', 'public.platform_admin_mutate(uuid,uuid,text,text,jsonb,text)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.platform_admin_create_email_campaign(uuid,uuid,text,jsonb,text)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.platform_admin_create_email_campaign(uuid,uuid,text,jsonb,text)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.platform_admin_read_email_campaigns(uuid,uuid,text,integer)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.platform_admin_read_email_campaigns(uuid,uuid,text,integer)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.platform_admin_email_campaign_deliveries(uuid)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.platform_admin_email_campaign_deliveries(uuid)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.platform_admin_record_email_delivery(uuid,uuid,boolean,text,text,text)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.platform_admin_record_email_delivery(uuid,uuid,boolean,text,text,text)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.platform_admin_finish_email_campaign(uuid)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.platform_admin_finish_email_campaign(uuid)', 'EXECUTE')
      OR has_function_privilege('authenticated', 'public.platform_public_config(text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Platform RPC boundary is directly accessible from a browser role';
   END IF;
@@ -194,6 +206,11 @@ BEGIN
   IF NOT has_function_privilege('service_role', 'public.platform_admin_read(uuid,uuid,text,text,jsonb)', 'EXECUTE')
      OR NOT has_function_privilege('service_role', 'public.platform_admin_mutate(uuid,uuid,text,text,jsonb,text)', 'EXECUTE')
      OR NOT has_function_privilege('service_role', 'public.platform_admin_authorize_onboarding(uuid,uuid,text,uuid,text,text,text)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.platform_admin_create_email_campaign(uuid,uuid,text,jsonb,text)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.platform_admin_read_email_campaigns(uuid,uuid,text,integer)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.platform_admin_email_campaign_deliveries(uuid)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.platform_admin_record_email_delivery(uuid,uuid,boolean,text,text,text)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.platform_admin_finish_email_campaign(uuid)', 'EXECUTE')
      OR NOT has_function_privilege('service_role', 'public.platform_public_config(text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Platform Edge Functions cannot reach their service-only RPCs';
   END IF;

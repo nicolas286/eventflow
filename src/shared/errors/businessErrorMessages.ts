@@ -11,6 +11,18 @@ export function humanBusinessMessage(msg: string): string | null {
   // ------------------------------------------------------------------
 
   const exactMessages: Record<string, string> = {
+    PLATFORM_EMAIL_NO_RECIPIENTS:
+      "Aucun propriétaire avec une adresse e-mail confirmée n’a été trouvé pour cette sélection.",
+
+    PLATFORM_EMAIL_RECIPIENT_LIMIT:
+      "Cette campagne dépasse la limite de 100 destinataires. Réduisez la sélection avant de réessayer.",
+
+    PLATFORM_INVALID_EMAIL_CAMPAIGN:
+      "La campagne e-mail est invalide. Vérifiez la cible, l’objet, le message et le motif interne.",
+
+    PLATFORM_IDEMPOTENCY_CONFLICT:
+      "Cette tentative d’envoi ne correspond plus au brouillon initial. Rechargez la page avant de réessayer.",
+
     REGISTRATIONS_CLOSED:
       "Les inscriptions sont temporairement fermées pendant la mise à jour de la plateforme.",
 
