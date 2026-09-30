@@ -32,6 +32,7 @@ import {
 import { completeFreeOrderOrThrow } from "./free-order.ts";
 import { assertWidgetAllowedForOrgOrThrow } from "./widget.ts";
 import { createBankTransferPaymentOrThrow } from "./bank-transfer.ts";
+import { assertPlatformRegistrationsOpen } from "../platform-registration.ts";
 
 function json(req: Request, data: unknown, status = 200) {
   return baseJson(
@@ -78,6 +79,8 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       ...registerTicketsRateLimits.ingress,
     });
     if (!ingressRateLimit.allowed) return ingressRateLimit.response;
+
+    await assertPlatformRegistrationsOpen(admin);
 
     const body = await parseRegisterPayload(req);
 

@@ -3,6 +3,7 @@ import { useAuth } from "@providers/AuthProvider/useAuth";
 import { ColorSchemeToggle } from "@shared/ui/components/theme/ColorSchemeToggle";
 import { useLocalColorScheme } from "@shared/ui/components/theme/useLocalColorScheme";
 import "./AdminTheme.css";
+import { PlatformAnnouncementBanner } from "@app/modules/platform/components/PlatformAnnouncementBanner";
 
 export function AdminLayout() {
   const { user, loading } = useAuth();
@@ -13,6 +14,7 @@ export function AdminLayout() {
 
   return (
     <div className="adminThemeRoot" data-theme={colorScheme}>
+      <PlatformAnnouncementBanner audience="organizer" />
       <ColorSchemeToggle
         colorScheme={colorScheme}
         onToggle={toggleColorScheme}

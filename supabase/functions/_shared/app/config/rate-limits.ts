@@ -17,3 +17,11 @@ export const accountRateLimits = {
     windowSeconds: 3_600,
   },
 } as const;
+
+export const platformAdminRateLimits = {
+  api: {
+    scope: "platform-admin:1m",
+    limit: 180,
+    windowSeconds: 60,
+  },
+} as const;

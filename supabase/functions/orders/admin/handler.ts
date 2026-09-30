@@ -7,6 +7,7 @@ import { createEdgeHandler } from "../../_shared/app/edge-handler/mod.ts";
 import { parseAdminRegisterPayload } from "./validation.ts";
 import { ResponseError } from "../../_shared/errors.ts";
 import { type AdminRegisterPayload } from "./adminRegister.contracts.ts";
+import { assertPlatformRegistrationsOpen } from "../platform-registration.ts";
 
 function json(req: Request, data: unknown, status = 200) {
   if (status < 400) adminRegisterSuccessSchema.parse(data);
@@ -39,6 +40,8 @@ export const handleAdminOrderRequest = createEdgeHandler(
   },
   async ({ req, logger, supabase: userClient, serviceClient: admin, user }) => {
     try {
+      await assertPlatformRegistrationsOpen(admin);
+
       const body = await parseAdminRegisterPayload(req, logger);
       const { data: ev, error: evErr } = await admin.from("events").select(
         "id, org_id",

@@ -223,6 +223,8 @@ Deno.test("administrative creation requires membership in the event organization
     urls.push(url);
     const data = url.includes("/auth/v1/user")
       ? { id: orderId, email: "fixture@example.com" }
+      : url.includes("/rpc/platform_public_config")
+      ? { registrationsOpen: true, registrationPublicMessage: "Bienvenue" }
       : url.includes("/events?")
       ? { id: orderId, org_id: "22222222-2222-4222-8222-222222222222" }
       : false;

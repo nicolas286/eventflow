@@ -1,6 +1,6 @@
 # Travaux à reprendre
 
-État au 20 septembre 2026. Les validations effectuées et les travaux restants sont distingués ci-dessous.
+État au 30 septembre 2026. Les validations effectuées et les travaux restants sont distingués ci-dessous.
 
 ## Validé
 
@@ -15,5 +15,6 @@
 5. Améliorer les diagnostics prestataires sans journaliser de secrets ou réponses brutes.
 6. Adapter le contrôle HTTP de déploiement à la protection par mot de passe Netlify du staging, sans désactiver cette protection. Le correctif de déconnexion `18a3b79` est publié ; son workflow échoue au contrôle final anonyme (HTTP 401). Sa promotion en production reste distincte.
 7. Finaliser les suites hors périmètre du [paiement par virement](bank-transfer.md) : réauthentification, politique de confidentialité et rappels éventuels.
+8. Recetter et déployer uniquement sur staging le [back-office plateforme](platform-admin.md) préparé sur `dev` : reconstruction SQL avec Docker, activation TOTP hébergée, attribution contrôlée du premier administrateur, tests négatifs des grants/RLS et vérification des e-mails d’invitation en capture. Aucune promotion production n’est incluse.
 
 Lorsqu'une tâche est terminée, noter la preuve (tests, PR, recette), les limites restantes et mettre à jour ce sommaire.

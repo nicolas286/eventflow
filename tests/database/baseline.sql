@@ -109,6 +109,96 @@ BEGIN
   WHERE key = 'database-baseline:synthetic-key-hash';
 END $$;
 
+DO $$
+DECLARE
+  service_only_functions regprocedure[] := ARRAY[
+    'public.admin_grant_subscription(uuid,text,integer,timestamp with time zone)'::regprocedure,
+    'public.claim_order_confirmation_email(uuid)'::regprocedure,
+    'public.log_email_once(uuid,text)'::regprocedure,
+    'public.mark_order_confirmation_email_error(uuid,text)'::regprocedure,
+    'public.mark_order_confirmation_email_sent(uuid)'::regprocedure,
+    'public.rpc_create_invoice_peppol(jsonb)'::regprocedure,
+    'public.rpc_update_invoice_peppol_status(jsonb)'::regprocedure,
+    'public.check_in_ticket_internal(uuid,uuid)'::regprocedure
+  ];
+  function_oid regprocedure;
+BEGIN
+  FOREACH function_oid IN ARRAY service_only_functions LOOP
+    IF has_function_privilege('anon', function_oid, 'EXECUTE')
+       OR has_function_privilege('authenticated', function_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'Browser role can execute server-only function %', function_oid;
+    END IF;
+
+    IF NOT has_function_privilege('service_role', function_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'service_role cannot execute server-only function %', function_oid;
+    END IF;
+  END LOOP;
+
+  IF has_function_privilege('anon', 'public.admin_delete_order(uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'anon can execute admin_delete_order';
+  END IF;
+
+  IF NOT has_function_privilege(
+    'authenticated', 'public.admin_delete_order(uuid)', 'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Authenticated organizers cannot execute admin_delete_order';
+  END IF;
+
+  IF has_function_privilege('anon', 'public.handle_new_auth_user()', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.handle_new_auth_user()', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.rls_auto_enable()', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.rls_auto_enable()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Browser roles can execute a trigger-only function';
+  END IF;
+END $$;
+
+DO $$
+DECLARE
+  v_table text;
+  v_rls record;
+BEGIN
+  FOREACH v_table IN ARRAY ARRAY[
+    'platform_admins',
+    'platform_audit_log',
+    'platform_step_up_grants',
+    'platform_settings',
+    'platform_announcements',
+    'platform_onboarding_operations'
+  ] LOOP
+    IF to_regclass('private.' || v_table) IS NULL THEN
+      RAISE EXCEPTION 'Missing private platform table: %', v_table;
+    END IF;
+    IF has_table_privilege('anon', 'private.' || v_table, 'SELECT')
+       OR has_table_privilege('authenticated', 'private.' || v_table, 'SELECT') THEN
+      RAISE EXCEPTION 'Browser role can read private platform table: %', v_table;
+    END IF;
+    SELECT c.relrowsecurity, c.relforcerowsecurity INTO v_rls
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'private' AND c.relname = v_table;
+    IF NOT v_rls.relrowsecurity OR NOT v_rls.relforcerowsecurity THEN
+      RAISE EXCEPTION 'Platform table must force RLS: %', v_table;
+    END IF;
+  END LOOP;
+
+  IF (SELECT registrations_open FROM private.platform_settings WHERE singleton) IS DISTINCT FROM false THEN
+    RAISE EXCEPTION 'Registrations must remain closed by default';
+  END IF;
+
+  IF has_function_privilege('anon', 'public.platform_admin_read(uuid,uuid,text,text,jsonb)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.platform_admin_read(uuid,uuid,text,text,jsonb)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.platform_admin_mutate(uuid,uuid,text,text,jsonb,text)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.platform_public_config(text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Platform RPC boundary is directly accessible from a browser role';
+  END IF;
+
+  IF NOT has_function_privilege('service_role', 'public.platform_admin_read(uuid,uuid,text,text,jsonb)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.platform_admin_mutate(uuid,uuid,text,text,jsonb,text)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.platform_admin_authorize_onboarding(uuid,uuid,text,uuid,text,text,text)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.platform_public_config(text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Platform Edge Functions cannot reach their service-only RPCs';
+  END IF;
+END $$;
+
 BEGIN;
 
 INSERT INTO auth.users (

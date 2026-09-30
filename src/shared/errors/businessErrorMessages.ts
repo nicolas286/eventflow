@@ -11,6 +11,9 @@ export function humanBusinessMessage(msg: string): string | null {
   // ------------------------------------------------------------------
 
   const exactMessages: Record<string, string> = {
+    REGISTRATIONS_CLOSED:
+      "Les inscriptions sont temporairement fermées pendant la mise à jour de la plateforme.",
+
     PLAN_LIMIT_REGISTRATIONS_PER_EVENT:
       "Limite du nombre d’inscriptions par événement atteinte pour votre abonnement actuel.",
 
