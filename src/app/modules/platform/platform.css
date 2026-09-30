@@ -880,6 +880,90 @@
   margin: 0 auto;
   border: 10px solid white;
 }
+.platformQrFrame {
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  border: 1px solid #dce4ef;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(49, 87, 213, 0.08), transparent), #f8faff;
+}
+.platformMfaAccount {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid #dce4ef;
+  border-radius: 11px;
+  background: #f7f9fc;
+}
+.platformMfaAccount span {
+  color: #7a889d;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.platformMfaAccount strong {
+  overflow-wrap: anywhere;
+  color: #2a3b57;
+  font-size: 13px;
+}
+.platformManualMfa {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #dce4ef;
+  border-radius: 14px;
+  background: #f7f9fc;
+}
+.platformManualMfa h2 {
+  margin: 4px 0 8px;
+  font-size: 18px;
+  line-height: 1.25;
+}
+.platformManualMfa p {
+  margin: 0;
+}
+.platformManualMfa .platformManualMfa__eyebrow {
+  color: #3157d5;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.platformManualMfa__key {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+.platformManualMfa__key code {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #101a2d;
+  color: #f5f8ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.platformManualMfa__key .platformButton {
+  width: auto;
+  margin: 0;
+  white-space: nowrap;
+}
+.platformManualMfa .platformManualMfa__status {
+  color: #3157d5;
+  font-size: 12px;
+  font-weight: 700;
+}
 .platformModalBackdrop {
   position: fixed;
   inset: 0;
@@ -1032,6 +1116,13 @@
   }
   .platformAuthCard {
     padding: 25px;
+  }
+  .platformManualMfa__key {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .platformManualMfa__key .platformButton {
+    width: 100%;
   }
   .platformModal {
     padding: 22px;
