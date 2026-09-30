@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./OrganizationPanel.desktop.css";
 import "./OrganizationPanel.mobile.css";
@@ -91,7 +91,11 @@ function parseNullableNonNegativeInt(v: string): number | null {
   return i;
 }
 
-export default function StructurePanel({
+export default function OrganizationPanel(props: Props) {
+  return <StructurePanel key={props.orgId} {...props} />;
+}
+
+function StructurePanel({
   orgId,
   orgInfo,
   orgProfile,
@@ -158,9 +162,22 @@ export default function StructurePanel({
     salesTerms.trim() === initialSalesTerms,
   );
 
-  // resync quand bootstrap/refetch modifie org
+  // A Stripe prerequisite save must preserve other unsaved profile fields.
+  const previousInitial = useRef(initial);
   useEffect(() => {
-    setForm(initial);
+    const previous = previousInitial.current;
+    setForm((current) => {
+      const keepDraft = <K extends keyof Form>(key: K): Form[K] =>
+        current[key] === previous[key] ? initial[key] : current[key];
+      return {
+        type: keepDraft("type"), name: keepDraft("name"),
+        status: keepDraft("status"), description: keepDraft("description"),
+        publicEmail: keepDraft("publicEmail"), phone: keepDraft("phone"),
+        website: keepDraft("website"),
+        emailReminderDaysBefore: keepDraft("emailReminderDaysBefore"),
+      };
+    });
+    previousInitial.current = initial;
   }, [initial]);
 
   useEffect(() => {
@@ -185,8 +202,15 @@ export default function StructurePanel({
   );
   const publicEmail = form.publicEmail.trim();
   const publicEmailValid =
-    organizationProfileSchema.shape.publicEmail.safeParse(publicEmail).success;
+    Boolean(publicEmail) && organizationProfileSchema.shape.publicEmail.safeParse(publicEmail).success;
   const publicEmailNeedsSave = publicEmail !== initial.publicEmail.trim();
+  const publicEmailStored = publicEmailValid && !publicEmailNeedsSave;
+  const [requestedConnectStep, setRequestedConnectStep] = useState<1 | 2 | 3 | null>(null);
+  const connectStep = !publicEmailStored
+    ? 1
+    : requestedConnectStep === 1
+      ? 1
+      : !salesTermsCurrent || requestedConnectStep === 2 ? 2 : 3;
 
   const effectiveSlug = useMemo(() => {
     return updated?.profile?.slug ?? orgProfile?.slug ?? "";
@@ -278,10 +302,10 @@ export default function StructurePanel({
 
   async function handleStripeConnect() {
     setConnectFlash(null);
-    if (!salesTermsCurrent) {
+    if (!publicEmailStored || !salesTermsCurrent) {
       setConnectFlash({
         ok: false,
-        message: "Validez d’abord les conditions organisateur.",
+        message: "Enregistrez un e-mail public et validez les conditions organisateur.",
       });
       return;
     }
@@ -311,10 +335,9 @@ export default function StructurePanel({
     await onSaved();
   }
 
-  async function handleAcceptSalesTerms() {
-    paymentSettings.reset();
-    if (!salesTermsConfirmed) return;
-
+  async function handleConnectEmailSave() {
+    if (!publicEmailValid || loading) return;
+    reset();
     if (publicEmailNeedsSave) {
       const saved = await saveOrgInfo({
         orgId,
@@ -322,13 +345,20 @@ export default function StructurePanel({
         current: { ...initial, publicEmail },
       });
       if (!saved) return;
+      await onSaved();
     }
+    setRequestedConnectStep(2);
+  }
 
+  async function handleAcceptSalesTerms() {
+    paymentSettings.reset();
+    if (!salesTermsConfirmed || !publicEmailStored || salesTerms.trim().length < 200) return;
     const result = await paymentSettings.acceptTerms(orgId, salesTerms);
     if (!result) return;
     setSalesTerms(result.salesTerms ?? salesTerms);
     setSalesTermsConfirmed(false);
     await onSaved();
+    setRequestedConnectStep(3);
   }
 
   async function handleRevealPaymentSettings() {
@@ -486,7 +516,7 @@ export default function StructurePanel({
             </div>
             <div className="structurePanel__hint">
               Stripe Connect encaisse directement les paiements sur le compte de
-              l’organisateur. Le paiement par virement est désactivé.
+              l’organisateur
             </div>
           </div>
 
@@ -518,85 +548,102 @@ export default function StructurePanel({
           </div>
         </div>
 
-        <div className="structurePanel__field">
-          <div className="structurePanel__fieldLabel">
-            Conditions organisateur
-          </div>
-          <MarkdownRichTextarea
-            value={salesTerms}
-            onChange={(next: string) => {
-              setSalesTerms(next);
-              setSalesTermsConfirmed(false);
-            }}
-          />
-          <div className="structurePanel__help">
-            Ces conditions sont présentées aux acheteurs. Vérifiez-les et
-            adaptez-les à vos règles d’annulation et de remboursement avant de
-            les valider. Un e-mail public est obligatoire pour les demandes des
-            participants.
-          </div>
-          {publicEmailNeedsSave && publicEmailValid ? (
-            <div className="structurePanel__help">
-              L’e-mail public sera enregistré avant la validation des
-              conditions.
-            </div>
-          ) : null}
-          <label style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-            <input
-              type="checkbox"
-              checked={salesTermsConfirmed}
-              onChange={(event) => setSalesTermsConfirmed(event.target.checked)}
-            />
-            <span>
-              Je confirme être autorisé à engager l’organisation et que ces
-              conditions correspondent aux modalités appliquées aux
-              participants.
-            </span>
-          </label>
-          <div className="structurePanel__actions">
-            <Button
-              variant={salesTermsCurrent ? "secondary" : "primary"}
-              label={
-                paymentSettings.loading
-                  ? "Validation…"
-                  : salesTermsCurrent
-                    ? "Conditions validées"
-                    : publicEmailNeedsSave
-                      ? "Enregistrer l’e-mail et valider"
-                      : "Valider les conditions"
-              }
-              onClick={handleAcceptSalesTerms}
-              disabled={
-                paymentSettings.loading ||
-                loading ||
-                !salesTermsConfirmed ||
-                salesTerms.trim().length < 200 ||
-                !publicEmailValid
-              }
-            />
-          </div>
-        </div>
-
-        <div className="structurePanel__field">
-          <div className="structurePanel__fieldLabel">Mode de paiement</div>
-          <Select
-            value={paymentForm.provider}
-            disabled={!BANK_TRANSFER_EVENT_PAYMENTS_ENABLED}
-            onChange={(event) =>
-              setPaymentForm((current) => ({
-                ...current,
-                provider: event.target.value as PaymentForm["provider"],
-              }))
-            }
-          >
-            {stripeConnectAllowed ? (
-              <option value="stripe">Stripe Connect (Bancontact)</option>
+        {stripeConnectAllowed ? (
+          <>
+            <ol className="structurePanel__connectSteps" aria-label="Configuration Stripe">
+              {["E-mail public", "Conditions", "Stripe"].map((label, index) => (
+                <li key={label} aria-current={connectStep === index + 1 ? "step" : undefined}>
+                  {index + 1}. {label}
+                </li>
+              ))}
+            </ol>
+            {connectStep === 1 ? (
+              <div className="structurePanel__field">
+                <div className="structurePanel__fieldLabel">1. Votre e-mail de contact</div>
+                <div className="structurePanel__help">
+                  Un e-mail public est obligatoire pour les demandes des participants.
+                  Enregistrez-le pour continuer.
+                </div>
+                <Input
+                  label="E-mail public pour les participants"
+                  type="email"
+                  value={form.publicEmail}
+                  onChange={(event) => setForm((current) => ({ ...current, publicEmail: event.target.value }))}
+                  placeholder="contact@votre-organisation.be"
+                />
+                {publicEmail && !publicEmailValid ? (
+                  <div className="structurePanel__error" role="alert">Saisissez une adresse e-mail valide.</div>
+                ) : null}
+                {error ? <div className="structurePanel__error" role="alert">{error}</div> : null}
+                <div className="structurePanel__actions">
+                  <Button
+                    label={loading ? "Enregistrement…" : publicEmailNeedsSave ? "Enregistrer et continuer" : "Continuer"}
+                    onClick={handleConnectEmailSave}
+                    disabled={!publicEmailValid || loading || paymentSettings.loading}
+                  />
+                </div>
+              </div>
             ) : null}
-            {BANK_TRANSFER_EVENT_PAYMENTS_ENABLED ? (
-              <option value="bank_transfer">Virement bancaire</option>
+            {connectStep === 2 ? (
+              <div className="structurePanel__field">
+                <div className="structurePanel__fieldLabel">2. Vos conditions organisateur</div>
+                <div className="structurePanel__help">
+                  Ces conditions sont présentées aux acheteurs. Vérifiez-les et
+                  adaptez-les à vos règles d’annulation et de remboursement avant de
+                  les valider. Un e-mail public est obligatoire pour les demandes des
+                  participants.
+                </div>
+                <MarkdownRichTextarea
+                  label="Conditions organisateur"
+                  value={salesTerms}
+                  onChange={(next: string) => {
+                    setSalesTerms(next);
+                    setSalesTermsConfirmed(false);
+                  }}
+                />
+                <label className="structurePanel__termsConfirmation">
+                  <input type="checkbox" checked={salesTermsConfirmed}
+                    onChange={(event) => setSalesTermsConfirmed(event.target.checked)} />
+                  <span>Je confirme être autorisé à engager l’organisation et que ces
+                    conditions correspondent aux modalités appliquées aux participants.</span>
+                </label>
+                {salesTerms.trim().length < 200 ? (
+                  <div className="structurePanel__help">Complétez vos conditions (au moins 200 caractères).</div>
+                ) : null}
+                <div className="structurePanel__actions">
+                  <Button variant="secondary" label="Revoir l’e-mail"
+                    onClick={() => setRequestedConnectStep(1)} disabled={paymentSettings.loading} />
+                  <Button
+                    label={paymentSettings.loading ? "Validation…" : "Valider et continuer"}
+                    onClick={handleAcceptSalesTerms}
+                    disabled={paymentSettings.loading || loading || !salesTermsConfirmed || salesTerms.trim().length < 200 || !publicEmailStored}
+                  />
+                  {salesTermsCurrent ? (
+                    <Button variant="secondary" label="Continuer avec les conditions validées"
+                      onClick={() => setRequestedConnectStep(3)} disabled={paymentSettings.loading} />
+                  ) : null}
+                </div>
+              </div>
             ) : null}
-          </Select>
-        </div>
+            {connectStep === 3 ? (
+              <div className="structurePanel__field">
+                <div className="structurePanel__fieldLabel">3. Votre compte Stripe</div>
+                <div className="structurePanel__success">
+                  E-mail public enregistré et conditions validées.
+                </div>
+                <div className="structurePanel__actions">
+                  <Button variant="secondary" label="Revoir les conditions"
+                    onClick={() => setRequestedConnectStep(2)} disabled={stripeConnect.loading} />
+                  <Button
+                    label={stripeConnect.loading ? "Ouverture…" : stripeReady ? "Gérer le compte Stripe" : "Configurer Stripe"}
+                    onClick={handleStripeConnect}
+                    disabled={stripeConnect.loading || paymentSettings.loading || loading || !salesTermsCurrent || !publicEmailStored}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </>
+        ) : null}
 
         {paymentForm.provider === "bank_transfer" ? (
           <>
@@ -642,17 +689,7 @@ export default function StructurePanel({
 
         <div className="structurePanel__actionsBar">
           <div className="structurePanel__actions">
-            {stripeConnectAllowed && paymentForm.provider === "stripe" ? (
-              <Button
-                variant="secondary"
-                label={
-                  stripeConnect.loading ? "Ouverture…" : "Configurer Stripe"
-                }
-                onClick={handleStripeConnect}
-                disabled={stripeConnect.loading || !salesTermsCurrent}
-              />
-            ) : null}
-            <Button
+            {paymentDirty && connectStep === 3 ? <Button
               variant="primary"
               label={
                 paymentSettings.loading
@@ -667,7 +704,7 @@ export default function StructurePanel({
                   hasStoredBankTransferIban &&
                   !paymentDetailsRevealed)
               }
-            />
+            /> : null}
           </div>
 
           <div className="structurePanel__status">

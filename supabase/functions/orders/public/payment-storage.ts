@@ -21,6 +21,7 @@ export async function findReusableProviderPayment(
   admin: AdminClient,
   orderId: string,
   provider: PaymentProviderName,
+  providerAccountId: string,
 ) {
   const query = admin
     .from("payments")
@@ -29,6 +30,7 @@ export async function findReusableProviderPayment(
     )
     .eq("order_id", orderId)
     .eq("provider", provider)
+    .eq("provider_account_id", providerAccountId)
     .in("status", ["open", "pending"])
     .eq("is_refund", false)
     .order("created_at", { ascending: false });

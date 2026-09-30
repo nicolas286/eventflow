@@ -15,7 +15,9 @@ Le compte bancaire indiqué sur les factures est le compte CBC `BE51 7320 8102 5
 
 La route publique `orders` crée la commande puis une Checkout Session dans le Connected Account de l’organisateur. Le paramètre `payment_method_configuration`, fourni par `STRIPE_PAYMENT_METHOD_CONFIGURATION_ID`, sélectionne la configuration parente Connect qui doit conserver uniquement Bancontact activé.
 
-Lors de la création d’un nouveau compte Standard, Eventflow demande uniquement `capabilities[bancontact_payments][requested]=true`. La demande ne garantit pas une activation immédiate : Stripe doit rendre la capacité active pour que Bancontact soit disponible. Ce changement ne retire aucune capacité des comptes existants ; leur éventuelle régularisation reste distincte.
+Lors de la création d’un nouveau compte Standard, Eventflow demande `card_payments`, `transfers` et `bancontact_payments`. Stripe exige une capacité de base `card_payments` ou `transfers` et documente que `card_payments` se demande avec `transfers`. Ces capacités ne choisissent pas les moyens de paiement du Checkout Eventflow : celui-ci utilise `STRIPE_PAYMENT_METHOD_CONFIGURATION_ID`, dont la configuration parente doit conserver uniquement Bancontact activé. Les direct charges Eventflow ne créent pas de transfert de la plateforme vers l’organisateur. La demande ne garantit pas une activation immédiate : Stripe doit rendre les capacités nécessaires actives. Ce changement ne retire aucune capacité des comptes existants ; leur éventuelle régularisation reste distincte.
+
+La création utilise la clé d’idempotence `eventflow-connect-standard-v2-<orgId>`, distincte des tentatives `v1` aux paramètres précédents. Le nom et l’e-mail ne sont plus préremplis par cette requête : Stripe les recueille pendant l’onboarding, ce qui garde les paramètres de création identiques lors des essais de plusieurs administrateurs ou après un renommage de l’organisation.
 
 Le déploiement est contrôlé par `user_profile.stripe_connect_allowed`, géré uniquement par un opérateur de confiance et à `false` par défaut, y compris pour les nouveaux comptes. Une organisation non autorisée voit une alerte globale et ses billets payants ne sont pas sélectionnables. Quand son owner est explicitement autorisé, l’interface l’invite à refaire l’onboarding Stripe. Un événement payant reste bloqué tant que l’organisateur n’a pas validé ses conditions de vente et que le compte Stripe n’est pas Standard (ou équivalent avec Dashboard complet et responsabilité Stripe), sans exigence en attente, avec les indicateurs `details_submitted`, `charges_enabled` et `payouts_enabled` à `true`. Les inscriptions gratuites restent disponibles.
 
@@ -123,6 +125,56 @@ refund.updated
 6. Passer `EVENT_PAYMENT_PROVIDER=stripe`, réaliser un paiement Bancontact test et vérifier commande, webhook, billet et e-mail capturé.
 7. Tester les retries webhook, l’expiration, l’échec et le remboursement.
 8. Ne déployer en production qu’après validation humaine du staging.
+
+## Rotation des comptes et paiements tardifs
+
+Les migrations `20260929160000` et `20260930124111` sérialisent
+l'enregistrement des Checkout avec la rotation du compte. La rotation est
+refusée tant qu'un paiement non traité reste ouvert ou en attente. Les nouveaux
+Checkout et leur réutilisation ciblent exclusivement le compte courant.
+
+Un webhook de paiement sur un ancien compte reste accepté uniquement si ce
+compte figure dans l'historique de la même organisation et si le paiement
+enregistré correspond à la commande, au compte, à la session, au PaymentIntent,
+au montant et à la devise. Les reprises restent idempotentes. Un paiement tardif
+sur une réservation expirée est remboursé sans réactiver la réservation ni
+diminuer le stock vendu par une autre commande. Les mises à jour de statut
+Connect retardées ne peuvent pas remplacer une nouvelle association de compte.
+
+Validation : `tests/database/stripe-checkout-regressions.sql` couvre deux
+organisations, les refus croisés, la rotation, les notifications tardives,
+les remboursements et leurs répétitions. Les tests Edge couvrent aussi la
+première connexion concurrente et le filtrage du Checkout réutilisé. Ces tests
+ne remplacent pas une recette Bancontact sandbox après déploiement.
+
+## Reprises des remboursements
+
+La migration `20260930135913` accepte les identifiants Stripe `re_` et `pyr_`
+(Bancontact). Un webhook en erreur conserve son horodatage obligatoire et libère
+son verrou pour permettre une reprise. Un traitement en cours renvoie HTTP 503 ;
+seul un traitement terminé est acquitté comme doublon. La migration ne modifie
+aucun paiement ou remboursement existant. Un ancien événement interrompu puis
+acquitté doit être renvoyé depuis Stripe, sans créer un second remboursement.
+Les tests `stripe-webhook-retries.sql` couvrent ces transitions et les droits SQL.
+
+## Promotion production du 30 septembre 2026
+
+Les correctifs staging `2eaa841`, `5bd0635`, `651bd18` et `34cde6d` sont
+reportés sur la base production `64762ce`, sans les commits de refonte UI.
+Les sources Connect, création/réutilisation de Checkout, webhooks, remboursements
+et migrations sont identiques au staging testé. Les champs supplémentaires de
+lecture de commande destinés au nouveau récapitulatif UI restent exclus.
+
+Le parcours Connect temporaire est propre à cette branche de production :
+e-mail public enregistré, validation des conditions, puis configuration Stripe.
+Il ne doit pas être reporté automatiquement sur `dev`. Il réutilise les API et
+les validations existantes. Un organisateur dont les prérequis sont déjà validés
+accède directement à la configuration Stripe.
+
+Le contrôle préalable a confirmé le compte Connect existant, trois paiements
+payés et un paiement ouvert. Le garde de déploiement conserve cette association
+sans limiter le nombre d'utilisateurs autorisés ni modifier leurs droits.
+Les inscriptions publiques restent fermées par le mécanisme production existant.
 
 ## Retour arrière
 

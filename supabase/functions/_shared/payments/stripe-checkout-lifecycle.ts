@@ -23,7 +23,7 @@ const appliedPaymentSchema = z.discriminatedUnion("action", [
 ]);
 
 const refundSchema = z.object({
-  id: z.string().startsWith("re_"), payment_intent: z.string(),
+  id: z.string().regex(/^(re|pyr)_[A-Za-z0-9_]+$/), payment_intent: z.string(),
   amount: z.number().int().positive(), currency: z.string(), status: z.string(),
 }).passthrough();
 

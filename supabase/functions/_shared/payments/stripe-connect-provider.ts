@@ -95,16 +95,19 @@ export class StripeConnectedAccountProvider implements ConnectedAccountProvider 
       "/v1/accounts",
       {
         method: "POST",
-        idempotencyKey: `eventflow-connect-standard-v1-${input.orgId}`,
+        idempotencyKey: `eventflow-connect-standard-v2-${input.orgId}`,
         params: {
           // Standard/full-dashboard accounts keep Stripe responsible for
           // negative balances. Ticket Checkout remains a direct charge on
           // this account, so Eventflow never receives the ticket proceeds.
           type: "standard",
-          email: input.email,
-          "business_profile[name]": input.displayName,
           "metadata[eventflow_org_id]": input.orgId,
-          // Ticket payments use Bancontact direct charges only.
+          // Keep v2 parameters stable across retries by different admins and
+          // organization renames. Stripe collects these fields in onboarding.
+          // Stripe requires the base payment and transfer capabilities for
+          // connected accounts; Checkout still offers Bancontact only.
+          "capabilities[card_payments][requested]": true,
+          "capabilities[transfers][requested]": true,
           "capabilities[bancontact_payments][requested]": true,
         },
       },

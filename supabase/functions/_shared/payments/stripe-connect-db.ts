@@ -16,16 +16,22 @@ export async function persistStripeAccountStatus(
   admin: AdminClient,
   orgId: string,
   status: ConnectedAccountStatus,
-  options: { selectProvider?: boolean } = {},
+  options: { selectProvider?: boolean; expectedAccountId: string | null },
 ) {
   const ready = isStripeAccountReady(status);
   const { data: organization, error: loadError } = await admin
     .from("organizations")
-    .select("payments_provider")
+    .select("payments_provider, stripe_connected_account_id")
     .eq("id", orgId)
     .maybeSingle();
   if (loadError)
     throw new Error(loadError.message ?? "PAYMENT_PROVIDER_LOAD_FAILED");
+  if (!organization ||
+      organization.stripe_connected_account_id !== options.expectedAccountId ||
+      (options.expectedAccountId !== null &&
+        status.providerAccountId !== options.expectedAccountId)) {
+    throw new Error("STRIPE_ACCOUNT_CHANGED");
+  }
 
   const shouldReflectAsActive =
     options.selectProvider === true ||
@@ -61,13 +67,19 @@ export async function persistStripeAccountStatus(
     values.payments_details_submitted = status.detailsSubmitted;
   }
 
-  const { error } = await admin
+  const update = admin
     .from("organizations")
     .update(values)
     .eq("id", orgId);
+  const { data: saved, error } = await (options.expectedAccountId === null
+    ? update.is("stripe_connected_account_id", null)
+    : update.eq("stripe_connected_account_id", options.expectedAccountId))
+    .select("id")
+    .maybeSingle();
 
   if (error)
     throw new Error(error.message ?? "STRIPE_ACCOUNT_STATUS_SAVE_FAILED");
+  if (!saved) throw new Error("STRIPE_ACCOUNT_CHANGED");
 
   return ready;
 }

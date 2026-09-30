@@ -86,6 +86,7 @@ export const handleStripeConnectStatus = createEdgeHandler(
     );
     await persistStripeAccountStatus(admin, orgId, status, {
       selectProvider: true,
+      expectedAccountId: org.stripe_connected_account_id,
     });
 
     return json(req, {

@@ -10,6 +10,7 @@ import {
 } from "../_shared/errors.ts";
 import { assertStripeApiKey } from "../_shared/environment-safety.ts";
 import { serializeError } from "../_shared/modules/logger/mod.ts";
+import { StripeApiError } from "../_shared/payments/stripe-api.ts";
 import {
   isStripeAccountReady,
   persistStripeAccountStatus,
@@ -42,6 +43,13 @@ export const handleStripeConnectStart = createEdgeHandler(
     serviceClient: true,
     onError: ({ req, logger, error }) => {
       if (error instanceof ResponseError) {
+        if (error instanceof StripeApiError) {
+          logger.warn("stripe_api_error", {
+            providerStatus: error.providerStatus,
+            stripeCode: error.stripeCode,
+            stripeRequestId: error.requestId,
+          });
+        }
         return json(req, { error: error.code }, error.status);
       }
       logger.error("unexpected_error", { error: serializeError(error) });
@@ -88,6 +96,7 @@ export const handleStripeConnectStart = createEdgeHandler(
     await getAcceptedOrganizationSalesTerms(admin, orgId);
 
     const provider = new StripeConnectedAccountProvider(stripeSecretKey);
+    let expectedAccountId = org.stripe_connected_account_id;
     let status = org.stripe_connected_account_id
       ? await provider.getConnectedAccountStatus(
           org.stripe_connected_account_id,
@@ -116,10 +125,12 @@ export const handleStripeConnectStart = createEdgeHandler(
         throw internal("STRIPE_ACCOUNT_MIGRATION_SAVE_FAILED");
       }
       status = replacement;
+      expectedAccountId = replacement.providerAccountId;
     }
 
     await persistStripeAccountStatus(admin, orgId, status, {
       selectProvider: isStripeAccountReady(status),
+      expectedAccountId,
     });
 
     if (!status.configurationSupported) {

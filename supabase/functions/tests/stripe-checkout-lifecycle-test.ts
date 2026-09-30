@@ -2,8 +2,10 @@ import { assertEquals, assertRejects } from "@std/assert";
 import { createClient } from "@supabase/supabase-js";
 import { handleStripeWebhookConnect } from "../stripe-webhook-connect/index.ts";
 import { completeTicketPayment, reconcileStripeCheckouts } from "../_shared/payments/stripe-checkout-lifecycle.ts";
-import { insertProviderPaymentOrRollback } from "../orders/public/payment-storage.ts";
+import { findReusableProviderPayment, insertProviderPaymentOrRollback } from "../orders/public/payment-storage.ts";
 import { StripeEventPaymentProvider } from "../orders/public/stripe-payment-provider.ts";
+import { persistStripeAccountStatus } from "../_shared/payments/stripe-connect-db.ts";
+import type { ConnectedAccountStatus } from "../_shared/payments/provider.ts";
 import { expireOrders } from "../workers/expire-orders.ts";
 
 const orderId = "92000000-0000-4000-8000-000000000001";
@@ -16,7 +18,7 @@ async function withFixture(run: () => Promise<void>) {
   const values = { SUPABASE_URL: url, SUPABASE_ANON_KEY: "fixture-anon",
     SUPABASE_SERVICE_ROLE_KEY: "fixture-service", APP_ENV: "staging",
     STRIPE_SECRET_KEY: "sk_test_fixture", STRIPE_CONNECT_WEBHOOK_SECRET: "whsec_fixture",
-    FUNCTIONS_URL: "" };
+    FUNCTIONS_URL: "", MAIL_MODE: "capture" };
   const previous = new Map(Object.keys(values).map((key) => [key, Deno.env.get(key)]));
   const fetcher = globalThis.fetch;
   for (const [key, value] of Object.entries(values)) Deno.env.set(key, value);
@@ -28,9 +30,9 @@ async function withFixture(run: () => Promise<void>) {
   }
 }
 
-async function signedRequest(type = "checkout.session.completed") {
+async function signedRequest(type = "checkout.session.completed", eventObject: Record<string, unknown> = object) {
   const body = JSON.stringify({ id: "evt_fixture", type, account: "acct_fixture",
-    livemode: false, data: { object } });
+    livemode: false, data: { object: eventObject } });
   const timestamp = Math.floor(Date.now() / 1000);
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode("whsec_fixture"),
     { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -101,7 +103,7 @@ Deno.test("a processed receipt canceled before fulfillment cannot issue tickets 
     connectedAccountId: "acct_fixture", functionsBase: null, edgeServiceToken: null, logger });
 }));
 
-Deno.test("late Stripe receipts resume the same refund and never issue tickets", () => withFixture(async () => {
+for (const providerRefundId of ["re_fixture", "pyr_fixture"]) Deno.test(`late Stripe receipts resume ${providerRefundId} and never issue tickets`, () => withFixture(async () => {
   let refundId: string | null = null;
   let posts = 0;
   let gets = 0;
@@ -121,8 +123,8 @@ Deno.test("late Stripe receipts resume the same refund and never issue tickets",
         assertEquals(request.headers.get("Idempotency-Key"), "eventflow-late-checkout-pi_fixture");
         const params = new URLSearchParams(await request.text());
         assertEquals(params.get("amount"), "500");
-      } else { gets++; assertEquals(parsedUrl.pathname, "/v1/refunds/re_fixture"); }
-      return Response.json({ id: "re_fixture", status: "succeeded", amount: 500,
+      } else { gets++; assertEquals(parsedUrl.pathname, `/v1/refunds/${providerRefundId}`); }
+      return Response.json({ id: providerRefundId, status: "succeeded", amount: 500,
         currency: "eur", payment_intent: "pi_fixture" });
     }
     if (parsedUrl.pathname.endsWith("/apply_stripe_checkout_payment")) {
@@ -245,10 +247,14 @@ Deno.test("Stripe Checkout creation reuses the reserved deadline and idempotency
   globalThis.fetch = async (input, init) => {
     const request = new Request(input, init);
     assertEquals(new URL(request.url).pathname, "/v1/checkout/sessions");
+    assertEquals(request.headers.get("Stripe-Account"), "acct_fixture");
     assertEquals(request.headers.get("Idempotency-Key"), `eventflow-order-${orderId}`);
     const body = await request.text();
     bodies.push(body);
-    assertEquals(new URLSearchParams(body).get("expires_at"), "2000000000");
+    const params = new URLSearchParams(body);
+    assertEquals(params.get("expires_at"), "2000000000");
+    assertEquals(params.get("metadata[eventflow_org_id]"), inputOrgId);
+    assertEquals(params.has("payment_intent_data[transfer_data][destination]"), false);
     return Response.json({ id: "cs_fixture", url: "https://checkout.stripe.test", expires_at: 2_000_000_000 });
   };
   const provider = new StripeEventPaymentProvider(
@@ -256,12 +262,80 @@ Deno.test("Stripe Checkout creation reuses the reserved deadline and idempotency
     "acct_fixture",
     "pmc_fixture",
   );
-  const input = { orderId, orgId: orderId, bookingToken: "synthetic", amountCents: 500,
+  const inputOrgId = "92000000-0000-4000-8000-000000000002";
+  const input = { orderId, orgId: inputOrgId, bookingToken: "synthetic", amountCents: 500,
     totalCents: 1000, currency: "EUR", redirectUrl: "https://eventflow.test/confirmation",
     eventTitle: "Fixture", buyerEmail: "buyer@example.test", checkoutExpiresAt: 2_000_000_000 };
   await provider.createPayment(input);
   await provider.createPayment(input);
   assertEquals(bodies[0], bodies[1]);
+}));
+
+Deno.test("a reusable Checkout is scoped to the organization's current account", () => withFixture(async () => {
+  let accountFilter: string | null = null;
+  globalThis.fetch = (input) => {
+    accountFilter = new URL(String(input)).searchParams.get("provider_account_id");
+    return Promise.resolve(Response.json([]));
+  };
+  const result = await findReusableProviderPayment(
+    createClient(url, "fixture-key"), orderId, "stripe", "acct_fixture",
+  );
+  assertEquals(result, null);
+  assertEquals(accountFilter, "eq.acct_fixture");
+}));
+
+Deno.test("a stale Stripe account status cannot replace a rotated account", () => withFixture(async () => {
+  let guardedUpdate = false;
+  globalThis.fetch = (input, init) => {
+    const request = new Request(input, init);
+    const parsedUrl = new URL(request.url);
+    if (request.method === "GET") {
+      return Promise.resolve(Response.json({ payments_provider: "stripe", stripe_connected_account_id: "acct_fixture" }));
+    }
+    guardedUpdate = parsedUrl.searchParams.get("stripe_connected_account_id") === "eq.acct_fixture";
+    return Promise.resolve(Response.json({ code: "PGRST116", details: "The result contains 0 rows",
+      message: "Cannot coerce the result to a single JSON object" }, { status: 406 }));
+  };
+  const status: ConnectedAccountStatus = {
+    provider: "stripe", providerAccountId: "acct_fixture", accountType: "standard",
+    controllerFeesPayer: null, controllerLossesPayments: null,
+    controllerRequirementCollection: null, controllerDashboardType: null,
+    requirementsDisabledReason: null, requirementsCurrentlyDue: [],
+    configurationSupported: true, detailsSubmitted: true,
+    chargesEnabled: true, payoutsEnabled: true,
+  };
+  await assertRejects(() => persistStripeAccountStatus(
+    createClient(url, "fixture-key"), orderId, status,
+    { expectedAccountId: "acct_fixture" },
+  ), Error, "STRIPE_ACCOUNT_CHANGED");
+  assertEquals(guardedUpdate, true);
+}));
+
+Deno.test("first Connect persistence cannot overwrite a concurrently connected account", () => withFixture(async () => {
+  let writes = 0;
+  globalThis.fetch = (input, init) => {
+    const request = new Request(input, init);
+    if (request.method === "GET") {
+      return Promise.resolve(Response.json({ payments_provider: "stripe", stripe_connected_account_id: null }));
+    }
+    writes++;
+    assertEquals(new URL(request.url).searchParams.get("stripe_connected_account_id"), "is.null");
+    // Another request attached an account after the read: PostgREST updates no row.
+    return Promise.resolve(Response.json({ code: "PGRST116", details: "The result contains 0 rows",
+      message: "Cannot coerce the result to a single JSON object" }, { status: 406 }));
+  };
+  const status: ConnectedAccountStatus = {
+    provider: "stripe", providerAccountId: "acct_new", accountType: "standard",
+    controllerFeesPayer: null, controllerLossesPayments: null,
+    controllerRequirementCollection: null, controllerDashboardType: null,
+    requirementsDisabledReason: null, requirementsCurrentlyDue: [],
+    configurationSupported: true, detailsSubmitted: false,
+    chargesEnabled: false, payoutsEnabled: false,
+  };
+  await assertRejects(() => persistStripeAccountStatus(
+    createClient(url, "fixture-key"), orderId, status, { expectedAccountId: null },
+  ), Error, "STRIPE_ACCOUNT_CHANGED");
+  assertEquals(writes, 1);
 }));
 
 Deno.test("Stripe reconciliation failure cannot block other order expiry", () => withFixture(async () => {
@@ -283,4 +357,70 @@ Deno.test("Stripe reconciliation failure cannot block other order expiry", () =>
   } finally {
     if (previous === undefined) Deno.env.delete("CRON_SECRET"); else Deno.env.set("CRON_SECRET", previous);
   }
+}));
+
+for (const scenario of [
+  { name: "busy", claim: { should_process: false, already_processed: false }, status: 503 },
+  { name: "completed", claim: { should_process: false, already_processed: true }, status: 200 },
+  { name: "unknown", claim: { should_process: false }, status: 503 },
+  { name: "unavailable", claim: { message: "database unavailable" }, status: 503 },
+]) Deno.test(`Stripe webhook ${scenario.name} claim cannot mutate another delivery`, () => withFixture(async () => {
+  const calls: string[] = [];
+  globalThis.fetch = (input, init) => {
+    const path = new URL(new Request(input, init).url).pathname;
+    calls.push(path);
+    return Promise.resolve(Response.json(scenario.claim, { status: scenario.name === "unavailable" ? 500 : 200 }));
+  };
+  const response = await handleStripeWebhookConnect(await signedRequest());
+  assertEquals(response.status, scenario.status);
+  assertEquals(calls, ["/rest/v1/rpc/claim_payment_webhook_event"]);
+  if (scenario.name === "completed") assertEquals(await response.json(), { received: true, duplicate: true });
+}));
+
+Deno.test("Bancontact refund webhook completes accounting and captures one notification on retry", () => withFixture(async () => {
+  let processed = false;
+  let captures = 0;
+  let applications = 0;
+  globalThis.fetch = async (input, init) => {
+    const request = new Request(input, init);
+    const parsed = new URL(request.url);
+    const path = parsed.pathname;
+    if (path.endsWith("/claim_payment_webhook_event")) return Response.json({ should_process: !processed, already_processed: processed });
+    if (path.endsWith("/payments")) {
+      assertEquals(parsed.searchParams.get("provider_account_id"), "eq.acct_fixture");
+      assertEquals(parsed.searchParams.get("provider_payment_id"), "eq.pi_fixture");
+      return Response.json({ order_id: orderId });
+    }
+    if (path.endsWith("/apply_stripe_order_refund")) {
+      const args = await request.json();
+      assertEquals(args.p_account_id, "acct_fixture");
+      assertEquals(args.p_order_id, orderId);
+      assertEquals(args.p_refund_id, "pyr_fixture");
+      applications++;
+      return Response.json({ fully_refunded: true });
+    }
+    if (path.endsWith("/record_stripe_late_refund")) {
+      assertEquals((await request.json()).p_refund_id, "pyr_fixture");
+      return Response.json(null);
+    }
+    if (path.endsWith("/claim_payment_refund_notification")) return Response.json(true);
+    if (path.endsWith("/orders")) return Response.json({ buyer_email: "buyer@example.test", event_id: "event_fixture", org_id: "org_fixture" });
+    if (path.endsWith("/events")) return Response.json({ title: "Fixture event" });
+    if (path.endsWith("/organization_profile")) return Response.json({ display_name: "Fixture organizer" });
+    if (path.startsWith("/storage/v1/object/mail-previews/")) { captures++; return Response.json({}); }
+    if (path.endsWith("/complete_payment_refund_notification")) {
+      assertEquals((await request.json()).p_success, true);
+      return Response.json(null);
+    }
+    if (path.endsWith("/complete_payment_webhook_event")) {
+      assertEquals((await request.json()).p_success, true);
+      processed = true;
+      return Response.json(null);
+    }
+    throw new Error(`Unexpected refund call: ${request.method} ${path}`);
+  };
+  const refund = { id: "pyr_fixture", payment_intent: "pi_fixture", amount: 500, currency: "eur", status: "succeeded" };
+  assertEquals((await handleStripeWebhookConnect(await signedRequest("refund.updated", refund))).status, 200);
+  assertEquals((await handleStripeWebhookConnect(await signedRequest("refund.updated", refund))).status, 200);
+  assertEquals({ captures, applications, processed }, { captures: 1, applications: 1, processed: true });
 }));

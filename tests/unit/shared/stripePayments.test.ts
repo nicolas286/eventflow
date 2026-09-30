@@ -202,9 +202,9 @@ describe("Stripe provider boundaries", () => {
     );
   });
 
-  it("creates a Standard account requesting only Bancontact for ticket payments", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
+  it("creates a Standard account with base capabilities and Bancontact", async () => {
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(
         JSON.stringify({
           id: "acct_test_org",
           type: "standard",
@@ -213,7 +213,7 @@ describe("Stripe provider boundaries", () => {
           payouts_enabled: false,
         }),
         { status: 200 },
-      ),
+      )),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -228,15 +228,34 @@ describe("Stripe provider boundaries", () => {
       providerAccountId: "acct_test_org",
       detailsSubmitted: false,
     });
+    await provider.createConnectedAccount({
+      orgId: "org_test",
+      email: "another-admin@example.test",
+      displayName: "Renamed association",
+    });
     const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    const [, retryInit] = fetchMock.mock.calls[1] as [URL, RequestInit];
+    expect((init.headers as Headers).get("Idempotency-Key")).toBe(
+      "eventflow-connect-standard-v2-org_test",
+    );
+    expect((retryInit.headers as Headers).get("Idempotency-Key")).toBe(
+      (init.headers as Headers).get("Idempotency-Key"),
+    );
+    expect(retryInit.body).toBe(init.body);
     expect(String(init.body)).toContain("type=standard");
+    expect(String(init.body)).not.toContain("email=");
+    expect(String(init.body)).not.toContain("business_profile");
     expect(String(init.body)).toContain(
       "metadata%5Beventflow_org_id%5D=org_test",
     );
     const params = new URLSearchParams(String(init.body));
     expect(
       [...params.entries()].filter(([key]) => key.startsWith("capabilities[")),
-    ).toEqual([["capabilities[bancontact_payments][requested]", "true"]]);
+    ).toEqual([
+      ["capabilities[card_payments][requested]", "true"],
+      ["capabilities[transfers][requested]", "true"],
+      ["capabilities[bancontact_payments][requested]", "true"],
+    ]);
   });
 
   it("loads the real capabilities when resuming an existing account", async () => {
