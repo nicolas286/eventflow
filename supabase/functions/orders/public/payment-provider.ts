@@ -11,6 +11,7 @@ export type ResolvedEventPaymentMethod =
   | {
       kind: "stripe";
       provider: EventPaymentProvider;
+      providerAccountId: string;
     }
   | {
       kind: "bank_transfer";
@@ -91,6 +92,7 @@ export async function resolveEventPaymentProvider(input: {
 
   return {
     kind: "stripe",
+    providerAccountId: org.stripe_connected_account_id,
     provider: new StripeEventPaymentProvider(
       input.stripeSecretKey,
       org.stripe_connected_account_id,
