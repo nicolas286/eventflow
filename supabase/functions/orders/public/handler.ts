@@ -240,6 +240,7 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       admin,
       order.orderId,
       paymentProvider.name,
+      paymentMethod.providerAccountId,
     );
 
     if (reusable) {

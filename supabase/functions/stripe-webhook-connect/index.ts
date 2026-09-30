@@ -184,7 +184,9 @@ async function syncAccount(
   if (!org?.id) return;
 
   const status = stripeAccountToStatus({ ...object, id: accountId });
-  await persistStripeAccountStatus(admin, org.id, status);
+  await persistStripeAccountStatus(admin, org.id, status, {
+    expectedAccountId: accountId,
+  });
 
   if (!isStripeAccountReady(status)) {
     logger.warn("stripe_account_not_ready", { accountId, orgId: org.id });

@@ -126,6 +126,27 @@ refund.updated
 7. Tester les retries webhook, l’expiration, l’échec et le remboursement.
 8. Ne déployer en production qu’après validation humaine du staging.
 
+## Rotation des comptes et paiements tardifs
+
+Les migrations `20260929160000` et `20260930124111` sérialisent
+l'enregistrement des Checkout avec la rotation du compte. La rotation est
+refusée tant qu'un paiement non traité reste ouvert ou en attente. Les nouveaux
+Checkout et leur réutilisation ciblent exclusivement le compte courant.
+
+Un webhook de paiement sur un ancien compte reste accepté uniquement si ce
+compte figure dans l'historique de la même organisation et si le paiement
+enregistré correspond à la commande, au compte, à la session, au PaymentIntent,
+au montant et à la devise. Les reprises restent idempotentes. Un paiement tardif
+sur une réservation expirée est remboursé sans réactiver la réservation ni
+diminuer le stock vendu par une autre commande. Les mises à jour de statut
+Connect retardées ne peuvent pas remplacer une nouvelle association de compte.
+
+Validation : `tests/database/stripe-checkout-regressions.sql` couvre deux
+organisations, les refus croisés, la rotation, les notifications tardives,
+les remboursements et leurs répétitions. Les tests Edge couvrent aussi la
+première connexion concurrente et le filtrage du Checkout réutilisé. Ces tests
+ne remplacent pas une recette Bancontact sandbox après déploiement.
+
 ## Retour arrière
 
 - Mettre `EVENT_PAYMENT_PROVIDER=disabled` pour bloquer les nouveaux paiements de billets.

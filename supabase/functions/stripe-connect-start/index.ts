@@ -96,6 +96,7 @@ export const handleStripeConnectStart = createEdgeHandler(
     await getAcceptedOrganizationSalesTerms(admin, orgId);
 
     const provider = new StripeConnectedAccountProvider(stripeSecretKey);
+    let expectedAccountId = org.stripe_connected_account_id;
     let status = org.stripe_connected_account_id
       ? await provider.getConnectedAccountStatus(
           org.stripe_connected_account_id,
@@ -124,10 +125,12 @@ export const handleStripeConnectStart = createEdgeHandler(
         throw internal("STRIPE_ACCOUNT_MIGRATION_SAVE_FAILED");
       }
       status = replacement;
+      expectedAccountId = replacement.providerAccountId;
     }
 
     await persistStripeAccountStatus(admin, orgId, status, {
       selectProvider: isStripeAccountReady(status),
+      expectedAccountId,
     });
 
     if (!status.configurationSupported) {

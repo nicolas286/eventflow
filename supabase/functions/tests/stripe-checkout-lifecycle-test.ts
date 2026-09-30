@@ -2,8 +2,10 @@ import { assertEquals, assertRejects } from "@std/assert";
 import { createClient } from "@supabase/supabase-js";
 import { handleStripeWebhookConnect } from "../stripe-webhook-connect/index.ts";
 import { completeTicketPayment, reconcileStripeCheckouts } from "../_shared/payments/stripe-checkout-lifecycle.ts";
-import { insertProviderPaymentOrRollback } from "../orders/public/payment-storage.ts";
+import { findReusableProviderPayment, insertProviderPaymentOrRollback } from "../orders/public/payment-storage.ts";
 import { StripeEventPaymentProvider } from "../orders/public/stripe-payment-provider.ts";
+import { persistStripeAccountStatus } from "../_shared/payments/stripe-connect-db.ts";
+import type { ConnectedAccountStatus } from "../_shared/payments/provider.ts";
 import { expireOrders } from "../workers/expire-orders.ts";
 
 const orderId = "92000000-0000-4000-8000-000000000001";
@@ -245,10 +247,14 @@ Deno.test("Stripe Checkout creation reuses the reserved deadline and idempotency
   globalThis.fetch = async (input, init) => {
     const request = new Request(input, init);
     assertEquals(new URL(request.url).pathname, "/v1/checkout/sessions");
+    assertEquals(request.headers.get("Stripe-Account"), "acct_fixture");
     assertEquals(request.headers.get("Idempotency-Key"), `eventflow-order-${orderId}`);
     const body = await request.text();
     bodies.push(body);
-    assertEquals(new URLSearchParams(body).get("expires_at"), "2000000000");
+    const params = new URLSearchParams(body);
+    assertEquals(params.get("expires_at"), "2000000000");
+    assertEquals(params.get("metadata[eventflow_org_id]"), inputOrgId);
+    assertEquals(params.has("payment_intent_data[transfer_data][destination]"), false);
     return Response.json({ id: "cs_fixture", url: "https://checkout.stripe.test", expires_at: 2_000_000_000 });
   };
   const provider = new StripeEventPaymentProvider(
@@ -256,12 +262,80 @@ Deno.test("Stripe Checkout creation reuses the reserved deadline and idempotency
     "acct_fixture",
     "pmc_fixture",
   );
-  const input = { orderId, orgId: orderId, bookingToken: "synthetic", amountCents: 500,
+  const inputOrgId = "92000000-0000-4000-8000-000000000002";
+  const input = { orderId, orgId: inputOrgId, bookingToken: "synthetic", amountCents: 500,
     totalCents: 1000, currency: "EUR", redirectUrl: "https://eventflow.test/confirmation",
     eventTitle: "Fixture", buyerEmail: "buyer@example.test", checkoutExpiresAt: 2_000_000_000 };
   await provider.createPayment(input);
   await provider.createPayment(input);
   assertEquals(bodies[0], bodies[1]);
+}));
+
+Deno.test("a reusable Checkout is scoped to the organization's current account", () => withFixture(async () => {
+  let accountFilter: string | null = null;
+  globalThis.fetch = (input) => {
+    accountFilter = new URL(String(input)).searchParams.get("provider_account_id");
+    return Promise.resolve(Response.json([]));
+  };
+  const result = await findReusableProviderPayment(
+    createClient(url, "fixture-key"), orderId, "stripe", "acct_fixture",
+  );
+  assertEquals(result, null);
+  assertEquals(accountFilter, "eq.acct_fixture");
+}));
+
+Deno.test("a stale Stripe account status cannot replace a rotated account", () => withFixture(async () => {
+  let guardedUpdate = false;
+  globalThis.fetch = (input, init) => {
+    const request = new Request(input, init);
+    const parsedUrl = new URL(request.url);
+    if (request.method === "GET") {
+      return Promise.resolve(Response.json({ payments_provider: "stripe", stripe_connected_account_id: "acct_fixture" }));
+    }
+    guardedUpdate = parsedUrl.searchParams.get("stripe_connected_account_id") === "eq.acct_fixture";
+    return Promise.resolve(Response.json({ code: "PGRST116", details: "The result contains 0 rows",
+      message: "Cannot coerce the result to a single JSON object" }, { status: 406 }));
+  };
+  const status: ConnectedAccountStatus = {
+    provider: "stripe", providerAccountId: "acct_fixture", accountType: "standard",
+    controllerFeesPayer: null, controllerLossesPayments: null,
+    controllerRequirementCollection: null, controllerDashboardType: null,
+    requirementsDisabledReason: null, requirementsCurrentlyDue: [],
+    configurationSupported: true, detailsSubmitted: true,
+    chargesEnabled: true, payoutsEnabled: true,
+  };
+  await assertRejects(() => persistStripeAccountStatus(
+    createClient(url, "fixture-key"), orderId, status,
+    { expectedAccountId: "acct_fixture" },
+  ), Error, "STRIPE_ACCOUNT_CHANGED");
+  assertEquals(guardedUpdate, true);
+}));
+
+Deno.test("first Connect persistence cannot overwrite a concurrently connected account", () => withFixture(async () => {
+  let writes = 0;
+  globalThis.fetch = (input, init) => {
+    const request = new Request(input, init);
+    if (request.method === "GET") {
+      return Promise.resolve(Response.json({ payments_provider: "stripe", stripe_connected_account_id: null }));
+    }
+    writes++;
+    assertEquals(new URL(request.url).searchParams.get("stripe_connected_account_id"), "is.null");
+    // Another request attached an account after the read: PostgREST updates no row.
+    return Promise.resolve(Response.json({ code: "PGRST116", details: "The result contains 0 rows",
+      message: "Cannot coerce the result to a single JSON object" }, { status: 406 }));
+  };
+  const status: ConnectedAccountStatus = {
+    provider: "stripe", providerAccountId: "acct_new", accountType: "standard",
+    controllerFeesPayer: null, controllerLossesPayments: null,
+    controllerRequirementCollection: null, controllerDashboardType: null,
+    requirementsDisabledReason: null, requirementsCurrentlyDue: [],
+    configurationSupported: true, detailsSubmitted: false,
+    chargesEnabled: false, payoutsEnabled: false,
+  };
+  await assertRejects(() => persistStripeAccountStatus(
+    createClient(url, "fixture-key"), orderId, status, { expectedAccountId: null },
+  ), Error, "STRIPE_ACCOUNT_CHANGED");
+  assertEquals(writes, 1);
 }));
 
 Deno.test("Stripe reconciliation failure cannot block other order expiry", () => withFixture(async () => {
