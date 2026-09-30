@@ -37,13 +37,32 @@ export function PlatformMfaPage() {
         }
         for (const staleFactor of data.totp.filter((item) => item.status !== "verified")) {
           const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId: staleFactor.id });
-          if (unenrollError) throw unenrollError;
+          if (unenrollError && unenrollError.code !== "mfa_factor_not_found") throw unenrollError;
         }
-        const { data: enrollment, error: enrollError } = await supabase.auth.mfa.enroll({
+        let enrollmentResult = await supabase.auth.mfa.enroll({
           factorType: "totp",
           friendlyName: "Eventflow Platform",
         });
-        if (enrollError) throw enrollError;
+
+        // A previous render or interrupted enrollment can create the factor
+        // before this request completes. Clear only unverified TOTP factors and
+        // retry once so the administrator receives a usable QR code.
+        if (enrollmentResult.error?.code === "mfa_factor_name_conflict") {
+          const { data: conflictingFactors, error: conflictingFactorsError } = await supabase.auth.mfa.listFactors();
+          if (conflictingFactorsError) throw conflictingFactorsError;
+          for (const staleFactor of conflictingFactors.totp.filter((item) => item.status !== "verified")) {
+            const { error: unenrollError } = await supabase.auth.mfa.unenroll({ factorId: staleFactor.id });
+            if (unenrollError && unenrollError.code !== "mfa_factor_not_found") throw unenrollError;
+          }
+          enrollmentResult = await supabase.auth.mfa.enroll({
+            factorType: "totp",
+            friendlyName: "Eventflow Platform",
+          });
+        }
+
+        if (enrollmentResult.error) throw enrollmentResult.error;
+        const enrollment = enrollmentResult.data;
+        if (!enrollment) throw new Error("MFA enrollment returned no factor.");
         if (active) {
           setFactor({ id: enrollment.id, status: "unverified" });
           setQrCode(enrollment.totp.qr_code);
