@@ -186,10 +186,10 @@ begin
     or (select status from public.orders where id='91000000-0000-4000-8000-000000000006') <> 'expired'
     or (select paid_cents from public.orders where id='91000000-0000-4000-8000-000000000006') <> 500 then
     raise exception 'A late receipt must request a refund without resurrecting the reservation'; end if;
-  perform public.record_stripe_late_refund('acct_fixture_checkout','pi_fixture_6','re_fixture_6');
+  perform public.record_stripe_late_refund('acct_fixture_checkout','pi_fixture_6','pyr_fixture_6');
   v_result := public.apply_stripe_checkout_payment('91000000-0000-4000-8000-000000000006',
     'acct_fixture_checkout','cs_fixture_6','pi_fixture_6',500,'EUR','{}');
-  if v_result->>'refund_id' <> 're_fixture_6' then raise exception 'Refund identity was lost on retry'; end if;
+  if v_result->>'refund_id' <> 'pyr_fixture_6' then raise exception 'Refund identity was lost on retry'; end if;
   -- A known refund ID is not a completed ledger entry. Reconciliation must retry it.
   if not exists (select 1 from public.get_stripe_checkouts_to_reconcile(20)
     where order_id='91000000-0000-4000-8000-000000000006') then
@@ -200,13 +200,13 @@ begin
     where order_id='91000000-0000-4000-8000-000000000006') then
     raise exception 'An unrelated refund finalized the late receipt'; end if;
   perform public.apply_stripe_order_refund('91000000-0000-4000-8000-000000000006',
-    'acct_fixture_checkout','re_fixture_6','pi_fixture_6',500,'EUR','succeeded','{}');
-  perform public.record_stripe_late_refund('acct_fixture_checkout','pi_fixture_6','re_fixture_6',true);
+    'acct_fixture_checkout','pyr_fixture_6','pi_fixture_6',500,'EUR','succeeded','{}');
+  perform public.record_stripe_late_refund('acct_fixture_checkout','pi_fixture_6','pyr_fixture_6',true);
   perform public.apply_stripe_order_refund('91000000-0000-4000-8000-000000000006',
-    'acct_fixture_checkout','re_fixture_6','pi_fixture_6',500,'EUR','succeeded','{}');
-  perform public.record_stripe_late_refund('acct_fixture_checkout','pi_fixture_6','re_fixture_6',true);
+    'acct_fixture_checkout','pyr_fixture_6','pi_fixture_6',500,'EUR','succeeded','{}');
+  perform public.record_stripe_late_refund('acct_fixture_checkout','pi_fixture_6','pyr_fixture_6',true);
   if (select count(*) from public.payments where provider='stripe'
-    and provider_payment_id='re_fixture_6' and is_refund=true) <> 1 then
+    and provider_payment_id='pyr_fixture_6' and is_refund=true) <> 1 then
     raise exception 'A refund retry after rotation duplicated the ledger entry'; end if;
   if (select paid_cents from public.orders where id='91000000-0000-4000-8000-000000000006') <> 0 then
     raise exception 'The late receipt and its refund must balance to zero'; end if;
