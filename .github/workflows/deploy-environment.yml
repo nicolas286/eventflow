@@ -59,6 +59,9 @@ jobs:
           set -euo pipefail
           latest=$(git ls-remote origin "$GITHUB_REF" | cut -f1)
           test "$latest" = "$GITHUB_SHA"
+      - name: Close production account signup in Supabase Auth
+        if: inputs.target == 'production'
+        run: node scripts/deployment/close-production-signup.mjs
       - run: npm ci
       - run: npm test
       - name: Check all Edge Functions and shared contracts
@@ -83,6 +86,9 @@ jobs:
         run: supabase stop --no-backup
       - name: Link the explicit target in this disposable runner
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+      - name: Verify production Stripe Connect pilot before migrations
+        if: inputs.target == 'production'
+        run: supabase db query --linked --file scripts/deployment/verify-stripe-onboarding.production.sql
       - name: Inspect pending migrations
         run: supabase db push --dry-run
       - name: Apply migrations
@@ -91,6 +97,9 @@ jobs:
         run: |
           node scripts/deployment/write-runtime-config.mjs "$APP_ENV"
           supabase db query --linked --file .local/runtime-config.sql
+      - name: Verify production Stripe Connect pilot after migrations
+        if: inputs.target == 'production'
+        run: supabase db query --linked --file scripts/deployment/verify-stripe-onboarding.production.sql
       - name: Deploy functions
         run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF" --use-api
       - name: Test account deletion on staging
