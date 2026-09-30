@@ -32,6 +32,10 @@ Deno.test("CORS reflects an allowed origin and rejects an unknown origin", () =>
   );
   assertFalse("Access-Control-Allow-Origin" in rejected);
   assertEquals(allowed.Vary, "Origin");
+  assertEquals(
+    allowed["Access-Control-Allow-Headers"],
+    "authorization, x-client-info, apikey, content-type, idempotency-key, x-platform-step-up",
+  );
 });
 
 Deno.test("JSON responses are private and include request CORS headers", async () => {

@@ -6,6 +6,7 @@ const defaultAllowedHeaders = [
   "apikey",
   "content-type",
   "idempotency-key",
+  "x-platform-step-up",
 ] as const;
 
 const defaultAllowedMethods = [
