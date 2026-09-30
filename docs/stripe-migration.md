@@ -157,6 +157,25 @@ aucun paiement ou remboursement existant. Un ancien événement interrompu puis
 acquitté doit être renvoyé depuis Stripe, sans créer un second remboursement.
 Les tests `stripe-webhook-retries.sql` couvrent ces transitions et les droits SQL.
 
+## Promotion production du 30 septembre 2026
+
+Les correctifs staging `2eaa841`, `5bd0635`, `651bd18` et `34cde6d` sont
+reportés sur la base production `64762ce`, sans les commits de refonte UI.
+Les sources Connect, création/réutilisation de Checkout, webhooks, remboursements
+et migrations sont identiques au staging testé. Les champs supplémentaires de
+lecture de commande destinés au nouveau récapitulatif UI restent exclus.
+
+Le parcours Connect temporaire est propre à cette branche de production :
+e-mail public enregistré, validation des conditions, puis configuration Stripe.
+Il ne doit pas être reporté automatiquement sur `dev`. Il réutilise les API et
+les validations existantes. Un organisateur dont les prérequis sont déjà validés
+accède directement à la configuration Stripe.
+
+Le contrôle préalable a confirmé le compte Connect existant, trois paiements
+payés et un paiement ouvert. Le garde de déploiement conserve cette association
+et vérifie les deux utilisateurs déjà autorisés, sans modifier leurs droits.
+Les inscriptions publiques restent fermées par le mécanisme production existant.
+
 ## Retour arrière
 
 - Mettre `EVENT_PAYMENT_PROVIDER=disabled` pour bloquer les nouveaux paiements de billets.
