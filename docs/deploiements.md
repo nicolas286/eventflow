@@ -46,6 +46,8 @@ Le CLI Supabase utilise son jeton d'accès et un rôle de connexion temporaire ;
 
 Le pipeline vérifie les jobs cron via la connexion Postgres temporaire du CLI, après les migrations et le déploiement des fonctions. Le secret `SUPABASE_SERVICE_ROLE_KEY` n'est donc pas requis en production pour ce contrôle ; lorsqu'il est disponible sur staging, le contrôle HTTP effectue en plus la même vérification via le RPC réservé au service role.
 
+Pendant la maintenance des paiements, le déploiement `main` désactive les nouvelles inscriptions dans Supabase Auth via la Management API. Il vérifie en lecture seule, avant et après les migrations, que Stripe Connect reste fermé par défaut et qu'un seul compte pilote garde `stripe_connect_allowed = true`. Le déploiement s'arrête si la migration de rollout qui réinitialisait l'allowlist n'a pas encore été appliquée ; il ne modifie jamais le flag du pilote. Ces contrôles ne s'exécutent pas sur staging. Pour rouvrir les inscriptions, retirer le verrou du pipeline puis réactiver explicitement le réglage Auth ; la suppression du seul message frontend ne rouvre rien.
+
 Les variables de dépôt `STAGING_DEPLOY_ENABLED` et `PRODUCTION_DEPLOY_ENABLED` contrôlent les workflows. La propriété `deploymentEnabled` du manifeste est un second contrôle. Un déploiement demande les deux contrôles actifs. L'activation production ne publie rien à elle seule : un push dans `main`, normalement issu d'une PR approuvée, déclenche la publication.
 
 Après le déploiement des fonctions staging, le test d'intégration `accounts` s'exécute uniquement si son API, son transport partagé, son contrat ou ses tests ont changé. Il crée des données synthétiques, vérifie la suppression du compte et nettoie l'organisation restante même en cas d'échec.
