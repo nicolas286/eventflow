@@ -18,14 +18,14 @@ import {
   assertStripeConnectAllowedForUser,
   isStripeConnectAllowedForOrganization,
 } from "../_shared/payments/stripe-access.ts";
-import { getAcceptedOrganizationSalesTerms } from "../_shared/payments/organization-sales-terms.ts";
 
 function isUuid(value: unknown): value is string {
   return (
     typeof value === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      value,
-    )
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      .test(
+        value,
+      )
   );
 }
 
@@ -45,10 +45,9 @@ export const handleStripeConnectStatus = createEdgeHandler(
   },
   async ({ req, user, serviceClient: admin }) => {
     const body = await req.json().catch(() => null);
-    const orgId =
-      body && typeof body === "object" && "orgId" in body
-        ? (body as { orgId?: unknown }).orgId
-        : null;
+    const orgId = body && typeof body === "object" && "orgId" in body
+      ? (body as { orgId?: unknown }).orgId
+      : null;
     if (!isUuid(orgId)) throw badRequest("INVALID_ORG_ID");
 
     const stripeSecretKey = envTrim("STRIPE_SECRET_KEY");
@@ -78,7 +77,6 @@ export const handleStripeConnectStatus = createEdgeHandler(
     if (!(await isStripeConnectAllowedForOrganization(admin, org.created_by))) {
       throw forbidden("STRIPE_CONNECT_NOT_ALLOWED");
     }
-    await getAcceptedOrganizationSalesTerms(admin, orgId);
 
     const provider = new StripeConnectedAccountProvider(stripeSecretKey);
     const status = await provider.getConnectedAccountStatus(
@@ -94,8 +92,8 @@ export const handleStripeConnectStatus = createEdgeHandler(
       status: !status.configurationSupported
         ? "requires_migration"
         : isStripeAccountReady(status)
-          ? "connected"
-          : "pending",
+        ? "connected"
+        : "pending",
       accountType: status.accountType,
       configurationSupported: status.configurationSupported,
       complianceVerified: status.configurationSupported,

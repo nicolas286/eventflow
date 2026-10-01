@@ -106,40 +106,50 @@ describe("Stripe onboarding prerequisites", () => {
     expect(html).toContain("Connecté");
   });
 
-  it("requires an existing connected seller to explicitly accept all four renewed documents", () => {
+  it("keeps an existing seller connected while offering explicit acceptance of all four renewed documents", () => {
     const html = render({
       ...sellerIdentity, ...acceptance,
       connectTermsAcceptedVersion: "2026-09-29",
       dpaAcceptedVersion: "2026-09-29",
     }, connected);
-    expect(html).toContain("2. Vos conditions organisateur");
+    expect(html).toContain("3. Votre compte Stripe");
     expect(html).toContain('href="/cgu"');
     expect(html).toContain('href="/politique-confidentialite"');
     expect(html).toContain('href="/conditions-connect"');
     expect(html).toContain('href="/accord-traitement-donnees"');
     expect(html).toContain("Je confirme avoir pris connaissance");
-    expect(html.match(/type="checkbox"/gu)).toHaveLength(5);
+    expect(html.match(/type="checkbox"/gu)).toHaveLength(4);
     expect(html).not.toMatch(/type="checkbox"[^>]*checked/gu);
-    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Valider et continuer<\/button>/u);
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Valider les accords Eventflow<\/button>/u);
     expect(html).not.toContain("Continuer avec les conditions validées");
-    expect(html).not.toContain("Gérer le compte Stripe</");
-    expect(html).toContain("non prêt");
+    expect(html).toMatch(/<button(?![^>]*disabled)[^>]*>Gérer le compte Stripe<\/button>/u);
+    expect(html).not.toContain("non prêt");
   });
 
   it.each([
     "connectTermsAcceptedVersion", "dpaAcceptedVersion",
     "platformTermsAcceptedVersion", "privacyAcceptedVersion",
-  ] as const)("requires revalidation when %s alone is outdated", (field) => {
+  ] as const)("keeps Stripe management available when %s alone is outdated", (field) => {
     const html = render({ ...sellerIdentity, ...acceptance, ...platformAcceptance, [field]: "old" }, connected);
-    expect(html).toContain("2. Vos conditions organisateur");
-    expect(html).not.toContain("Gérer le compte Stripe</");
+    expect(html).toContain("3. Votre compte Stripe");
+    expect(html).toContain("Valider les accords Eventflow");
+    expect(html).toMatch(/<button(?![^>]*disabled)[^>]*>Gérer le compte Stripe<\/button>/u);
   });
 
-  it("requires the public seller identity even when the old terms and new agreements are accepted", () => {
-    const html = render({ publicEmail: "contact@example.test", ...acceptance, ...platformAcceptance }, connected);
+  it("requires the public seller identity before a new Stripe onboarding", () => {
+    const html = render({ publicEmail: "contact@example.test", ...acceptance, ...platformAcceptance });
     expect(html).toContain("1. Identité du vendeur et contact");
     expect(html).toContain("Nom légal du vendeur");
     expect(html).not.toContain("Gérer le compte Stripe</");
+  });
+
+  it("keeps a connected account ready without the newly requested identity or agreements", () => {
+    const html = render({ publicEmail: "contact@example.test", ...acceptance }, connected);
+    expect(html).toContain("3. Votre compte Stripe");
+    expect(html).not.toContain("non prêt");
+    expect(html).toContain("Compléter l’identité du vendeur");
+    expect(html).toContain("Valider les accords Eventflow");
+    expect(html).toMatch(/<button(?![^>]*disabled)[^>]*>Gérer le compte Stripe<\/button>/u);
   });
 
   it("does not offer onboarding without Stripe permission", () => {
