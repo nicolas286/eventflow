@@ -1,3 +1,4 @@
+import { canManagePlatformAgreements } from "../helpers/platformAgreements";
 import { useOutletContext } from "react-router-dom";
 
 import { Container } from "@ui/components";
@@ -35,6 +36,7 @@ export default function AdminStructurePage() {
               orgInfo={bootstrap.organization}
               orgProfile={bootstrap.organizationProfile}
               stripeConnectAllowed={bootstrap.profile.stripeConnectAllowed}
+              canManageAgreements={canManagePlatformAgreements(bootstrap)}
               onSaved={refetch}
             />
           )}

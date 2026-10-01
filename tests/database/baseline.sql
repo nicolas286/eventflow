@@ -738,10 +738,14 @@ RESET ROLE;
 SET LOCAL ROLE service_role;
 SET LOCAL "request.jwt.claim.role" = 'service_role';
 
-SELECT public.record_order_terms_acceptance(
-  '20000000-0000-4000-8000-000000000005',
-  'database-baseline-v1'
-);
+DO $$ BEGIN
+  BEGIN
+    PERFORM public.record_order_terms_acceptance('20000000-0000-4000-8000-000000000005','database-baseline-v1');
+    RAISE EXCEPTION 'Legacy unversioned checkout accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'TERMS_CHANGED_RELOAD' THEN RAISE; END IF;
+  END;
+END $$;
 SELECT public.replace_stripe_account_for_standard_migration(
   '20000000-0000-4000-8000-000000000002',
   'acct_express_legacy',
@@ -760,16 +764,8 @@ BEGIN
   ) <> 1 THEN
     RAISE EXCEPTION 'Organizer terms acceptance history is missing';
   END IF;
-  IF (
-    SELECT terms_accepted_at IS NOT NULL
-       AND platform_terms_version = 'database-baseline-v1'
-       AND organizer_sales_terms_version IS NOT NULL
-       AND char_length(organizer_sales_terms_snapshot) >= 200
-       AND organizer_display_name_snapshot IS NOT NULL
-    FROM public.orders
-    WHERE id = '20000000-0000-4000-8000-000000000005'
-  ) IS DISTINCT FROM true THEN
-    RAISE EXCEPTION 'Buyer terms acceptance snapshot is missing';
+  IF (SELECT terms_accepted_at IS NOT NULL FROM public.orders WHERE id='20000000-0000-4000-8000-000000000005') THEN
+    RAISE EXCEPTION 'Legacy checkout manufactured acceptance evidence';
   END IF;
   IF (
     SELECT stripe_connected_account_id = 'acct_standard_replacement'

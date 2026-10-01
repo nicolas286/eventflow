@@ -85,6 +85,9 @@ export const registerPayloadSchema = z
     checkoutSource: z.enum(["widget", "public"]).optional(),
     promoCode: promoCodeSchema.optional().nullable(),
     termsAccepted: z.literal(true),
+    platformTermsVersion: z.string().trim().min(1).max(100).optional(),
+    organizerSalesTermsVersion: z.string().trim().min(1).max(100).nullable()
+      .optional(),
   })
   .strict()
   .superRefine((body, ctx) => {
@@ -272,8 +275,9 @@ export function toCreateOrderIntentArgs(
       email,
       name: buyer.name ?? null,
       phone: buyer.phone ?? null,
-      is_attendee:
-        typeof buyer.isAttendee === "boolean" ? buyer.isAttendee : null,
+      is_attendee: typeof buyer.isAttendee === "boolean"
+        ? buyer.isAttendee
+        : null,
     },
 
     p_promo_code: payload.promoCode ?? null,

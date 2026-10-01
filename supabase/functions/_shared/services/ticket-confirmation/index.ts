@@ -1,3 +1,7 @@
+import {
+  acceptedSellerContact,
+  buildAcceptedContractHtml,
+} from "./contract.ts";
 import { generateTicketsPdf } from "./ticketsPdf.ts";
 
 import { resolveRuntimeConfig } from "./config.ts";
@@ -52,22 +56,25 @@ export async function sendTicketConfirmation(
     order.totalCents - discountCents - order.paidCents,
   );
 
-  const orderUrl = `${config.appBaseUrl}/order/${orderId}?token=${encodeURIComponent(
-    order.bookingToken,
-  )}`;
+  const orderUrl = `${config.appBaseUrl}/order/${orderId}?token=${
+    encodeURIComponent(
+      order.bookingToken,
+    )
+  }`;
 
-  const subject =
-    subjectOverride || `Inscription confirmée – ${event.eventTitle}`;
+  const subject = subjectOverride ||
+    `Inscription confirmée – ${event.eventTitle}`;
 
-  const html = buildOrderConfirmationHtml({
+  const seller = acceptedSellerContact(order.contract.seller);
+  const confirmationHtml = buildOrderConfirmationHtml({
     eventTitle: event.eventTitle,
     startsAt: event.startsAt,
     location: event.location,
     description: event.description,
-    organizerName: event.organizerName,
-    organizerEmail: event.organizerEmail,
-    organizerPhone: event.organizerPhone,
-    organizerWebsite: event.organizerWebsite,
+    organizerName: seller ? seller.name : event.organizerName,
+    organizerEmail: seller ? seller.email : event.organizerEmail,
+    organizerPhone: seller ? seller.phone : event.organizerPhone,
+    organizerWebsite: seller ? seller.website : event.organizerWebsite,
     orderUrl,
     currency: order.currency,
     items,
@@ -76,6 +83,14 @@ export async function sendTicketConfirmation(
     paidCents: order.paidCents,
     dueCents,
   });
+
+  const contractHtml = buildAcceptedContractHtml(order.contract);
+  const html = contractHtml
+    ? confirmationHtml.replace(/<\/body>/i, `${contractHtml}</body>`)
+    : confirmationHtml;
+  const durableHtml = contractHtml && html === confirmationHtml
+    ? `${html}${contractHtml}`
+    : html;
 
   const ticketRows = await loadTicketsForConfirmation(admin, orderId, logger);
 
@@ -115,30 +130,29 @@ export async function sendTicketConfirmation(
     productMetaById,
   });
 
-  const pdfAttachment =
-    tickets.length > 0
-      ? await generateTicketsPdf({
-          orderId,
-          eventTitle: event.eventTitle,
-          startsAt: event.startsAt,
-          location: event.location,
-          currency: order.currency,
-          tickets,
-        })
-      : null;
+  const pdfAttachment = tickets.length > 0
+    ? await generateTicketsPdf({
+      orderId,
+      eventTitle: event.eventTitle,
+      startsAt: event.startsAt,
+      location: event.location,
+      currency: order.currency,
+      tickets,
+    })
+    : null;
 
   await sendEmailOrThrow({
     to: order.to,
     subject,
-    html,
+    html: durableHtml,
     attachments: pdfAttachment
       ? [
-          {
-            filename: pdfAttachment.filename,
-            content: pdfAttachment.contentBase64,
-            contentType: pdfAttachment.contentType,
-          },
-        ]
+        {
+          filename: pdfAttachment.filename,
+          content: pdfAttachment.contentBase64,
+          contentType: pdfAttachment.contentType,
+        },
+      ]
       : [],
     tags: {
       kind: "order_confirmation",

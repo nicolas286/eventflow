@@ -51,7 +51,7 @@ async signIn(
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo },
+      options: { emailRedirectTo, data: { platform_terms_version: "2026-10-01", platform_terms_accepted: true } },
     });
 
     if (error) throw error;

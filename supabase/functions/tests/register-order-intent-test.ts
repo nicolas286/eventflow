@@ -38,6 +38,8 @@ Deno.test("order intent repository preserves the successful result", async () =>
       error: null,
     }),
     args,
+    platformTermsVersion: "2026-10-01",
+    organizerSalesTermsVersion: "fixture-sales-v1",
   });
 
   assertEquals(result, {
@@ -64,6 +66,8 @@ Deno.test("order intent repository preserves mapped business errors", async () =
           error: { code: "P0001", message: "PROMO_CODE_EXPIRED" },
         }),
         args,
+        platformTermsVersion: "2026-10-01",
+        organizerSalesTermsVersion: "fixture-sales-v1",
       })
     );
 
@@ -72,5 +76,29 @@ Deno.test("order intent repository preserves mapped business errors", async () =
     assertEquals(error.code, "PROMO_CODE_EXPIRED");
   } finally {
     console.error = originalError;
+  }
+});
+
+Deno.test("contract changes and missing seller agreements produce actionable conflicts", async () => {
+  for (
+    const code of [
+      "TERMS_CHANGED_RELOAD",
+      "ORGANIZER_PLATFORM_AGREEMENTS_REQUIRED",
+      "ORGANIZER_SELLER_IDENTITY_REQUIRED",
+      "ORGANIZER_SALES_TERMS_REQUIRED",
+    ]
+  ) {
+    const error = await assertRejects(() =>
+      createOrderIntentOrThrow({
+        admin: rpcClient({
+          data: null,
+          error: { code: "P0001", message: code },
+        }),
+        args,
+        platformTermsVersion: "2026-10-01",
+        organizerSalesTermsVersion: "fixture-sales-v1",
+      }), ResponseError);
+    assertEquals(error.status, 409);
+    assertEquals(error.code, code);
   }
 });
