@@ -1,3 +1,4 @@
+import { SellerIdentity } from "../components/SellerIdentity";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -70,7 +71,11 @@ export function EventPaymentPage() {
   const [charterOpen, setCharterOpen] = useState(false);
   const [charterRead, setCharterRead] = useState(false);
   const [salesTermsOpen, setSalesTermsOpen] = useState(false);
-  const [salesTermsRead, setSalesTermsRead] = useState(false);
+  const termsKey = `${orgSlug}:${eventSlug}:${data?.org.salesTermsVersion ?? ""}:2026-10-01`;
+  const [readTermsKey, setReadTermsKey] = useState<string | null>(null);
+  const [acceptedTermsKey, setAcceptedTermsKey] = useState<string | null>(null);
+  const salesTermsRead = readTermsKey === termsKey;
+  function setSalesTermsRead(read: boolean) { setReadTermsKey(read ? termsKey : null); }
 
   const turnstileRef = useRef<TurnstileRef | null>(null);
   const turnstileSiteKey =
@@ -123,7 +128,7 @@ export function EventPaymentPage() {
   const { org, event, products, formFields } = data;
 
   const quantities = draft.quantities;
-  const accepted = draft.acceptedTerms ?? false;
+  const accepted = acceptedTermsKey === termsKey;
 
   const picked = products
     .map((p) => ({ p, qty: quantities[p.id] ?? 0 }))
@@ -169,6 +174,7 @@ export function EventPaymentPage() {
   function setAccepted(next: boolean) {
     if (!orgSlug || !eventSlug) return;
     const current = ensureDraft(orgSlug, eventSlug);
+    setAcceptedTermsKey(next ? termsKey : null);
     persistDraft({ ...current, acceptedTerms: next });
   }
 
@@ -233,6 +239,8 @@ export function EventPaymentPage() {
       turnstileToken: withToken,
       checkoutSource: "public",
       termsAccepted: true as const,
+      organizerSalesTermsVersion: requiresOrganizerTerms ? org.salesTermsVersion : null,
+      platformTermsVersion: "2026-10-01",
     };
 
     return register(payload as any);
@@ -542,6 +550,7 @@ export function EventPaymentPage() {
                         className="publicSubtitle"
                         style={{ marginBottom: 12 }}
                       >
+                        <SellerIdentity org={org} />
                         Contact :{" "}
                         {org.publicEmail ? (
                           <a href={`mailto:${org.publicEmail}`}>
@@ -674,10 +683,10 @@ export function EventPaymentPage() {
                             ? "les conditions de " + org.displayName + ", "
                             : ""}
                           les{" "}
-                          <a href="/cgu" target="_blank" rel="noreferrer">
-                            CGU Eventflow
+                          <a href="/conditions-billetterie" target="_blank" rel="noreferrer">
+                            Conditions de billetterie Eventflow
                           </a>{" "}
-                          et la{" "}
+                          et je prends connaissance de la{" "}
                           <a
                             href="/politique-confidentialite"
                             target="_blank"

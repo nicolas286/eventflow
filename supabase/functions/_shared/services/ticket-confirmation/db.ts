@@ -9,7 +9,7 @@ export async function loadOrderForConfirmationOrThrow(
   const { data, error } = await admin
     .from("orders")
     .select(
-      "id, event_id, currency, total_cents, paid_cents, buyer_email, booking_token",
+      "id, event_id, currency, total_cents, paid_cents, buyer_email, booking_token, platform_terms_version, platform_terms_snapshot, organizer_sales_terms_version, organizer_sales_terms_snapshot, organizer_identity_snapshot, terms_accepted_at",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -31,6 +31,24 @@ export async function loadOrderForConfirmationOrThrow(
   }
 
   return {
+    contract: {
+      platformVersion: typeof data.platform_terms_version === "string"
+        ? data.platform_terms_version
+        : null,
+      platformText: typeof data.platform_terms_snapshot === "string"
+        ? data.platform_terms_snapshot
+        : null,
+      organizerVersion: typeof data.organizer_sales_terms_version === "string"
+        ? data.organizer_sales_terms_version
+        : null,
+      organizerText: typeof data.organizer_sales_terms_snapshot === "string"
+        ? data.organizer_sales_terms_snapshot
+        : null,
+      seller: data.organizer_identity_snapshot,
+      acceptedAt: typeof data.terms_accepted_at === "string"
+        ? data.terms_accepted_at
+        : null,
+    },
     id: data.id,
     eventId: data.event_id ? String(data.event_id) : null,
     to,
@@ -74,10 +92,10 @@ export async function loadEventForConfirmation(
 
   const { data: profile, error: profileError } = data?.org_id
     ? await admin
-        .from("organization_profile")
-        .select("display_name, public_email, phone, website")
-        .eq("org_id", data.org_id)
-        .maybeSingle()
+      .from("organization_profile")
+      .select("display_name, public_email, phone, website")
+      .eq("org_id", data.org_id)
+      .maybeSingle()
     : { data: null, error: null };
 
   if (profileError) {
@@ -273,8 +291,8 @@ export async function loadTicketProductMetaById(
 
     for (const row of data ?? []) {
       orderItemMetaById.set(String(row.id), {
-        productNameSnapshot:
-          String(row.product_name_snapshot ?? "").trim() || "Billet",
+        productNameSnapshot: String(row.product_name_snapshot ?? "").trim() ||
+          "Billet",
         unitPriceCents: Number(row.unit_price_cents_snapshot ?? 0) || 0,
       });
     }
@@ -349,8 +367,8 @@ export async function loadAnswersByAttendeeIdForConfirmation(
   for (const row of data ?? []) {
     const attendeeId = String(row.attendee_id);
     const key = String(row.field_key_snapshot ?? "").trim();
-    const label =
-      String(row.field_label_snapshot ?? "").trim() || key || "Champ";
+    const label = String(row.field_label_snapshot ?? "").trim() || key ||
+      "Champ";
     const value = compactAnswerValue(row.value);
 
     if (!value) continue;

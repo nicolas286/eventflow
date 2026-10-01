@@ -1,3 +1,7 @@
+import { PlatformAgreementsPanel } from "../PlatformAgreementsPanel";
+import { platformAgreementsCurrent } from "../../helpers/platformAgreements";
+import { SellerIdentityForm } from "./SellerIdentityForm";
+import { useSellerCompliance } from "../../hooks/useSellerCompliance";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./OrganizationPanel.desktop.css";
@@ -21,6 +25,7 @@ type Props = {
   orgInfo: Organization | null;
   orgProfile: OrganizationProfile | null;
   stripeConnectAllowed: boolean;
+  canManageAgreements: boolean;
   onSaved: () => Promise<void>;
 };
 
@@ -100,6 +105,7 @@ function StructurePanel({
   orgInfo,
   orgProfile,
   stripeConnectAllowed,
+  canManageAgreements,
   onSaved,
 }: Props) {
   const location = useLocation();
@@ -110,6 +116,14 @@ function StructurePanel({
 
   const stripeConnect = useStripeConnect({ supabase });
   const paymentSettings = useSavePaymentSettings({ supabase });
+  const compliance = useSellerCompliance(supabase);
+  const [identityDraftDirty, setIdentityDraftDirty] = useState(false);
+  const identityReady = Boolean(
+    (orgProfile?.sellerLegalName?.trim().length ?? 0) >= 2 &&
+    (orgProfile?.sellerAddress?.trim().length ?? 0) >= 8 &&
+    (orgProfile?.phone?.trim().length ?? 0) >= 6 && orgProfile?.sellerType,
+  );
+  const agreementsCurrent = platformAgreementsCurrent(orgProfile);
   const stripeReady = Boolean(
     orgInfo?.stripeConnectedAccountId &&
     orgInfo.stripeDetailsSubmitted &&
@@ -206,11 +220,11 @@ function StructurePanel({
   const publicEmailNeedsSave = publicEmail !== initial.publicEmail.trim();
   const publicEmailStored = publicEmailValid && !publicEmailNeedsSave;
   const [requestedConnectStep, setRequestedConnectStep] = useState<1 | 2 | 3 | null>(null);
-  const connectStep = !publicEmailStored
+  const connectStep = !publicEmailStored || !identityReady
     ? 1
     : requestedConnectStep === 1
       ? 1
-      : !salesTermsCurrent || requestedConnectStep === 2 ? 2 : 3;
+      : !salesTermsCurrent || !agreementsCurrent || requestedConnectStep === 2 ? 2 : 3;
 
   const effectiveSlug = useMemo(() => {
     return updated?.profile?.slug ?? orgProfile?.slug ?? "";
@@ -302,10 +316,10 @@ function StructurePanel({
 
   async function handleStripeConnect() {
     setConnectFlash(null);
-    if (!publicEmailStored || !salesTermsCurrent) {
+    if (!publicEmailStored || !salesTermsCurrent || !identityReady || !agreementsCurrent) {
       setConnectFlash({
         ok: false,
-        message: "Enregistrez un e-mail public et validez les conditions organisateur.",
+        message: "Complétez l’identité du vendeur, validez vos conditions de vente et les accords Eventflow, puis confirmez avoir pris connaissance de la politique de confidentialité.",
       });
       return;
     }
@@ -336,7 +350,7 @@ function StructurePanel({
   }
 
   async function handleConnectEmailSave() {
-    if (!publicEmailValid || loading) return;
+    if (!publicEmailValid || loading || identityDraftDirty || !identityReady) return;
     reset();
     if (publicEmailNeedsSave) {
       const saved = await saveOrgInfo({
@@ -353,6 +367,7 @@ function StructurePanel({
   async function handleAcceptSalesTerms() {
     paymentSettings.reset();
     if (!salesTermsConfirmed || !publicEmailStored || salesTerms.trim().length < 200) return;
+    if (!agreementsCurrent) return;
     const result = await paymentSettings.acceptTerms(orgId, salesTerms);
     if (!result) return;
     setSalesTerms(result.salesTerms ?? salesTerms);
@@ -378,6 +393,7 @@ function StructurePanel({
 
   return (
     <div className="structurePanel">
+      {canManageAgreements ? <PlatformAgreementsPanel key={orgId} orgId={orgId} current={agreementsCurrent} onSaved={onSaved} /> : null}
       <div className="structurePanel__grid2">
         {/* ---------------- Organisation ---------------- */}
         <div className="structurePanel__block">
@@ -538,7 +554,7 @@ function StructurePanel({
 
             {(
               paymentForm.provider === "stripe"
-                ? stripeReady
+                ? stripeReady && identityReady && agreementsCurrent && salesTermsCurrent
                 : bankTransferReady
             ) ? (
               <span className="structurePanel__chipOk">prêt</span>
@@ -551,7 +567,7 @@ function StructurePanel({
         {stripeConnectAllowed ? (
           <>
             <ol className="structurePanel__connectSteps" aria-label="Configuration Stripe">
-              {["E-mail public", "Conditions", "Stripe"].map((label, index) => (
+              {["Identité et contact", "Conditions et accords", "Stripe"].map((label, index) => (
                 <li key={label} aria-current={connectStep === index + 1 ? "step" : undefined}>
                   {index + 1}. {label}
                 </li>
@@ -559,11 +575,16 @@ function StructurePanel({
             </ol>
             {connectStep === 1 ? (
               <div className="structurePanel__field">
-                <div className="structurePanel__fieldLabel">1. Votre e-mail de contact</div>
+                <div className="structurePanel__fieldLabel">1. Identité du vendeur et contact</div>
                 <div className="structurePanel__help">
                   Un e-mail public est obligatoire pour les demandes des participants.
                   Enregistrez-le pour continuer.
                 </div>
+                <SellerIdentityForm profile={orgProfile} loading={compliance.loading} onDirtyChange={setIdentityDraftDirty} onSave={async (identity) => {
+                  const saved = await compliance.saveIdentity(orgId, identity);
+                  if (saved) await onSaved();
+                  return saved;
+                }} />
                 <Input
                   label="E-mail public pour les participants"
                   type="email"
@@ -579,7 +600,7 @@ function StructurePanel({
                   <Button
                     label={loading ? "Enregistrement…" : publicEmailNeedsSave ? "Enregistrer et continuer" : "Continuer"}
                     onClick={handleConnectEmailSave}
-                    disabled={!publicEmailValid || loading || paymentSettings.loading}
+                    disabled={identityDraftDirty || !identityReady || !publicEmailValid || loading || paymentSettings.loading || compliance.loading}
                   />
                 </div>
               </div>
@@ -601,24 +622,34 @@ function StructurePanel({
                     setSalesTermsConfirmed(false);
                   }}
                 />
+                <div className="structurePanel__help">Vous pouvez remplacer le texte par notre modèle actualisé, puis l’adapter à vos événements avant validation.</div>
+                <div className="structurePanel__actions">
+                  <Button variant="secondary" label="Charger le modèle actualisé"
+                    disabled={paymentSettings.loading || compliance.loading || salesTerms === DEFAULT_ORGANIZATION_SALES_TERMS}
+                    onClick={() => { setSalesTerms(DEFAULT_ORGANIZATION_SALES_TERMS); setSalesTermsConfirmed(false); }} />
+                  {salesTerms !== initialSalesTerms ? <Button variant="secondary" label="Rétablir le texte enregistré"
+                    disabled={paymentSettings.loading || compliance.loading}
+                    onClick={() => { setSalesTerms(initialSalesTerms); setSalesTermsConfirmed(false); }} /> : null}
+                </div>
                 <label className="structurePanel__termsConfirmation">
                   <input type="checkbox" checked={salesTermsConfirmed}
                     onChange={(event) => setSalesTermsConfirmed(event.target.checked)} />
                   <span>Je confirme être autorisé à engager l’organisation et que ces
                     conditions correspondent aux modalités appliquées aux participants.</span>
                 </label>
+                {!agreementsCurrent ? <div className="structurePanel__help"><a href="#platform-agreements">Validez d'abord les accords Eventflow en haut de cette page.</a></div> : null}
                 {salesTerms.trim().length < 200 ? (
                   <div className="structurePanel__help">Complétez vos conditions (au moins 200 caractères).</div>
                 ) : null}
                 <div className="structurePanel__actions">
-                  <Button variant="secondary" label="Revoir l’e-mail"
+                  <Button variant="secondary" label="Revoir l’identité et le contact"
                     onClick={() => setRequestedConnectStep(1)} disabled={paymentSettings.loading} />
                   <Button
                     label={paymentSettings.loading ? "Validation…" : "Valider et continuer"}
                     onClick={handleAcceptSalesTerms}
-                    disabled={paymentSettings.loading || loading || !salesTermsConfirmed || salesTerms.trim().length < 200 || !publicEmailStored}
+                    disabled={compliance.loading || !agreementsCurrent || paymentSettings.loading || loading || !salesTermsConfirmed || salesTerms.trim().length < 200 || !publicEmailStored}
                   />
-                  {salesTermsCurrent ? (
+                  {salesTermsCurrent && agreementsCurrent ? (
                     <Button variant="secondary" label="Continuer avec les conditions validées"
                       onClick={() => setRequestedConnectStep(3)} disabled={paymentSettings.loading} />
                   ) : null}
@@ -637,7 +668,7 @@ function StructurePanel({
                   <Button
                     label={stripeConnect.loading ? "Ouverture…" : stripeReady ? "Gérer le compte Stripe" : "Configurer Stripe"}
                     onClick={handleStripeConnect}
-                    disabled={stripeConnect.loading || paymentSettings.loading || loading || !salesTermsCurrent || !publicEmailStored}
+                    disabled={stripeConnect.loading || paymentSettings.loading || loading || !salesTermsCurrent || !publicEmailStored || !identityReady || !agreementsCurrent}
                   />
                 </div>
               </div>
@@ -722,6 +753,7 @@ function StructurePanel({
                 {connectFlash.message}
               </div>
             ) : null}
+            {compliance.error ? <div className="structurePanel__error" role="alert">{compliance.error}</div> : null}
             {paymentSettings.error ? (
               <div className="structurePanel__error">
                 {paymentSettings.error}

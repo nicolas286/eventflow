@@ -37,6 +37,19 @@ export function humanBusinessMessage(msg: string): string | null {
     ORGANIZER_SALES_TERMS_INVALID:
       "Les conditions organisateur doivent contenir entre 200 et 10 000 caractères.",
 
+    TERMS_CHANGED_RELOAD:
+      "Les conditions ont changé. Rechargez cette page, relisez les conditions puis confirmez à nouveau votre commande.",
+    PLATFORM_AGREEMENTS_CHANGED:
+      "Les accords ont été actualisés. Rechargez la page et acceptez leur nouvelle version.",
+    PLATFORM_AGREEMENTS_UNAVAILABLE:
+      "Les documents contractuels sont temporairement indisponibles. Réessayez dans quelques instants.",
+    SELLER_IDENTITY_INVALID:
+      "Complétez le nom légal, l’adresse complète, le téléphone et la qualité du vendeur.",
+    ORGANIZER_SELLER_IDENTITY_REQUIRED:
+      "L’organisateur doit compléter son identité légale et ses coordonnées avant d’activer les paiements.",
+    ORGANIZER_PLATFORM_AGREEMENTS_REQUIRED:
+      "L’organisateur doit accepter les CGU, l’annexe Connect et l’accord de traitement des données, et confirmer sa prise de connaissance de la politique de confidentialité avant d’activer les paiements.",
+
     BANK_TRANSFER_DISABLED:
       "Le paiement par virement n’est pas disponible actuellement.",
 

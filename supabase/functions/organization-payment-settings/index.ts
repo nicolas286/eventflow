@@ -1,7 +1,7 @@
 import {
+  maskIban,
   organizationPaymentSettingsRequestSchema,
   organizationPaymentSettingsResultSchema,
-  maskIban,
 } from "../../../shared/schemas/bank-transfer.ts";
 import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
 import { json } from "../_shared/app/http.ts";
@@ -19,7 +19,7 @@ import { sendEmailOrThrow } from "../_shared/app/email.ts";
 import { escapeHtml } from "../_shared/text.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const MAX_BODY_BYTES = 8_192;
+const MAX_BODY_BYTES = 65_536;
 
 async function assertOrganizationManager(
   serviceClient: SupabaseClient,
@@ -48,9 +48,15 @@ function securityEmailHtml(input: {
   return `
 <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;line-height:1.6;color:#111">
   <h2>Coordonnées bancaires modifiées</h2>
-  <p>Les coordonnées bancaires de <strong>${escapeHtml(input.organizationName)}</strong> ont été modifiées le ${escapeHtml(input.changedAt)}.</p>
-  <p><strong>Ancien IBAN :</strong> ${escapeHtml(input.oldIbanMasked ?? "Non renseigné")}</p>
-  <p><strong>Nouvel IBAN :</strong> ${escapeHtml(input.newIbanMasked ?? "Non renseigné")}</p>
+  <p>Les coordonnées bancaires de <strong>${
+    escapeHtml(input.organizationName)
+  }</strong> ont été modifiées le ${escapeHtml(input.changedAt)}.</p>
+  <p><strong>Ancien IBAN :</strong> ${
+    escapeHtml(input.oldIbanMasked ?? "Non renseigné")
+  }</p>
+  <p><strong>Nouvel IBAN :</strong> ${
+    escapeHtml(input.newIbanMasked ?? "Non renseigné")
+  }</p>
   <p>Si vous n’êtes pas à l’origine de cette modification, vérifiez immédiatement les accès à votre organisation.</p>
 </div>`;
 }
@@ -90,7 +96,7 @@ export const handleOrganizationPaymentSettingsRequest = createEdgeHandler(
       const { data, error } = await serviceClient
         .from("organizations")
         .select(
-          "id, payments_provider, bank_transfer_beneficiary, bank_transfer_iban, organization_profile(sales_terms, sales_terms_version, sales_terms_accepted_version, sales_terms_accepted_at, sales_terms_accepted_by)",
+          "id, payments_provider, bank_transfer_beneficiary, bank_transfer_iban, organization_profile(sales_terms, sales_terms_version, sales_terms_accepted_version, sales_terms_accepted_at, sales_terms_accepted_by, seller_legal_name, seller_address, seller_business_number, seller_type, phone, connect_terms_accepted_version, dpa_accepted_version, platform_terms_accepted_version, privacy_accepted_version, platform_agreements_accepted_at)",
         )
         .eq("id", input.orgId)
         .maybeSingle();
@@ -111,17 +117,30 @@ export const handleOrganizationPaymentSettingsRequest = createEdgeHandler(
           bankTransferIbanMasked: data.bank_transfer_iban
             ? maskIban(data.bank_transfer_iban)
             : null,
+          sellerLegalName: profile?.seller_legal_name ?? null,
+          sellerAddress: profile?.seller_address ?? null,
+          sellerBusinessNumber: profile?.seller_business_number ?? null,
+          sellerType: profile?.seller_type ?? null,
+          sellerPhone: profile?.phone ?? null,
+          connectTermsAcceptedVersion:
+            profile?.connect_terms_accepted_version ?? null,
+          dpaAcceptedVersion: profile?.dpa_accepted_version ?? null,
+          platformTermsAcceptedVersion:
+            profile?.platform_terms_accepted_version ?? null,
+          privacyAcceptedVersion: profile?.privacy_accepted_version ?? null,
+          platformAgreementsAcceptedAt:
+            profile?.platform_agreements_accepted_at ?? null,
           salesTerms: profile?.sales_terms ?? null,
           salesTermsVersion: profile?.sales_terms_version ?? null,
-          salesTermsAcceptedVersion:
-            profile?.sales_terms_accepted_version ?? null,
+          salesTermsAcceptedVersion: profile?.sales_terms_accepted_version ??
+            null,
           salesTermsAcceptedAt: profile?.sales_terms_accepted_at ?? null,
           salesTermsAcceptedBy: profile?.sales_terms_accepted_by ?? null,
           salesTermsCurrent: Boolean(
             profile?.sales_terms_accepted_at &&
-            profile?.sales_terms_version &&
-            profile.sales_terms_accepted_version ===
-              profile.sales_terms_version,
+              profile?.sales_terms_version &&
+              profile.sales_terms_accepted_version ===
+                profile.sales_terms_version,
           ),
         }),
       );
