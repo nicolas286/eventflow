@@ -220,7 +220,9 @@ function StructurePanel({
   const publicEmailNeedsSave = publicEmail !== initial.publicEmail.trim();
   const publicEmailStored = publicEmailValid && !publicEmailNeedsSave;
   const [requestedConnectStep, setRequestedConnectStep] = useState<1 | 2 | 3 | null>(null);
-  const connectStep = !publicEmailStored || !identityReady
+  const connectStep = stripeReady
+    ? requestedConnectStep ?? 3
+    : !publicEmailStored || !identityReady
     ? 1
     : requestedConnectStep === 1
       ? 1
@@ -316,7 +318,7 @@ function StructurePanel({
 
   async function handleStripeConnect() {
     setConnectFlash(null);
-    if (!publicEmailStored || !salesTermsCurrent || !identityReady || !agreementsCurrent) {
+    if (!stripeReady && (!publicEmailStored || !salesTermsCurrent || !identityReady || !agreementsCurrent)) {
       setConnectFlash({
         ok: false,
         message: "Complétez l’identité du vendeur, validez vos conditions de vente et les accords Eventflow, puis confirmez avoir pris connaissance de la politique de confidentialité.",
@@ -554,7 +556,7 @@ function StructurePanel({
 
             {(
               paymentForm.provider === "stripe"
-                ? stripeReady && identityReady && agreementsCurrent && salesTermsCurrent
+                ? stripeReady
                 : bankTransferReady
             ) ? (
               <span className="structurePanel__chipOk">prêt</span>
@@ -597,6 +599,7 @@ function StructurePanel({
                 ) : null}
                 {error ? <div className="structurePanel__error" role="alert">{error}</div> : null}
                 <div className="structurePanel__actions">
+                  {stripeReady ? <Button variant="secondary" label="Retour au compte Stripe" onClick={() => setRequestedConnectStep(3)} /> : null}
                   <Button
                     label={loading ? "Enregistrement…" : publicEmailNeedsSave ? "Enregistrer et continuer" : "Continuer"}
                     onClick={handleConnectEmailSave}
@@ -642,6 +645,7 @@ function StructurePanel({
                   <div className="structurePanel__help">Complétez vos conditions (au moins 200 caractères).</div>
                 ) : null}
                 <div className="structurePanel__actions">
+                  {stripeReady ? <Button variant="secondary" label="Retour au compte Stripe" onClick={() => setRequestedConnectStep(3)} /> : null}
                   <Button variant="secondary" label="Revoir l’identité et le contact"
                     onClick={() => setRequestedConnectStep(1)} disabled={paymentSettings.loading} />
                   <Button
@@ -660,15 +664,17 @@ function StructurePanel({
               <div className="structurePanel__field">
                 <div className="structurePanel__fieldLabel">3. Votre compte Stripe</div>
                 <div className="structurePanel__success">
-                  E-mail public enregistré et conditions validées.
+                  {stripeReady ? "Votre compte Stripe est connecté et les paiements sont activés." : "E-mail public enregistré et conditions validées."}
                 </div>
                 <div className="structurePanel__actions">
+                  {stripeReady ? <Button variant="secondary" label="Compléter l’identité du vendeur"
+                    onClick={() => setRequestedConnectStep(1)} disabled={stripeConnect.loading} /> : null}
                   <Button variant="secondary" label="Revoir les conditions"
                     onClick={() => setRequestedConnectStep(2)} disabled={stripeConnect.loading} />
                   <Button
                     label={stripeConnect.loading ? "Ouverture…" : stripeReady ? "Gérer le compte Stripe" : "Configurer Stripe"}
                     onClick={handleStripeConnect}
-                    disabled={stripeConnect.loading || paymentSettings.loading || loading || !salesTermsCurrent || !publicEmailStored || !identityReady || !agreementsCurrent}
+                    disabled={stripeConnect.loading || paymentSettings.loading || loading || (!stripeReady && (!salesTermsCurrent || !publicEmailStored || !identityReady || !agreementsCurrent))}
                   />
                 </div>
               </div>

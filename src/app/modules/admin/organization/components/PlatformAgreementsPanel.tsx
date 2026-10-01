@@ -20,7 +20,7 @@ export function PlatformAgreementsPanel({ orgId, current, onSaved }: {
   }
   return <section id="platform-agreements" className="structurePanel__block" aria-labelledby="platform-agreements-title">
     <h2 id="platform-agreements-title" className="structurePanel__label">Vos accords avec Eventflow</h2>
-    <div className="structurePanel__help">Ces documents encadrent l’utilisation du service par votre organisation. Leur validation est disponible indépendamment de l’activation des paiements Stripe. Versions du 1er octobre 2026.</div>
+    <div className="structurePanel__help">Ces documents encadrent l’utilisation du service par votre organisation. Versions du 1er octobre 2026.</div>
     {current ? <div className="structurePanel__success">
       <a href="/cgu" target="_blank" rel="noreferrer">CGU Eventflow</a>, <a href="/conditions-connect" target="_blank" rel="noreferrer">annexe Connect</a> et <a href="/accord-traitement-donnees" target="_blank" rel="noreferrer">accord de traitement des données</a> acceptés ; prise de connaissance de la <a href="/politique-confidentialite" target="_blank" rel="noreferrer">politique de confidentialité</a> confirmée.
     </div> : <>
