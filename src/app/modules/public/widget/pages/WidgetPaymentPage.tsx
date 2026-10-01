@@ -1,3 +1,4 @@
+import { SellerIdentity } from "../../register/components/SellerIdentity";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 
@@ -76,7 +77,11 @@ export function WidgetPaymentPage() {
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
   const [pendingPay, setPendingPay] = useState(false);
   const [salesTermsOpen, setSalesTermsOpen] = useState(false);
-  const [salesTermsRead, setSalesTermsRead] = useState(false);
+  const termsKey = `${orgSlug}:${eventSlug}:${data?.org.salesTermsVersion ?? ""}:2026-10-01`;
+  const [readTermsKey, setReadTermsKey] = useState<string | null>(null);
+  const [acceptedTermsKey, setAcceptedTermsKey] = useState<string | null>(null);
+  const salesTermsRead = readTermsKey === termsKey;
+  function setSalesTermsRead(read: boolean) { setReadTermsKey(read ? termsKey : null); }
 
   const turnstileRef = useRef<TurnstileRef | null>(null);
   const turnstileSiteKey =
@@ -113,7 +118,7 @@ export function WidgetPaymentPage() {
   const { org, event, products, formFields } = data;
 
   const quantities = draft.quantities;
-  const accepted = draft.acceptedTerms ?? false;
+  const accepted = acceptedTermsKey === termsKey;
 
   const picked = products
     .map((p) => ({ p, qty: quantities[p.id] ?? 0 }))
@@ -146,6 +151,7 @@ export function WidgetPaymentPage() {
   function setAccepted(next: boolean) {
     if (!orgSlug || !eventSlug) return;
     const current = ensureDraft(orgSlug, eventSlug);
+    setAcceptedTermsKey(next ? termsKey : null);
     persistDraft({ ...current, acceptedTerms: next });
   }
 
@@ -210,6 +216,8 @@ export function WidgetPaymentPage() {
       widgetReturnUrl,
       checkoutSource: "widget",
       termsAccepted: true as const,
+      organizerSalesTermsVersion: requiresOrganizerTerms ? org.salesTermsVersion : null,
+      platformTermsVersion: "2026-10-01",
     };
 
     return register(payload as any);
@@ -459,6 +467,7 @@ export function WidgetPaymentPage() {
                 le vendeur.
               </div>
               <div className="widgetPaymentInfos">
+                <SellerIdentity org={org} />
                 Contact :{" "}
                 {org.publicEmail ? (
                   <a href={`mailto:${org.publicEmail}`}>{org.publicEmail}</a>
@@ -553,10 +562,10 @@ export function WidgetPaymentPage() {
                     ? "les conditions de " + org.displayName + ", "
                     : ""}
                   les{" "}
-                  <a href="/cgu" target="_blank" rel="noreferrer">
-                    CGU Eventflow
+                  <a href="/conditions-billetterie" target="_blank" rel="noreferrer">
+                    Conditions de billetterie Eventflow
                   </a>{" "}
-                  et la{" "}
+                  et je prends connaissance de la{" "}
                   <a
                     href="/politique-confidentialite"
                     target="_blank"

@@ -11,12 +11,7 @@ import { StripeApiError } from "../../_shared/payments/stripe-api.ts";
 import { parseRegisterPayload } from "./validation.ts";
 import { toCreateOrderIntentArgs } from "./registerTickets.contracts.ts";
 import { resolveRuntimeConfig } from "./config.ts";
-import {
-  getEventPaymentContextOrThrow,
-  recordOrderTermsAcceptanceOrThrow,
-  selectedItemsIncludePaidProductOrThrow,
-} from "./db.ts";
-import { getAcceptedOrganizationSalesTerms } from "../../_shared/payments/organization-sales-terms.ts";
+import { getEventPaymentContextOrThrow } from "./db.ts";
 import { createOrderIntentOrThrow } from "./order-intent-repository.ts";
 import { buildBuyer } from "./buyer.ts";
 import { verifyCaptchaOrThrow } from "./turnstile.ts";
@@ -25,10 +20,7 @@ import {
   findReusableProviderPayment,
   insertProviderPaymentOrRollback,
 } from "./payment-storage.ts";
-import {
-  resolveEventPaymentProvider,
-  type ResolvedEventPaymentMethod,
-} from "./payment-provider.ts";
+import { resolveEventPaymentProvider } from "./payment-provider.ts";
 import { completeFreeOrderOrThrow } from "./free-order.ts";
 import { assertWidgetAllowedForOrgOrThrow } from "./widget.ts";
 import { createBankTransferPaymentOrThrow } from "./bank-transfer.ts";
@@ -55,10 +47,10 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
           status: error.status,
           ...(error instanceof StripeApiError
             ? {
-                providerStatus: error.providerStatus,
-                stripeCode: error.stripeCode,
-                stripeRequestId: error.requestId,
-              }
+              providerStatus: error.providerStatus,
+              stripeCode: error.stripeCode,
+              stripeRequestId: error.requestId,
+            }
             : {}),
         });
         return json(req, { error: error.code }, error.status);
@@ -132,22 +124,10 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       body.eventId,
     );
 
-    let paymentMethod: ResolvedEventPaymentMethod | null = null;
-    if (
-      await selectedItemsIncludePaidProductOrThrow(admin, body.eventId, body.items)
-    ) {
-      paymentMethod = await resolveEventPaymentProvider({
-        admin,
-        orgId,
-        stripeSecretKey: config.stripeSecretKey,
-        stripePaymentMethodConfigurationId:
-          config.stripePaymentMethodConfigurationId,
-        providerSelection: config.eventPaymentProvider,
-      });
-    }
-
     const order = await createOrderIntentOrThrow({
       admin,
+      platformTermsVersion: body.platformTermsVersion ?? "",
+      organizerSalesTermsVersion: body.organizerSalesTermsVersion ?? null,
       args: {
         ...toCreateOrderIntentArgs(body, rateLimit.keyHash),
         p_buyer: buyer,
@@ -162,11 +142,6 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       dueNowCents: order.dueNowCents,
       currency: order.currency,
     });
-
-    if (order.paymentRequired && order.dueNowCents > 0) {
-      await getAcceptedOrganizationSalesTerms(admin, orgId);
-      await recordOrderTermsAcceptanceOrThrow(admin, order.orderId);
-    }
 
     logger.info("payment_context_loaded", {
       orderId: order.orderId,
@@ -193,13 +168,27 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       });
     }
 
-    paymentMethod ??= await resolveEventPaymentProvider({
+    const paymentMethod = await resolveEventPaymentProvider({
       admin,
       orgId,
       stripeSecretKey: config.stripeSecretKey,
       stripePaymentMethodConfigurationId:
         config.stripePaymentMethodConfigurationId,
       providerSelection: config.eventPaymentProvider,
+    }).catch(async (error: unknown) => {
+      // No provider call has happened: release only this unstarted reservation.
+      const { error: releaseError } = await admin.rpc(
+        "expire_unstarted_checkout",
+        {
+          p_order_id: order.orderId,
+        },
+      );
+      if (releaseError) {
+        logger.error("unstarted_checkout_release_failed", {
+          orderId: order.orderId,
+        });
+      }
+      throw error;
     });
 
     logger.info("payment_provider_loaded", {
@@ -275,9 +264,11 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       currency: order.currency,
     });
 
-    const { data: checkoutExpiresAt, error: reservationError } = await admin.rpc(
-      "prepare_stripe_checkout", { p_order_id: order.orderId },
-    );
+    const { data: checkoutExpiresAt, error: reservationError } = await admin
+      .rpc(
+        "prepare_stripe_checkout",
+        { p_order_id: order.orderId },
+      );
     if (reservationError || typeof checkoutExpiresAt !== "number") {
       throw internal("STRIPE_RESERVATION_FAILED");
     }

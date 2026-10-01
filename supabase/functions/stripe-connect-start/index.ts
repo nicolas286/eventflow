@@ -29,9 +29,10 @@ import {
 function isUuid(value: unknown): value is string {
   return (
     typeof value === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-      value,
-    )
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      .test(
+        value,
+      )
   );
 }
 
@@ -58,10 +59,9 @@ export const handleStripeConnectStart = createEdgeHandler(
   },
   async ({ req, user, serviceClient: admin }) => {
     const body = await req.json().catch(() => null);
-    const orgId =
-      body && typeof body === "object" && "orgId" in body
-        ? (body as { orgId?: unknown }).orgId
-        : null;
+    const orgId = body && typeof body === "object" && "orgId" in body
+      ? (body as { orgId?: unknown }).orgId
+      : null;
     if (!isUuid(orgId)) throw badRequest("INVALID_ORG_ID");
 
     const stripeSecretKey = envTrim("STRIPE_SECRET_KEY");
@@ -93,21 +93,24 @@ export const handleStripeConnectStart = createEdgeHandler(
     if (!(await isStripeConnectAllowedForOrganization(admin, org.created_by))) {
       throw forbidden("STRIPE_CONNECT_NOT_ALLOWED");
     }
-    await getAcceptedOrganizationSalesTerms(admin, orgId);
+    if (!org.stripe_connected_account_id) {
+      await getAcceptedOrganizationSalesTerms(admin, orgId);
+    }
 
     const provider = new StripeConnectedAccountProvider(stripeSecretKey);
     let expectedAccountId = org.stripe_connected_account_id;
     let status = org.stripe_connected_account_id
       ? await provider.getConnectedAccountStatus(
-          org.stripe_connected_account_id,
-        )
+        org.stripe_connected_account_id,
+      )
       : await provider.createConnectedAccount({
-          orgId,
-          email: user.email ?? null,
-          displayName: org.name,
-        });
+        orgId,
+        email: user.email ?? null,
+        displayName: org.name,
+      });
 
     if (org.stripe_connected_account_id && !status.configurationSupported) {
+      await getAcceptedOrganizationSalesTerms(admin, orgId);
       const replacement = await provider.createConnectedAccount({
         orgId,
         email: user.email ?? null,

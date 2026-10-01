@@ -40,6 +40,8 @@ const validPayload = {
   turnstileToken: "test-token",
   checkoutSource: "public",
   termsAccepted: true,
+  platformTermsVersion: "2026-10-01",
+  organizerSalesTermsVersion: "seller-version-presented-to-buyer",
 };
 
 describe("createRegisterRepo", () => {
@@ -128,6 +130,16 @@ describe("createRegisterRepo", () => {
     await expect(repo.register(validPayload)).rejects.toThrow(
       "EVENT_NOT_FOUND",
     );
+  });
+
+  it("remonte le changement de conditions sans réessayer une version non lue", async () => {
+    const supabase = makeSupabaseInvokeMock({
+      data: null,
+      error: makeEdgeError("TERMS_CHANGED_RELOAD"),
+    });
+    await expect(createRegisterRepo(supabase).register(validPayload)).rejects.toThrow("TERMS_CHANGED_RELOAD");
+    expect(supabase.functions.invoke).toHaveBeenCalledTimes(1);
+    expect(supabase.functions.invoke).toHaveBeenCalledWith("orders", { body: validPayload });
   });
 
   it("throw si l'edge renvoie une réponse vide", async () => {

@@ -5,19 +5,18 @@ import type { AdminClient } from "../../_shared/supabase.ts";
 import { StripeEventPaymentProvider } from "./stripe-payment-provider.ts";
 import { isStripeConnectAllowedForOrganization } from "../../_shared/payments/stripe-access.ts";
 import { BANK_TRANSFER_EVENT_PAYMENTS_ENABLED } from "../../../../shared/schemas/bank-transfer.ts";
-import { getAcceptedOrganizationSalesTerms } from "../../_shared/payments/organization-sales-terms.ts";
 
 export type ResolvedEventPaymentMethod =
   | {
-      kind: "stripe";
-      provider: EventPaymentProvider;
-      providerAccountId: string;
-    }
+    kind: "stripe";
+    provider: EventPaymentProvider;
+    providerAccountId: string;
+  }
   | {
-      kind: "bank_transfer";
-      beneficiary: string;
-      iban: string;
-    };
+    kind: "bank_transfer";
+    beneficiary: string;
+    iban: string;
+  };
 
 export async function resolveEventPaymentProvider(input: {
   admin: AdminClient;
@@ -60,8 +59,6 @@ export async function resolveEventPaymentProvider(input: {
   if (!stripeAllowed) {
     throw conflict("ORG_PAYMENT_METHOD_REQUIRES_CONFIGURATION");
   }
-
-  await getAcceptedOrganizationSalesTerms(input.admin, input.orgId);
 
   const providerSelection = input.providerSelection.trim().toLowerCase();
   if (providerSelection === "disabled") {

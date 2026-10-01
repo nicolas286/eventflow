@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { internal, ResponseError } from "../../_shared/errors.ts";
-import { EVENTFLOW_BUYER_TERMS_VERSION } from "../../../../shared/schemas/organization-sales-terms.ts";
 import type { RegisterItemInput } from "./types.ts";
 
 export async function issueFreeOrderTicketsOrThrow(
@@ -52,17 +51,6 @@ export async function selectedItemsIncludePaidProductOrThrow(
   return (data ?? []).some((product) => Number(product.price_cents ?? 0) > 0);
 }
 
-export async function recordOrderTermsAcceptanceOrThrow(
-  admin: SupabaseClient,
-  orderId: string,
-) {
-  const { error } = await admin.rpc("record_order_terms_acceptance", {
-    p_order_id: orderId,
-    p_platform_terms_version: EVENTFLOW_BUYER_TERMS_VERSION,
-  });
-
-  if (error) throw internal("ORDER_TERMS_ACCEPTANCE_FAILED");
-}
 export async function getOrgPlanOrThrow(admin: SupabaseClient, orgId: string) {
   const { data, error } = await admin
     .from("organizations")

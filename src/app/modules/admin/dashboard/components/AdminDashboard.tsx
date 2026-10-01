@@ -1,3 +1,4 @@
+import { PlatformAgreementsNotice } from "../../notices/components/PlatformAgreementsNotice";
 import { Outlet, useLocation, Navigate } from "react-router-dom";
 import "./AdminDashBoard.desktop.css";
 import "./AdminDashBoard.mobile.css";
@@ -141,7 +142,10 @@ export default function AdminDashboard() {
   const content = (
     <div className="adminPageRight">
       {!isOnboarding && bootstrap.organization ? (
-        <StripeMigrationNotice bootstrap={bootstrap} />
+        <>
+          <PlatformAgreementsNotice bootstrap={bootstrap} />
+          <StripeMigrationNotice bootstrap={bootstrap} />
+        </>
       ) : null}
       <Outlet
         context={
@@ -167,6 +171,7 @@ export default function AdminDashboard() {
           {content}
         </AdminAppShell>
       )}
+
     </div>
   );
 }

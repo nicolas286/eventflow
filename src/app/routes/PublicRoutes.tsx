@@ -16,6 +16,9 @@ import WidgetConfirmationPage from "@app/modules/public/widget/pages/WidgetConfi
 import LegalPage from "@shared/pages/Legal";
 import PrivacyPage from "@shared/pages/Privacy";
 import TermsPage from "@shared/pages/TermsPage";
+import ConnectTermsPage from "@shared/pages/ConnectTermsPage";
+import DataProcessingPage from "@shared/pages/DataProcessingPage";
+import BuyerTermsPage from "@shared/pages/BuyerTermsPage";
 
 export const PublicRoutes = (
   <>
@@ -32,6 +35,9 @@ export const PublicRoutes = (
       <Route path="/mentions-legales" element={<LegalPage />} />
       <Route path="/politique-confidentialite" element={<PrivacyPage />} />
       <Route path="/cgu" element={<TermsPage />} />
+      <Route path="/conditions-connect" element={<ConnectTermsPage />} />
+      <Route path="/accord-traitement-donnees" element={<DataProcessingPage />} />
+      <Route path="/conditions-billetterie" element={<BuyerTermsPage />} />
     </Route>
 
     <Route path="/widget/o/:orgSlug" element={<WidgetOrgPage />} />

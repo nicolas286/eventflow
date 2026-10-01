@@ -16,6 +16,10 @@ export const publicOrgProfileOverviewForEventPageSchema =
       displayName: true,
       publicEmail: true,
       phone: true,
+      sellerLegalName: true,
+      sellerAddress: true,
+      sellerBusinessNumber: true,
+      sellerType: true,
       website: true,
       primaryColor: true,
     })
