@@ -1,5 +1,8 @@
 -- Disposable fixtures only; run on the rebuilt local database.
 begin;
+-- Staging has an additional global registration switch, closed by its seed.
+-- Open it only inside this rolled-back fixture transaction.
+update private.platform_settings set registrations_open=true where singleton;
 insert into auth.users(id,aud,role,email,encrypted_password,created_at,updated_at,raw_user_meta_data)
 select ('94000000-0000-4000-8000-00000000000'||n)::uuid,'authenticated','authenticated','contract-'||n||'@example.test','',now(),now(),'{"platform_terms_version":"2026-10-01","platform_terms_accepted":true}'::jsonb from generate_series(1,2)n;
 insert into public.organizations(id,type,name,created_by,plan)
