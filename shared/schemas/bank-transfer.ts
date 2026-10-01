@@ -34,7 +34,9 @@ export function maskIban(value: string): string {
   const iban = normalizeIban(value);
   if (iban.length < 6) return "•".repeat(iban.length);
 
-  const masked = `${iban.slice(0, 2)}${"•".repeat(iban.length - 6)}${iban.slice(-4)}`;
+  const masked = `${iban.slice(0, 2)}${"•".repeat(iban.length - 6)}${
+    iban.slice(-4)
+  }`;
   return masked.match(/.{1,4}/gu)?.join(" ") ?? masked;
 }
 
@@ -125,6 +127,17 @@ export const organizationPaymentSettingsResultSchema = z.object({
   salesTermsAcceptedAt: z.string().nullable().optional(),
   salesTermsAcceptedBy: z.uuid().nullable().optional(),
   salesTermsCurrent: z.boolean().optional(),
+  sellerLegalName: z.string().nullable().optional(),
+  sellerAddress: z.string().nullable().optional(),
+  sellerBusinessNumber: z.string().nullable().optional(),
+  sellerType: z.enum(["professional", "non_professional"]).nullable()
+    .optional(),
+  sellerPhone: z.string().nullable().optional(),
+  connectTermsAcceptedVersion: z.string().nullable().optional(),
+  dpaAcceptedVersion: z.string().nullable().optional(),
+  platformTermsAcceptedVersion: z.string().nullable().optional(),
+  privacyAcceptedVersion: z.string().nullable().optional(),
+  platformAgreementsAcceptedAt: z.string().nullable().optional(),
   bankTransferIbanChanged: z.boolean().optional(),
   securityEmailSent: z.boolean().optional(),
 });

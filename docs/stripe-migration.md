@@ -1,5 +1,45 @@
 # Stripe Connect et facturation Eventflow
 
+## Contrats et identité vendeur — 1er octobre 2026
+
+Les versions publiées sont dans `shared/legal/documents.ts`. Les CGU SaaS, la
+politique de confidentialité, les conditions Connect et l'accord de traitement
+des données sont présentés séparément aux représentants habilités. La politique
+fait l'objet d'une confirmation de lecture, pas d'un consentement global aux
+traitements. Aucun compte existant n'est accepté automatiquement.
+
+La migration `20261001090205_strengthen_contract_acceptance.sql` archive les
+quatre textes officiels et conserve une preuve privée de chaque validation :
+organisation, signataire et son e-mail, identité de l'organisation, versions,
+textes et date serveur. Les preuves ne sont pas supprimées automatiquement avec
+le compte opérationnel ; leur conservation et les demandes d'effacement doivent
+être traitées selon les finalités et délais annoncés dans la politique.
+
+Les ventes payantes et l'onboarding exigent désormais une identité vendeur
+complète, les accords courants et les conditions de vente validées. L'organisateur
+doit donc compléter puis revalider son dossier après publication. Ses conditions
+personnalisées ne sont pas remplacées : le modèle renforcé peut être chargé
+explicitement. Le flag opérateur `stripe_connect_allowed` reste inchangé.
+
+La création de commande et l'archivage des conditions sont atomiques. Le serveur
+refuse une version différente de celle présentée, y compris pour les CGU de
+billetterie sur les inscriptions gratuites. L'e-mail de confirmation reprend
+les textes acceptés et l'identité historique du vendeur. Le document acheteur
+`/conditions-billetterie` est distinct des CGU SaaS `/cgu`.
+
+Pour la première publication, valider la reconstruction SQL et les tests avant
+toute mutation distante. Déployer la nouvelle fonction `orders` avant la migration
+permet aux anciens clients de recevoir `TERMS_CHANGED_RELOAD` dès la validation
+du corps, plutôt qu'une erreur générique pendant la transition. La nouvelle
+interface ne doit paraître qu'après migration et publication des fonctions. Cette
+transition suspend brièvement la création de commandes depuis l'ancienne interface.
+
+La configuration Stripe live reste une vérification opérateur : contrôler que
+la configuration parente référencée bloque les moyens autres que Bancontact
+(« Blocked », et non simplement « Off by default »), sans exception sur les
+comptes enfants. Le code sélectionne la configuration mais ne peut attester ses
+réglages à partir du dépôt. Ne jamais tester avec un paiement réel.
+
 ## Décision d’architecture
 
 Mollie n’est plus utilisé pour créer, modifier ou annuler un paiement. Ses identifiants restent conservés pour l’historique.

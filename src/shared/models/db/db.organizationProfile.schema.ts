@@ -73,6 +73,14 @@ export const organizationProfileSchema = z.object({
     .min(0, "Le nombre de jours doit être positif")
     .nullable(),
 
+  sellerLegalName: z.string().nullable().optional(),
+  sellerAddress: z.string().nullable().optional(),
+  sellerBusinessNumber: z.string().nullable().optional(),
+  sellerType: z.enum(["professional", "non_professional"]).nullable().optional(),
+  connectTermsAcceptedVersion: z.string().nullable().optional(),
+  dpaAcceptedVersion: z.string().nullable().optional(),
+  platformTermsAcceptedVersion: z.string().nullable().optional(),
+  privacyAcceptedVersion: z.string().nullable().optional(),
   salesTerms: z.string().max(10_000).nullable().optional(),
   salesTermsVersion: z.string().nullable().optional(),
   salesTermsAcceptedVersion: z.string().nullable().optional(),

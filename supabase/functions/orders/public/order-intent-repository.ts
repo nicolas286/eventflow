@@ -1,11 +1,25 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { internal, ResponseError } from "../../_shared/errors.ts";
 import type { CreateOrderIntentArgs } from "./registerTickets.contracts.ts";
+import { EVENTFLOW_BUYER_TERMS_TEXT } from "../../../../shared/legal/documents.ts";
 
 function mapCreateOrderIntentError(message: unknown): ResponseError {
   const normalized = String(message ?? "");
 
   const mappings: ReadonlyArray<readonly [string, number, string]> = [
+    ["TERMS_CHANGED_RELOAD", 409, "TERMS_CHANGED_RELOAD"],
+    ["ORG_STRIPE_ONBOARDING_INCOMPLETE", 409, "ORG_STRIPE_ONBOARDING_INCOMPLETE"],
+    [
+      "ORGANIZER_SELLER_IDENTITY_REQUIRED",
+      409,
+      "ORGANIZER_SELLER_IDENTITY_REQUIRED",
+    ],
+    [
+      "ORGANIZER_PLATFORM_AGREEMENTS_REQUIRED",
+      409,
+      "ORGANIZER_PLATFORM_AGREEMENTS_REQUIRED",
+    ],
+    ["ORGANIZER_SALES_TERMS_REQUIRED", 409, "ORGANIZER_SALES_TERMS_REQUIRED"],
     ["EVENT_REGISTRATION_CLOSED", 409, "EVENT_REGISTRATION_CLOSED"],
     ["EVENT_SOLD_OUT", 409, "EVENT_SOLD_OUT"],
     ["MISSING_GATEKEEPER_PRODUCT", 400, "MISSING_GATEKEEPER_PRODUCT"],
@@ -44,10 +58,18 @@ function mapCreateOrderIntentError(message: unknown): ResponseError {
 export async function createOrderIntentOrThrow(opts: {
   admin: Pick<SupabaseClient, "rpc">;
   args: CreateOrderIntentArgs;
+  platformTermsVersion: string;
+  organizerSalesTermsVersion: string | null;
 }) {
   const { data, error } = await opts.admin.rpc(
-    "create_order_intent",
-    opts.args,
+    "create_order_intent_with_terms",
+    {
+      ...opts.args,
+      p_promo_code: opts.args.p_promo_code ?? null,
+      p_platform_terms_version: opts.platformTermsVersion,
+      p_platform_terms_snapshot: EVENTFLOW_BUYER_TERMS_TEXT,
+      p_organizer_sales_terms_version: opts.organizerSalesTermsVersion,
+    },
   );
 
   if (error) {
