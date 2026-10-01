@@ -7,6 +7,10 @@ const DEFAULT_REDACTED_KEYS = [
   "password",
   "secret",
   "token",
+  "credential",
+  "privatekey",
+  "servicerolekey",
+  "connectionstring",
 ] as const;
 
 export interface SerializeErrorOptions {
@@ -23,20 +27,44 @@ function normalizeOptions(options: SerializeErrorOptions): NormalizedOptions {
     maxDepth: options.maxDepth ?? 5,
     maxEntries: options.maxEntries ?? 50,
     maxStringLength: options.maxStringLength ?? 4_000,
-    redactedKeys: options.redactedKeys ?? DEFAULT_REDACTED_KEYS,
+    redactedKeys: [...DEFAULT_REDACTED_KEYS, ...(options.redactedKeys ?? [])],
   };
 }
 
+/** Pattern matching complements field-name redaction; arbitrary unlabelled secrets remain unrecognizable. */
+export function redactLogText(value: string): string {
+  return value
+    .replace(
+      /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
+      "[REDACTED]",
+    )
+    .replace(
+      /\b(?:(?:sk|rk)_(?:live|test)_|whsec_|sb_secret_)[A-Za-z0-9_-]+/g,
+      "[REDACTED]",
+    )
+    .replace(
+      /\beyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
+      "[REDACTED]",
+    )
+    .replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+\/-]+=*/gi, "$1 [REDACTED]")
+    .replace(
+      /(\b(?:[\w-]*(?:secret|token|password|credential)|api[_-]?key|service[_-]?role[_-]?key|authorization|cookie)\b["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s&,;"'}\]]+)/gi,
+      "$1[REDACTED]",
+    )
+    .replace(/(\b[a-z][a-z0-9+.-]*:\/\/)[^\s/@]+:[^\s/@]+@/gi, "$1[REDACTED]@");
+}
+
 function truncate(value: string, maxLength: number): string {
-  return value.length <= maxLength
-    ? value
-    : `${value.slice(0, maxLength)}…[truncated]`;
+  const safe = redactLogText(value);
+  return safe.length <= maxLength
+    ? safe
+    : `${safe.slice(0, maxLength)}…[truncated]`;
 }
 
 function isRedactedKey(key: string, options: NormalizedOptions): boolean {
-  const normalized = key.toLowerCase();
+  const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, "");
   return options.redactedKeys.some((value) =>
-    normalized.includes(value.toLowerCase())
+    normalized.includes(value.toLowerCase().replace(/[^a-z0-9]/g, ""))
   );
 }
 
@@ -64,10 +92,15 @@ function toSafeValue(
     typeof value === "symbol" ||
     typeof value === "function"
   ) {
-    return String(value);
+    return typeof value === "function"
+      ? "[Function]"
+      : truncate(String(value), options.maxStringLength);
   }
 
   if (depth >= options.maxDepth) return "[MaxDepth]";
+  if (value instanceof Error) {
+    return serializeErrorValue(value, options, seen, depth);
+  }
   if (seen.has(value)) return "[Circular]";
   seen.add(value);
 
@@ -79,12 +112,17 @@ function toSafeValue(
 
   const output: Record<string, unknown> = {};
 
-  for (
-    const [key, child] of Object.entries(value).slice(0, options.maxEntries)
-  ) {
-    output[key] = isRedactedKey(key, options)
-      ? "[REDACTED]"
-      : toSafeValue(child, options, seen, depth + 1);
+  const entries = value instanceof Headers
+    ? Array.from(value.entries())
+    : Object.entries(value);
+  for (const [key, child] of entries.slice(0, options.maxEntries)) {
+    Object.defineProperty(output, truncate(key, options.maxStringLength), {
+      enumerable: true,
+      configurable: true,
+      value: isRedactedKey(key, options)
+        ? "[REDACTED]"
+        : toSafeValue(child, options, seen, depth + 1),
+    });
   }
 
   return output;
@@ -101,7 +139,7 @@ function serializeErrorValue(
     seen.add(error);
 
     return {
-      name: error.name,
+      name: truncate(error.name, options.maxStringLength),
       message: truncate(error.message, options.maxStringLength),
       stack: error.stack
         ? truncate(error.stack, options.maxStringLength)
@@ -119,7 +157,7 @@ function serializeErrorValue(
       message: typeof object.message === "string"
         ? truncate(object.message, options.maxStringLength)
         : "Unknown object error",
-      code: object.code ?? null,
+      code: toSafeValue(object.code ?? null, options, seen, depth),
       details: toSafeValue(object.details ?? null, options, seen, depth),
       hint: toSafeValue(object.hint ?? null, options, seen, depth),
       raw: toSafeValue(object, options, seen, depth),
@@ -139,4 +177,13 @@ export function serializeError(
     new WeakSet(),
     0,
   );
+}
+
+export function redactLogData(
+  data: Record<string, unknown>,
+): Record<string, unknown> {
+  const safe = toSafeValue(data, normalizeOptions({}), new WeakSet(), 0);
+  return typeof safe === "object" && safe !== null
+    ? Object.fromEntries(Object.entries(safe))
+    : {};
 }
