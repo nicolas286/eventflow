@@ -40,18 +40,25 @@ end $$;
 reset role;
 set local role service_role;
 set local "request.jwt.claim.role"='service_role';
-do $$ declare r jsonb; n integer; begin
+do $$ declare r jsonb; n integer; v text; begin
  -- Free orders need only the participant conditions, not a Connect account.
  r:=public.create_order_intent_with_terms('94000000-0000-4000-8000-000000000021','[{"event_product_id":"94000000-0000-4000-8000-000000000031","quantity":1}]','[{"event_product_id":"94000000-0000-4000-8000-000000000031"}]','{"email":"buyer@example.test"}',null,null,'2026-10-01',repeat('Fixture participant conditions. ',10),null);
  if not exists(select 1 from public.orders where id=(r->>'order_id')::uuid and terms_accepted_at is not null and platform_terms_snapshot is not null and organizer_sales_terms_snapshot is null) then raise exception 'Free-order acceptance missing'; end if;
  r:=public.create_order_intent_with_terms('94000000-0000-4000-8000-000000000021','[{"event_product_id":"94000000-0000-4000-8000-000000000032","quantity":1}]','[{"event_product_id":"94000000-0000-4000-8000-000000000032"}]','{"email":"buyer@example.test"}',null,'FREEFIXTURE','2026-10-01',repeat('Fixture participant conditions. ',10),null);
  if not exists(select 1 from public.orders where id=(r->>'order_id')::uuid and terms_accepted_at is not null and platform_terms_snapshot is not null) or (r->>'payment_required')::boolean then raise exception 'Fully discounted order acceptance missing'; end if;
+ select sales_terms_version into v from public.organization_profile where org_id='94000000-0000-4000-8000-000000000011';
  select count(*) into n from public.orders where event_id='94000000-0000-4000-8000-000000000021';
  begin
- perform public.create_order_intent_with_terms('94000000-0000-4000-8000-000000000021','[{"event_product_id":"94000000-0000-4000-8000-000000000032","quantity":1}]','[{"event_product_id":"94000000-0000-4000-8000-000000000032"}]','{"email":"buyer@example.test"}',null,null,'2026-10-01',repeat('Fixture participant conditions. ',10),null);
- raise exception 'Paid order with missing identity accepted';
- exception when raise_exception then if sqlerrm <> 'ORGANIZER_SELLER_IDENTITY_REQUIRED' then raise; end if; end;
+ perform public.create_order_intent_with_terms('94000000-0000-4000-8000-000000000021','[{"event_product_id":"94000000-0000-4000-8000-000000000032","quantity":1}]','[{"event_product_id":"94000000-0000-4000-8000-000000000032"}]','{"email":"buyer@example.test"}',null,null,'2026-10-01',repeat('Fixture participant conditions. ',10),v);
+ raise exception 'Unready Stripe account accepted';
+ exception when raise_exception then if sqlerrm <> 'ORG_STRIPE_ONBOARDING_INCOMPLETE' then raise; end if; end;
  if (select count(*) from public.orders where event_id='94000000-0000-4000-8000-000000000021') <> n then raise exception 'Rejected checkout left an orphan order'; end if;
+ update public.user_profile set stripe_connect_allowed=true where user_id='94000000-0000-4000-8000-000000000001';
+ update public.organizations set stripe_connected_account_id='acct_contract_fixture',stripe_compliance_verified=true,stripe_details_submitted=true,stripe_charges_enabled=true,stripe_payouts_enabled=true where id='94000000-0000-4000-8000-000000000011';
+ r:=public.create_order_intent_with_terms('94000000-0000-4000-8000-000000000021','[{"event_product_id":"94000000-0000-4000-8000-000000000032","quantity":1}]','[{"event_product_id":"94000000-0000-4000-8000-000000000032"}]','{"email":"buyer@example.test"}',null,null,'2026-10-01',repeat('Fixture participant conditions. ',10),v);
+ if not exists(select 1 from public.orders where id=(r->>'order_id')::uuid and terms_accepted_at is not null and organizer_sales_terms_snapshot is not null) then raise exception 'Pending seller reacceptance blocked sales or lost buyer proof'; end if;
+ if not public.expire_unstarted_checkout((r->>'order_id')::uuid) then raise exception 'Fixture reservation cleanup failed'; end if;
+
 end $$;
 reset role;
 set local role authenticated;
