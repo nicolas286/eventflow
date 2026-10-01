@@ -4,6 +4,7 @@ import type {
   LogData,
   LogLevel,
 } from "./types.ts";
+import { redactLogData, redactLogText } from "./serialize-error.ts";
 
 export function createEdgeLogger(
   scope: string,
@@ -19,12 +20,14 @@ export function createConsoleLogger(
   const requestId = options.requestId ?? crypto.randomUUID();
 
   function write(level: LogLevel, step: string, data: LogData = {}): void {
-    const safeData = options.redact ? options.redact(data) : data;
+    const safeData = redactLogData(
+      options.redact ? options.redact(data) : data,
+    );
 
-    console[level](`[${scope}]`, {
+    console[level](`[${redactLogText(scope)}]`, {
       ...safeData,
-      requestId,
-      step,
+      requestId: redactLogText(requestId),
+      step: redactLogText(step),
     });
   }
 
