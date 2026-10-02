@@ -11,11 +11,13 @@ export function PublicShellLayout() {
   return (
     <div className="publicShellRoot" data-theme={colorScheme}>
       <PlatformAnnouncementBanner audience="public" />
-      <ColorSchemeToggle
-        colorScheme={colorScheme}
-        onToggle={toggleColorScheme}
-        className="publicThemeToggle"
-      />
+      <div className="publicThemeToggleAnchor">
+        <ColorSchemeToggle
+          colorScheme={colorScheme}
+          onToggle={toggleColorScheme}
+          className="publicThemeToggle"
+        />
+      </div>
       <main className="publicShellMain">
         <Outlet />
       </main>

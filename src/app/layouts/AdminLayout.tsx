@@ -15,11 +15,13 @@ export function AdminLayout() {
   return (
     <div className="adminThemeRoot" data-theme={colorScheme}>
       <PlatformAnnouncementBanner audience="organizer" />
-      <ColorSchemeToggle
-        colorScheme={colorScheme}
-        onToggle={toggleColorScheme}
-        className="adminThemeToggle"
-      />
+      <div className="adminThemeToggleAnchor">
+        <ColorSchemeToggle
+          colorScheme={colorScheme}
+          onToggle={toggleColorScheme}
+          className="adminThemeToggle"
+        />
+      </div>
       <Outlet />
     </div>
   );

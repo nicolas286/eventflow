@@ -67,8 +67,16 @@
   width: 100%;
 }
 
+.publicThemeToggleAnchor {
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  height: 0;
+  pointer-events: none;
+}
+
 .publicThemeToggle {
-  position: fixed;
+  position: absolute;
   z-index: 70;
   top: 18px;
   right: 18px;
@@ -86,6 +94,7 @@
   font-size: 13px;
   font-weight: 750;
   cursor: pointer;
+  pointer-events: auto;
   backdrop-filter: blur(14px);
   transition:
     transform 150ms ease,
