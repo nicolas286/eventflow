@@ -328,6 +328,13 @@
   text-transform: uppercase;
 }
 
+.adminAppShell__topbarActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
 .adminAppShell__menuButton {
   display: none;
   width: 42px;
@@ -475,6 +482,20 @@
 
   .adminAppShell__eyebrow {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .adminAppShell__topbar {
+    gap: 8px;
+  }
+
+  .adminAppShell__topbarLeft > div {
+    display: none;
+  }
+
+  .adminAppShell__topbarActions {
+    gap: 6px;
   }
 }
 

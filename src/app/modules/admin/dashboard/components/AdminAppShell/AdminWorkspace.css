@@ -239,46 +239,6 @@
   line-height: 1.5;
 }
 
-/* Notices */
-.adminAppShell .adminNotices {
-  gap: 8px;
-  max-width: 1280px;
-  margin: 0 auto;
-}
-
-.adminAppShell .adminNotice {
-  align-items: center;
-  padding: 13px 16px;
-  border: 1px solid #f4d6a6;
-  border-radius: 13px;
-  background: #fffaf0;
-  box-shadow: var(--ef-shadow-xs);
-}
-
-.adminAppShell .adminNoticeTitle {
-  color: #7c4a0a;
-  font-size: 13px;
-  font-weight: 750;
-}
-
-.adminAppShell .adminNoticeBody {
-  margin-top: 3px;
-  color: #805a2b;
-  font-size: 12px;
-  line-height: 1.45;
-  opacity: 1;
-}
-
-.adminAppShell .adminNoticeCta {
-  flex: 0 0 auto;
-  padding: 8px 11px;
-  border-color: #e9c78f;
-  border-radius: 9px;
-  color: #7c4a0a;
-  font-weight: 700;
-  text-decoration: none;
-}
-
 /* Events overview */
 .adminAppShell .adminAllEventsWrap {
   max-width: 1280px;
@@ -836,15 +796,6 @@
 
   .adminAppShell .ui-cardHeader {
     min-height: 0;
-  }
-
-  .adminAppShell .adminNotice {
-    align-items: stretch;
-  }
-
-  .adminAppShell .adminNoticeCta {
-    width: 100%;
-    text-align: center;
   }
 
   .adminAppShell .eventCard {

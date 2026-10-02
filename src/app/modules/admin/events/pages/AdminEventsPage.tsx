@@ -24,7 +24,6 @@ import { useDeleteEvent } from "../../singleEvent/hooks/useDeleteEvent";
 import { useDuplicateEvent } from "../../singleEvent/hooks/useDuplicateEvent";
 import { PlusIcon } from "@ui/components/icon/Icons";
 import { MessageBox } from "@shared/ui/components/message/MessageBox";
-import { AdminNotices } from "../../notices/components/AdminNotices";
 import { AdminPageHeader } from "../../dashboard/components/AdminPageHeader/AdminPageHeader";
 
 type EditableEventFields = Partial<
@@ -187,8 +186,6 @@ export default function AdminEventsPage() {
           </Button>
         }
       />
-
-      <AdminNotices bootstrap={bootstrap} />
 
       <div className="adminAllEventsWrap">
         <div className="adminAllEventsCard adminAllEventsCard--compact">

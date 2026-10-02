@@ -4,6 +4,12 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@providers/AuthProvider/useAuth";
 import { useToast } from "@ui/components/toast/useToast";
 import type { OrgInfo } from "@ui/components/navigation/TopNav";
+import { ColorSchemeToggle } from "@ui/components/theme/ColorSchemeToggle";
+import type { LocalColorScheme } from "@ui/components/theme/useLocalColorScheme";
+import {
+  AdminNotificationCenter,
+  type AdminNotificationCenterProps,
+} from "../../../notices/components/AdminNotificationCenter";
 import {
   CalendarIcon,
   BoltIcon,
@@ -24,6 +30,9 @@ type AdminAppShellProps = {
   org: OrgInfo | null;
   userName?: string | null;
   userRole?: "owner" | "admin" | null;
+  colorScheme: LocalColorScheme;
+  onToggleColorScheme: () => void;
+  notificationCenter: AdminNotificationCenterProps;
 };
 
 type NavigationItem = {
@@ -142,6 +151,9 @@ export function AdminAppShell({
   org,
   userName,
   userRole,
+  colorScheme,
+  onToggleColorScheme,
+  notificationCenter,
 }: AdminAppShellProps) {
   const location = useLocation();
   const { signOut } = useAuth();
@@ -398,17 +410,25 @@ export function AdminAppShell({
             </div>
           </div>
 
-          {publicPath ? (
-            <a
-              className="adminAppShell__publicLink"
-              href={publicPath}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <EyeIcon />
-              <span>Voir la page publique</span>
-            </a>
-          ) : null}
+          <div className="adminAppShell__topbarActions">
+            <ColorSchemeToggle
+              colorScheme={colorScheme}
+              onToggle={onToggleColorScheme}
+              className="adminThemeToggle"
+            />
+            <AdminNotificationCenter {...notificationCenter} />
+            {publicPath ? (
+              <a
+                className="adminAppShell__publicLink"
+                href={publicPath}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <EyeIcon />
+                <span>Voir la page publique</span>
+              </a>
+            ) : null}
+          </div>
         </header>
 
         <div className="adminAppShell__content">{children}</div>

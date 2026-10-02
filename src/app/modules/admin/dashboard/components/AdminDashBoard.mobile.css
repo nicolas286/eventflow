@@ -3,14 +3,3 @@
     padding: 20px 16px 40px;
   }
 }
-
-@media (max-width: 768px) {
-  .adminNotice {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .adminNoticeCta {
-    width: 100%;
-    text-align: center;
-  }
-}

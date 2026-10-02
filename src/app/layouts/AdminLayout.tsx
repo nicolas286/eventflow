@@ -1,12 +1,20 @@
-import { Outlet, Navigate } from "react-router-dom";
+import { Outlet, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@providers/AuthProvider/useAuth";
 import { ColorSchemeToggle } from "@shared/ui/components/theme/ColorSchemeToggle";
-import { useLocalColorScheme } from "@shared/ui/components/theme/useLocalColorScheme";
+import {
+  useLocalColorScheme,
+  type LocalColorScheme,
+} from "@shared/ui/components/theme/useLocalColorScheme";
 import "./AdminTheme.css";
-import { PlatformAnnouncementBanner } from "@app/modules/platform/components/PlatformAnnouncementBanner";
+
+export type AdminLayoutOutletContext = {
+  colorScheme: LocalColorScheme;
+  toggleColorScheme: () => void;
+};
 
 export function AdminLayout() {
   const { user, loading } = useAuth();
+  const location = useLocation();
   const { colorScheme, toggleColorScheme } = useLocalColorScheme();
 
   if (loading) return null; // ou loader
@@ -14,15 +22,21 @@ export function AdminLayout() {
 
   return (
     <div className="adminThemeRoot" data-theme={colorScheme}>
-      <PlatformAnnouncementBanner audience="organizer" />
-      <div className="adminThemeToggleAnchor">
+      {location.pathname.startsWith("/admin/onboarding") ? (
         <ColorSchemeToggle
           colorScheme={colorScheme}
           onToggle={toggleColorScheme}
-          className="adminThemeToggle"
+          className="adminThemeToggle adminThemeToggle--floating"
         />
-      </div>
-      <Outlet />
+      ) : null}
+      <Outlet
+        context={
+          {
+            colorScheme,
+            toggleColorScheme,
+          } satisfies AdminLayoutOutletContext
+        }
+      />
     </div>
   );
 }

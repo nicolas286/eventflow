@@ -1,0 +1,302 @@
+.adminNotificationCenter {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.adminNotificationCenter__trigger {
+  position: relative;
+  display: inline-grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--ef-border-default);
+  border-radius: 10px;
+  background: var(--ef-bg-surface);
+  box-shadow: var(--ef-shadow-xs);
+  color: var(--ef-text-secondary);
+  cursor: pointer;
+}
+
+.adminNotificationCenter__trigger:hover,
+.adminNotificationCenter__trigger[aria-expanded="true"] {
+  border-color: rgb(var(--primary) / 0.38);
+  color: rgb(var(--primary-strong));
+}
+
+.adminNotificationCenter__trigger:focus-visible,
+.adminNotificationCenter__readAll:focus-visible,
+.adminNotificationCenter__dismiss:focus-visible,
+.adminNotificationCenter__item a:focus-visible {
+  outline: 3px solid rgb(var(--primary) / 0.22);
+  outline-offset: 2px;
+}
+
+.adminNotificationCenter__trigger svg {
+  width: 18px;
+  height: 18px;
+}
+
+.adminNotificationCenter__badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: grid;
+  min-width: 19px;
+  height: 19px;
+  place-items: center;
+  padding: 0 5px;
+  border: 2px solid var(--ef-bg-app);
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.adminNotificationCenter__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 115;
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(620px, calc(100vh - 100px));
+  overflow: auto;
+  border: 1px solid var(--ef-border-default);
+  border-radius: 16px;
+  background: var(--ef-bg-surface);
+  box-shadow: var(--ef-shadow-md);
+  color: var(--ef-text-primary);
+}
+
+.adminNotificationCenter__header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid var(--ef-border-default);
+  background: color-mix(in srgb, var(--ef-bg-surface) 96%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.adminNotificationCenter__header > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.adminNotificationCenter__header strong {
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.adminNotificationCenter__header span {
+  color: var(--ef-text-muted);
+  font-size: 12px;
+}
+
+.adminNotificationCenter__readAll {
+  flex: 0 0 auto;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgb(var(--primary-strong));
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.adminNotificationCenter__readAll:hover:not(:disabled) {
+  background: rgb(var(--primary) / 0.08);
+}
+
+.adminNotificationCenter__readAll:disabled {
+  color: var(--ef-text-muted);
+  cursor: default;
+  opacity: 0.7;
+}
+
+.adminNotificationCenter__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.adminNotificationCenter__item {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--ef-border-default);
+  border-left: 3px solid var(--ef-info);
+  background: var(--ef-bg-surface);
+}
+
+.adminNotificationCenter__item:last-child {
+  border-bottom: 0;
+}
+
+.adminNotificationCenter__item--warning {
+  border-left-color: var(--ef-warning);
+}
+
+.adminNotificationCenter__item--critical {
+  border-left-color: var(--ef-danger);
+}
+
+.adminNotificationCenter__item.isRead {
+  background: var(--ef-bg-subtle);
+}
+
+.adminNotificationCenter__itemCopy {
+  min-width: 0;
+  flex: 1;
+}
+
+.adminNotificationCenter__itemHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.adminNotificationCenter__itemHeading strong {
+  color: var(--ef-text-primary);
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.adminNotificationCenter__unreadDot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #dc2626;
+}
+
+.adminNotificationCenter__item p {
+  margin: 6px 0 0;
+  color: var(--ef-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.adminNotificationCenter__item a {
+  display: inline-flex;
+  margin-top: 10px;
+  color: rgb(var(--primary-strong));
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.adminNotificationCenter__item a:hover {
+  text-decoration: underline;
+}
+
+.adminNotificationCenter__dismiss {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ef-text-muted);
+  cursor: pointer;
+}
+
+.adminNotificationCenter__dismiss:hover {
+  background: var(--ef-bg-muted);
+  color: var(--ef-text-primary);
+}
+
+.adminNotificationCenter__dismiss svg {
+  width: 15px;
+  height: 15px;
+}
+
+.adminNotificationCenter__required {
+  align-self: flex-start;
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ef-danger) 14%, transparent);
+  color: var(--ef-danger);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.adminNotificationCenter__empty {
+  display: flex;
+  min-height: 190px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 7px;
+  padding: 28px;
+  color: var(--ef-text-muted);
+  text-align: center;
+}
+
+.adminNotificationCenter__empty svg {
+  width: 28px;
+  height: 28px;
+}
+
+.adminNotificationCenter__empty strong {
+  color: var(--ef-text-primary);
+  font-size: 14px;
+}
+
+.adminNotificationCenter__empty span {
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .adminNotificationCenter__panel {
+    position: fixed;
+    top: 76px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: calc(100vh - 90px);
+  }
+
+  .adminNotificationCenter__header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .adminNotificationCenter__readAll {
+    margin-left: -9px;
+  }
+
+  .adminNotificationCenter__item {
+    padding: 14px 12px;
+  }
+
+  .adminNotificationCenter__required {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+  }
+
+  .adminNotificationCenter__item:has(.adminNotificationCenter__required)
+    .adminNotificationCenter__itemHeading {
+    padding-right: 92px;
+  }
+}

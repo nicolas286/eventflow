@@ -1,5 +1,9 @@
-import { PlatformAgreementsNotice } from "../../notices/components/PlatformAgreementsNotice";
-import { Outlet, useLocation, Navigate } from "react-router-dom";
+import {
+  Outlet,
+  useLocation,
+  Navigate,
+  useOutletContext,
+} from "react-router-dom";
 import "./AdminDashBoard.desktop.css";
 import "./AdminDashBoard.mobile.css";
 
@@ -13,8 +17,9 @@ import OrgThemeSync from "@shared/ui/components/theme/OrgThemeSync";
 import type { EventOverviewRow } from "../../events/schemas/admin.eventsOverview.schema";
 import type { DashboardBootstrap } from "../schemas/admin.dashboardBootstrap.schema";
 import { normalizeError } from "@shared/errors/errors";
-import { StripeMigrationNotice } from "../../notices/components/StripeMigrationNotice";
 import { AdminAppShell } from "./AdminAppShell/AdminAppShell";
+import { useAdminNotifications } from "../../notices/hooks/useAdminNotifications";
+import type { AdminLayoutOutletContext } from "@app/layouts/AdminLayout";
 
 export type AdminOutletContext = {
   org: OrgInfo | null;
@@ -26,10 +31,13 @@ export type AdminOutletContext = {
 
 export default function AdminDashboard() {
   const location = useLocation();
+  const { colorScheme, toggleColorScheme } =
+    useOutletContext<AdminLayoutOutletContext>();
   const isOnboarding = location.pathname.startsWith("/admin/onboarding");
 
   const { loading, error, bootstrap, orgId, events, refetch } =
     useAdminDashboardData({ supabase });
+  const notificationCenter = useAdminNotifications(bootstrap);
 
   const topNavOrg: OrgInfo | null = bootstrap
     ? {
@@ -66,7 +74,14 @@ export default function AdminDashboard() {
         {isOnboarding ? (
           loadingContent
         ) : (
-          <AdminAppShell org={topNavOrg}>{loadingContent}</AdminAppShell>
+          <AdminAppShell
+            org={topNavOrg}
+            colorScheme={colorScheme}
+            onToggleColorScheme={toggleColorScheme}
+            notificationCenter={notificationCenter}
+          >
+            {loadingContent}
+          </AdminAppShell>
         )}
       </div>
     );
@@ -103,6 +118,9 @@ export default function AdminDashboard() {
             org={topNavOrg}
             userName={userName}
             userRole={userRole}
+            colorScheme={colorScheme}
+            onToggleColorScheme={toggleColorScheme}
+            notificationCenter={notificationCenter}
           >
             {errorContent}
           </AdminAppShell>
@@ -128,7 +146,14 @@ export default function AdminDashboard() {
         {isOnboarding ? (
           fallbackContent
         ) : (
-          <AdminAppShell org={topNavOrg}>{fallbackContent}</AdminAppShell>
+          <AdminAppShell
+            org={topNavOrg}
+            colorScheme={colorScheme}
+            onToggleColorScheme={toggleColorScheme}
+            notificationCenter={notificationCenter}
+          >
+            {fallbackContent}
+          </AdminAppShell>
         )}
       </div>
     );
@@ -141,12 +166,6 @@ export default function AdminDashboard() {
 
   const content = (
     <div className="adminPageRight">
-      {!isOnboarding && bootstrap.organization ? (
-        <>
-          <PlatformAgreementsNotice bootstrap={bootstrap} />
-          <StripeMigrationNotice bootstrap={bootstrap} />
-        </>
-      ) : null}
       <Outlet
         context={
           {
@@ -167,11 +186,17 @@ export default function AdminDashboard() {
       {isOnboarding ? (
         content
       ) : (
-        <AdminAppShell org={topNavOrg} userName={userName} userRole={userRole}>
+        <AdminAppShell
+          org={topNavOrg}
+          userName={userName}
+          userRole={userRole}
+          colorScheme={colorScheme}
+          onToggleColorScheme={toggleColorScheme}
+          notificationCenter={notificationCenter}
+        >
           {content}
         </AdminAppShell>
       )}
-
     </div>
   );
 }

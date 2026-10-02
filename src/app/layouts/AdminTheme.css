@@ -25,19 +25,7 @@
   background: var(--ef-bg-app);
 }
 
-.adminThemeToggleAnchor {
-  position: sticky;
-  top: 0;
-  z-index: 95;
-  height: 0;
-  pointer-events: none;
-}
-
 .adminThemeToggle {
-  position: absolute;
-  z-index: 95;
-  top: 16px;
-  right: 208px;
   display: inline-flex;
   min-height: 38px;
   align-items: center;
@@ -52,12 +40,18 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  pointer-events: auto;
   backdrop-filter: blur(14px);
   transition:
     border-color 150ms ease,
     color 150ms ease,
     transform 150ms ease;
+}
+
+.adminThemeToggle--floating {
+  position: fixed;
+  z-index: 95;
+  top: 16px;
+  right: 18px;
 }
 
 .adminThemeToggle:hover {
@@ -69,10 +63,6 @@
 .adminThemeToggle:focus-visible {
   outline: 3px solid rgb(var(--primary) / 0.22);
   outline-offset: 2px;
-}
-
-.adminThemeRoot:has(.onboardingPage) .adminThemeToggle {
-  right: 18px;
 }
 
 .adminThemeRoot[data-theme="dark"] .adminAppShell__topbar {
@@ -91,15 +81,14 @@
 
 @media (max-width: 1040px) {
   .adminThemeToggle {
-    top: 12px;
-    right: 70px;
     width: 42px;
     height: 42px;
     justify-content: center;
     padding: 0;
   }
 
-  .adminThemeRoot:has(.onboardingPage) .adminThemeToggle {
+  .adminThemeToggle--floating {
+    top: 12px;
     right: 12px;
   }
 
