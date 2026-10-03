@@ -16,8 +16,9 @@ const service = createClient(base, serviceKey, options);
 const anonymous = createClient(base, anonKey, options);
 const users = [], orgs = [], invoicePaths = [], assetPaths = [];
 const runId = randomUUID();
-let phase = 'setup', operation = 'configuration', lastStatus = 'none', remoteCode = 'none', checks = 0;
+let phase = 'setup', operation = 'configuration', lastStatus = 'none', remoteCode = 'none', verification = 'none', checks = 0;
 function verify(value, label) {
+  verification = label;
   assert.ok(value, `${phase}: ${label}`);
   checks++;
 }
@@ -34,6 +35,7 @@ async function insert(table, rows) {
 }
 async function actor() {
   operation = 'auth-admin-create-user';
+  verification = 'none';
   remoteCode = 'none';
   const email = `boundary-${randomUUID()}@example.test`;
   const password = `Staging-${randomUUID()}`;
@@ -49,6 +51,7 @@ async function actor() {
 }
 async function call(path, token, body, expected = 200, method = 'POST') {
   operation = path;
+  verification = 'none';
   lastStatus = 'pending';
   const response = await fetch(`${base}/functions/v1/${path}`, {
     method, headers: { apikey: anonKey, 'content-type': 'application/json',
@@ -95,6 +98,7 @@ try {
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOQC8gDAAFsAN1urcuHAAAAAElFTkSuQmCC', 'base64');
   async function uploadAsset(orgId, token, bytes, expected) {
     operation = 'organizations/assets/upload';
+    verification = 'none';
     lastStatus = 'pending';
     const response = await fetch(`${base}/functions/v1/organizations/assets/upload?orgId=${orgId}&kind=logo`, {
       method: 'POST', headers: { apikey: anonKey, authorization: `Bearer ${token}`, 'content-type': 'image/png' },
@@ -123,13 +127,15 @@ try {
     const removed = await client.storage.from('public-assets').remove([asset.path]);
     verify(removed.error || !removed.data?.some(row => row.name), 'Browser direct Storage delete denied');
   }
-  const untouched = await service.storage.from('public-assets').download(asset.path);
-  verify(!untouched.error && untouched.data, 'Refused direct deletes preserved authorized image');
-  const assetId = asset.path.split('/').at(-1).split('.')[0];
+  const assetFilename = asset.path.split('/').at(-1);
+  const assetFolder = asset.path.slice(0, -(assetFilename.length + 1));
+  const untouched = data(await service.storage.from('public-assets').list(assetFolder, { search: assetFilename }), 'Read uploaded asset metadata');
+  verify(untouched.some(row => row.name === assetFilename), 'Refused direct deletes preserved authorized image');
+  const assetId = assetFilename.split('.')[0];
   await call('organizations/assets/delete', b.token, { orgId: orgA, kind: 'logo', assetId, extension: 'png' }, 403);
   await call('organizations/assets/delete', a.token, { orgId: orgA, kind: 'logo', assetId, extension: 'png' });
-  const deleted = await service.storage.from('public-assets').download(asset.path);
-  verify(deleted.error, 'Edge authorized delete removed asset');
+  const deleted = data(await service.storage.from('public-assets').list(assetFolder, { search: assetFilename }), 'Read asset metadata after deletion');
+  verify(!deleted.some(row => row.name === assetFilename), 'Edge authorized delete removed asset');
 
   phase = 'events-products-forms';
   const eventA = await call('events/create', a.token, {
@@ -262,7 +268,7 @@ try {
   console.log(`Staging deployed business boundary: ${checks} checks passed.`);
 } catch {
   // Emit only a safe phase marker, never SDK objects or response bodies.
-  console.error(`::error title=Business boundary integration failed::Phase: ${phase}; operation: ${operation}; HTTP: ${lastStatus}; SDK code: ${remoteCode}`);
+  console.error(`::error title=Business boundary integration failed::Phase: ${phase}; operation: ${operation}; HTTP: ${lastStatus}; SDK code: ${remoteCode}; verification: ${verification}`);
   process.exitCode = 1;
 } finally {
   const cleanupErrors = [];
