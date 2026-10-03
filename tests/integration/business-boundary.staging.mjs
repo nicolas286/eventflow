@@ -52,6 +52,7 @@ async function actor() {
 async function call(path, token, body, expected = 200, method = 'POST') {
   operation = path;
   verification = 'none';
+  remoteCode = 'none';
   lastStatus = 'pending';
   const response = await fetch(`${base}/functions/v1/${path}`, {
     method, headers: { apikey: anonKey, 'content-type': 'application/json',
@@ -61,9 +62,10 @@ async function call(path, token, body, expected = 200, method = 'POST') {
   });
   lastStatus = `${response.status} (expected ${expected})`;
   // Do not print responses: PDF URLs, booking tokens and identities are sensitive.
+  const result = await response.json();
+  if (response.status >= 400 && /^[A-Z0-9_]{1,80}$/.test(result?.error ?? '')) remoteCode = result.error;
   assert.equal(response.status, expected, `${phase}: ${path} expected ${expected}, got ${response.status}`);
   checks++;
-  const result = await response.json();
   if (expected >= 400) verify(result && typeof result.error === 'string', 'Structured failure without data');
   return result;
 }
@@ -164,6 +166,7 @@ try {
   verify(detail.products.some(p => p.id === product.id) && detail.formFields.some(f => f.id === field.id), 'Detail includes created domain objects');
 
   phase = 'payment-settings';
+  await call('organizations/update', a.token, { orgId: orgA, publicEmail: 'boundary-organizer@example.test' });
   await call('organization-payment-settings', a.token, { action: 'read', orgId: orgA });
   await call('organization-payment-settings', b.token, { action: 'read', orgId: orgA }, 403);
   await call('organization-payment-settings', a.token, { action: 'accept_terms', orgId: orgA,
