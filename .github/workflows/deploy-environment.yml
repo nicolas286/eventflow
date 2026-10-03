@@ -94,6 +94,7 @@ jobs:
           node tests/database/edge-boundary.checks.mjs supabase_db_eventflow-front --ci
           node tests/database/platform-corrections.checks.mjs supabase_db_eventflow-front --ci
           node tests/database/organization-suspension-concurrency.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/staging-browser-closure.checks.mjs supabase_db_eventflow-front --ci
           for recipe in tests/database/b2/*concurrency.checks.mjs; do
             node "$recipe" supabase_db_eventflow-front --ci
           done
@@ -108,6 +109,7 @@ jobs:
       - name: Inspect pending migrations
         run: supabase db push --dry-run
       - name: Pause campaign sends and drain existing workers
+        if: inputs.target == 'production'
         # The legacy campaign writer must have no workers left before D5 SQL.
         # Failure keeps campaigns paused until a successful deployment resumes them.
         run: node scripts/deployment/pause-platform-campaigns.mjs
@@ -135,6 +137,13 @@ jobs:
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/deployment/check-backend.mjs
+      - name: Verify the deployed staging business boundary
+        if: inputs.target == 'staging'
+        env:
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run test:integration:business-boundary
       - name: Synchronize Netlify build and function variables for this site
         run: node scripts/deployment/configure-netlify.mjs "$APP_ENV"
       - name: Publish frontend and Netlify function after backend success

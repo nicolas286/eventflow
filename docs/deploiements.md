@@ -87,7 +87,7 @@ La configuration et la recette des paiements sont détaillées dans le [TODO Mol
 
 ### Transition des campagnes plateforme (D5)
 
-Avant les migrations, le pipeline publie temporairement `platform-admin` avec
+Avant les migrations production, le pipeline publie temporairement `platform-admin` avec
 la route d'envoi de campagnes en pause (HTTP 503), sans modifier les autres routes.
 Il vérifie la révision publiée puis attend 420 secondes, au-delà de la
 [durée maximale de 400 secondes des workers hébergés](https://supabase.com/docs/guides/functions/limits),
@@ -99,9 +99,9 @@ campagnes. Le contrôle backend exige de nouveau le refus Auth 401 sur cette rou
 En cas d'échec entre pause et publication normale, les campagnes restent suspendues :
 corriger la cause et relancer le déploiement du commit courant ; ne pas rétablir
 l'ancienne Edge après la migration D5. Le script restaure toujours les sources locales.
-Cette phase de drainage ajoute sept minutes à chaque déploiement tant qu'elle est
-présente. La retirer après validation de D5 sur staging **et** production ; jusque-là,
-elle protège aussi la première publication de l'autre environnement.
+Cette phase ajoute sept minutes aux déploiements production tant qu'elle est
+présente. D5 ayant été publiée et vérifiée sur staging le 3 octobre, elle est
+désormais limitée à la production. La retirer après validation de D5 en production.
 
 Les migrations de `supabase/deferred-migrations/` ne sont pas publiées par ce workflow.
 La fermeture des accès navigateur et le retrait RLS restent des phases distinctes,

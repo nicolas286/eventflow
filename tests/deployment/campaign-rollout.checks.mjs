@@ -57,11 +57,13 @@ test('failed pause deployment restores local source without overwriting preexist
 test('deployment drains before SQL and publishes normal Edge before readiness check and frontend', async () => {
   const workflow = await readFile(new URL('../../.github/workflows/deploy-environment.yml', import.meta.url), 'utf8');
   const steps = ['node scripts/deployment/pause-platform-campaigns.mjs', 'supabase db push --yes',
-    'supabase functions deploy --project-ref', 'node scripts/deployment/check-backend.mjs', 'netlify-cli@'];
+    'supabase functions deploy --project-ref', 'node scripts/deployment/check-backend.mjs',
+    'npm run test:integration:business-boundary', 'netlify-cli@'];
   let previous = -1;
   for (const step of steps) {
     const at = workflow.indexOf(step);
     assert.ok(at > previous, `Missing or out-of-order deployment step: ${step}`);
     previous = at;
   }
+  assert.match(workflow, /name: Pause campaign sends and drain existing workers\s+if: inputs\.target == 'production'/);
 });

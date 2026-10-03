@@ -1,0 +1,3224 @@
+{
+  "project": "cpcmcxerrsnnjncrhldr",
+  "policies": [
+    {
+      "cmd": "DELETE",
+      "qual": "is_event_org_member(event_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "event_form_field_groups",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_form_field_groups_delete_member",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "event_form_field_groups",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_form_field_groups_insert_member",
+      "schemaname": "public",
+      "with_check": "is_event_org_member(event_id)"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "is_event_org_member(event_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "event_form_field_groups",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_form_field_groups_select_member_all",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((is_active = true) AND (EXISTS ( SELECT 1\n   FROM events e\n  WHERE ((e.id = event_form_field_groups.event_id) AND (e.is_published = true)))))",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "event_form_field_groups",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_form_field_groups_select_public_active_published",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "is_event_org_member(event_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "event_form_field_groups",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_form_field_groups_update_member",
+      "schemaname": "public",
+      "with_check": "is_event_org_member(event_id)"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "is_event_org_member(event_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "event_form_fields",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_form_fields_delete_member",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "event_form_fields",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_form_fields_insert_member",
+      "schemaname": "public",
+      "with_check": "is_event_org_member(event_id)"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "is_event_org_member(event_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "event_form_fields",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_form_fields_select_member_all",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((is_active = true) AND (EXISTS ( SELECT 1\n   FROM events e\n  WHERE ((e.id = event_form_fields.event_id) AND (e.is_published = true)))))",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "event_form_fields",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_form_fields_select_public_active_published",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "is_event_org_member(event_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "event_form_fields",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_form_fields_update_member",
+      "schemaname": "public",
+      "with_check": "is_event_org_member(event_id)"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "is_event_org_member(event_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "event_products",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_products_delete_member",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "is_event_org_member(event_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "event_products",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_products_select_member_all",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((is_active = true) AND (EXISTS ( SELECT 1\n   FROM events e\n  WHERE ((e.id = event_products.event_id) AND (e.is_published = true)))))",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "event_products",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_products_select_public_active_published",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "is_event_org_member(event_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "event_products",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_products_update_member",
+      "schemaname": "public",
+      "with_check": "is_event_org_member(event_id)"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "is_org_member(org_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "events",
+      "permissive": "PERMISSIVE",
+      "policyname": "event_delete_member",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "is_org_member(org_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "events",
+      "permissive": "PERMISSIVE",
+      "policyname": "events_select_member_all",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(is_published = true)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "events",
+      "permissive": "PERMISSIVE",
+      "policyname": "events_select_public_published",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "is_org_member(org_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "events",
+      "permissive": "PERMISSIVE",
+      "policyname": "events_update_member",
+      "schemaname": "public",
+      "with_check": "is_org_member(org_id)"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "false",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "order_attendee_answers",
+      "permissive": "PERMISSIVE",
+      "policyname": "order_attendee_answers_delete_deny_client",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "order_attendee_answers",
+      "permissive": "PERMISSIVE",
+      "policyname": "order_attendee_answers_insert_deny_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "is_attendee_org_member(attendee_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "order_attendee_answers",
+      "permissive": "PERMISSIVE",
+      "policyname": "order_attendee_answers_select_member",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "false",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "order_attendee_answers",
+      "permissive": "PERMISSIVE",
+      "policyname": "order_attendee_answers_update_deny_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "order_attendees",
+      "permissive": "PERMISSIVE",
+      "policyname": "order_attendees_insert_deny_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "is_order_org_member(order_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "order_attendees",
+      "permissive": "PERMISSIVE",
+      "policyname": "order_attendees_select_member",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "false",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "order_attendees",
+      "permissive": "PERMISSIVE",
+      "policyname": "order_attendees_update_deny_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "false",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "order_items",
+      "permissive": "PERMISSIVE",
+      "policyname": "order_items_delete_deny_client",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "order_items",
+      "permissive": "PERMISSIVE",
+      "policyname": "order_items_insert_deny_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "is_order_org_member(order_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "order_items",
+      "permissive": "PERMISSIVE",
+      "policyname": "order_items_select_member",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "false",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "order_items",
+      "permissive": "PERMISSIVE",
+      "policyname": "order_items_update_deny_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "false",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "orders",
+      "permissive": "PERMISSIVE",
+      "policyname": "orders_deny_deletes_client",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "false",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "orders",
+      "permissive": "PERMISSIVE",
+      "policyname": "orders_deny_updates_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "orders",
+      "permissive": "PERMISSIVE",
+      "policyname": "orders_deny_writes_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "orders",
+      "permissive": "PERMISSIVE",
+      "policyname": "orders_insert_deny_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((booking_token IS NOT NULL) AND (booking_token = current_setting('request.headers.x-booking-token'::text, true)))",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "orders",
+      "permissive": "PERMISSIVE",
+      "policyname": "orders_select_by_booking_token",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "is_org_member(org_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "orders",
+      "permissive": "PERMISSIVE",
+      "policyname": "orders_select_member",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "false",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "orders",
+      "permissive": "PERMISSIVE",
+      "policyname": "orders_update_deny_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "(EXISTS ( SELECT 1\n   FROM organizations o\n  WHERE ((o.id = organization_members.org_id) AND (o.created_by = current_user_id()))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "organization_members",
+      "permissive": "PERMISSIVE",
+      "policyname": "org_members_delete_if_org_owner",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "organization_members",
+      "permissive": "PERMISSIVE",
+      "policyname": "org_members_insert_if_org_owner",
+      "schemaname": "public",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM organizations o\n  WHERE ((o.id = organization_members.org_id) AND (o.created_by = current_user_id()))))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "organization_members",
+      "permissive": "PERMISSIVE",
+      "policyname": "org_members_select_own",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "(EXISTS ( SELECT 1\n   FROM organizations o\n  WHERE ((o.id = organization_members.org_id) AND (o.created_by = current_user_id()))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "organization_members",
+      "permissive": "PERMISSIVE",
+      "policyname": "org_members_update_if_org_owner",
+      "schemaname": "public",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM organizations o\n  WHERE ((o.id = organization_members.org_id) AND (o.created_by = current_user_id()))))"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "(EXISTS ( SELECT 1\n   FROM organizations o\n  WHERE ((o.id = organization_profile.org_id) AND (o.created_by = current_user_id()))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "organization_profile",
+      "permissive": "PERMISSIVE",
+      "policyname": "org_profile_delete_owner",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "organization_profile",
+      "permissive": "PERMISSIVE",
+      "policyname": "org_profile_select_public",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "is_org_member(org_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "organization_profile",
+      "permissive": "PERMISSIVE",
+      "policyname": "org_profile_update_member",
+      "schemaname": "public",
+      "with_check": "is_org_member(org_id)"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "(created_by = current_user_id())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "organizations",
+      "permissive": "PERMISSIVE",
+      "policyname": "organizations_delete_own",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "is_org_member(id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "organizations",
+      "permissive": "PERMISSIVE",
+      "policyname": "organizations_select_member",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "false",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "payments",
+      "permissive": "PERMISSIVE",
+      "policyname": "payments_delete_deny_client",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "false",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "payments",
+      "permissive": "PERMISSIVE",
+      "policyname": "payments_deny_deletes_client",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "false",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "payments",
+      "permissive": "PERMISSIVE",
+      "policyname": "payments_deny_updates_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "payments",
+      "permissive": "PERMISSIVE",
+      "policyname": "payments_deny_writes_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "payments",
+      "permissive": "PERMISSIVE",
+      "policyname": "payments_insert_deny_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "is_order_org_member(order_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "payments",
+      "permissive": "PERMISSIVE",
+      "policyname": "payments_select_member",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "false",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "payments",
+      "permissive": "PERMISSIVE",
+      "policyname": "payments_update_deny_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "plan_limits",
+      "permissive": "PERMISSIVE",
+      "policyname": "Enable read access for all users",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "false",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "subscriptions",
+      "permissive": "PERMISSIVE",
+      "policyname": "subscriptions_delete_deny_client",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "subscriptions",
+      "permissive": "PERMISSIVE",
+      "policyname": "subscriptions_insert_deny_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(EXISTS ( SELECT 1\n   FROM organizations o\n  WHERE ((o.id = subscriptions.org_id) AND (o.created_by = current_user_id()))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "subscriptions",
+      "permissive": "PERMISSIVE",
+      "policyname": "subscriptions_select_owner",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "false",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "subscriptions",
+      "permissive": "PERMISSIVE",
+      "policyname": "subscriptions_update_deny_client",
+      "schemaname": "public",
+      "with_check": "false"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "is_order_org_member(order_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "tickets",
+      "permissive": "PERMISSIVE",
+      "policyname": "tickets_select_member",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "(user_id = current_user_id())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "user_profile",
+      "permissive": "PERMISSIVE",
+      "policyname": "user_profile_delete_self",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(user_id = current_user_id())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "user_profile",
+      "permissive": "PERMISSIVE",
+      "policyname": "user_profile_select_self",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "(user_id = current_user_id())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "user_profile",
+      "permissive": "PERMISSIVE",
+      "policyname": "user_profile_update_self",
+      "schemaname": "public",
+      "with_check": "(user_id = current_user_id())"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((bucket_id = 'invoices'::text) AND (name ~ '^[0-9a-fA-F-]{8}-[0-9a-fA-F-]{4}-[0-9a-fA-F-]{4}-[0-9a-fA-F-]{4}-[0-9a-fA-F-]{12}/'::text) AND is_org_member((SUBSTRING(name FROM 1 FOR 36))::uuid))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "invoices_read_auth_org_member",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "((bucket_id = 'public-assets'::text) AND (name ~~ 'orgs/%'::text) AND is_org_member((split_part(name, '/'::text, 2))::uuid))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "org members can delete their assets",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "((bucket_id = 'public-assets'::text) AND (name ~~ 'orgs/%'::text) AND is_org_member((split_part(name, '/'::text, 2))::uuid))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "org members can update their assets",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = 'public-assets'::text) AND (name ~~ 'orgs/%'::text) AND is_org_member((split_part(name, '/'::text, 2))::uuid))"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "org members can upload their assets",
+      "schemaname": "storage",
+      "with_check": "((bucket_id = 'public-assets'::text) AND (name ~~ 'orgs/%'::text) AND is_org_member((split_part(name, '/'::text, 2))::uuid))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(bucket_id = 'public-assets'::text)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "objects",
+      "permissive": "PERMISSIVE",
+      "policyname": "public read public-assets",
+      "schemaname": "storage",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "is_org_member(org_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "promo_codes",
+      "permissive": "PERMISSIVE",
+      "policyname": "promo_codes_select_member",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "promo_codes",
+      "permissive": "PERMISSIVE",
+      "policyname": "promo_codes_insert_member",
+      "schemaname": "public",
+      "with_check": "(is_org_member(org_id) AND (EXISTS ( SELECT 1\n   FROM events e\n  WHERE ((e.id = promo_codes.event_id) AND (e.org_id = promo_codes.org_id)))))"
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "is_org_member(org_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "promo_codes",
+      "permissive": "PERMISSIVE",
+      "policyname": "promo_codes_update_member",
+      "schemaname": "public",
+      "with_check": "(is_org_member(org_id) AND (EXISTS ( SELECT 1\n   FROM events e\n  WHERE ((e.id = promo_codes.event_id) AND (e.org_id = promo_codes.org_id)))))"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "is_org_member(org_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "promo_codes",
+      "permissive": "PERMISSIVE",
+      "policyname": "promo_codes_delete_member",
+      "schemaname": "public",
+      "with_check": null
+    }
+  ],
+  "captured_at": "2026-10-03T16:53:20.460971+00:00",
+  "column_acls": [
+    {
+      "acl": [
+        "authenticated=a/postgres"
+      ],
+      "column": "event_id",
+      "relation": "event_products"
+    },
+    {
+      "acl": [
+        "authenticated=aw/postgres"
+      ],
+      "column": "name",
+      "relation": "event_products"
+    },
+    {
+      "acl": [
+        "authenticated=aw/postgres"
+      ],
+      "column": "description",
+      "relation": "event_products"
+    },
+    {
+      "acl": [
+        "authenticated=aw/postgres"
+      ],
+      "column": "price_cents",
+      "relation": "event_products"
+    },
+    {
+      "acl": [
+        "authenticated=aw/postgres"
+      ],
+      "column": "currency",
+      "relation": "event_products"
+    },
+    {
+      "acl": [
+        "authenticated=aw/postgres"
+      ],
+      "column": "stock_qty",
+      "relation": "event_products"
+    },
+    {
+      "acl": [
+        "authenticated=aw/postgres"
+      ],
+      "column": "is_active",
+      "relation": "event_products"
+    },
+    {
+      "acl": [
+        "authenticated=aw/postgres"
+      ],
+      "column": "sort_order",
+      "relation": "event_products"
+    },
+    {
+      "acl": [
+        "authenticated=aw/postgres"
+      ],
+      "column": "creates_attendees",
+      "relation": "event_products"
+    },
+    {
+      "acl": [
+        "authenticated=aw/postgres"
+      ],
+      "column": "attendees_per_unit",
+      "relation": "event_products"
+    },
+    {
+      "acl": [
+        "authenticated=aw/postgres"
+      ],
+      "column": "is_gatekeeper",
+      "relation": "event_products"
+    },
+    {
+      "acl": [
+        "authenticated=aw/postgres"
+      ],
+      "column": "close_event_when_sold_out",
+      "relation": "event_products"
+    }
+  ],
+  "schema_acls": [
+    {
+      "acl": [
+        "pg_database_owner=UC/pg_database_owner",
+        "=U/pg_database_owner",
+        "postgres=U/pg_database_owner",
+        "anon=U/pg_database_owner",
+        "authenticated=U/pg_database_owner",
+        "service_role=U/pg_database_owner"
+      ],
+      "owner": "pg_database_owner",
+      "schema": "public"
+    },
+    {
+      "acl": null,
+      "owner": "postgres",
+      "schema": "private"
+    },
+    {
+      "acl": [
+        "supabase_admin=UC/supabase_admin",
+        "postgres=U*/supabase_admin",
+        "anon=U/supabase_admin",
+        "authenticated=U/supabase_admin",
+        "service_role=U/supabase_admin"
+      ],
+      "owner": "supabase_admin",
+      "schema": "graphql_public"
+    }
+  ],
+  "routine_acls": [
+    {
+      "acl": [
+        "=X/supabase_admin",
+        "supabase_admin=X/supabase_admin",
+        "postgres=X/supabase_admin",
+        "anon=X/supabase_admin",
+        "authenticated=X/supabase_admin",
+        "service_role=X/supabase_admin"
+      ],
+      "owner": "supabase_admin",
+      "routine": "unaccent(text)"
+    },
+    {
+      "acl": [
+        "=X/supabase_admin",
+        "supabase_admin=X/supabase_admin",
+        "postgres=X/supabase_admin",
+        "anon=X/supabase_admin",
+        "authenticated=X/supabase_admin",
+        "service_role=X/supabase_admin"
+      ],
+      "owner": "supabase_admin",
+      "routine": "unaccent_init(internal)"
+    },
+    {
+      "acl": [
+        "=X/supabase_admin",
+        "supabase_admin=X/supabase_admin",
+        "postgres=X/supabase_admin",
+        "anon=X/supabase_admin",
+        "authenticated=X/supabase_admin",
+        "service_role=X/supabase_admin"
+      ],
+      "owner": "supabase_admin",
+      "routine": "unaccent_lexize(internal,internal,internal,internal)"
+    },
+    {
+      "acl": [
+        "=X/supabase_admin",
+        "supabase_admin=X/supabase_admin",
+        "postgres=X/supabase_admin",
+        "anon=X/supabase_admin",
+        "authenticated=X/supabase_admin",
+        "service_role=X/supabase_admin"
+      ],
+      "owner": "supabase_admin",
+      "routine": "unaccent(regdictionary,text)"
+    },
+    {
+      "acl": null,
+      "owner": "postgres",
+      "routine": "private.generate_unique_event_slug(uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "create_event(jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "update_event(jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_event_tickets_admin(uuid,integer,integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_events_overview(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_org_mollie_connect_secrets(uuid)"
+    },
+    {
+      "acl": [
+        "=X/supabase_admin",
+        "supabase_admin=X/supabase_admin",
+        "postgres=X/supabase_admin",
+        "anon=X/supabase_admin",
+        "authenticated=X/supabase_admin",
+        "service_role=X/supabase_admin"
+      ],
+      "owner": "supabase_admin",
+      "routine": "graphql_public.graphql(text,text,jsonb,jsonb)"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "enforce_max_10_products_per_event()"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "enforce_max_30_form_fields_per_event()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "assert_can_create_paid_product(uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "consume_mollie_connect_state(text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "can_create_paid_product(uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "create_event_form_field(jsonb)"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "current_user_id()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "create_mollie_connect_state(uuid,text,text)"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_event_admin_participants_export_data(uuid,uuid,text,boolean)"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "update_order_paid_cents()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_plan_limits(text)"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "is_event_sold_out(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "handle_new_auth_user()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "update_organization(jsonb)"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "mark_ticket_checked_in(uuid,uuid)"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "mark_ticket_checked_in_by_qr(text,uuid)"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "normalize_answer_value(jsonb)"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "prevent_org_profile_slug_change()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "rpc_create_invoice_from_mollie_payment(jsonb)"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "set_updated_at()"
+    },
+    {
+      "acl": [
+        "=X/postgres",
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "trg_block_branding_update_on_free()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "is_event_registration_open(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_public_org_events_overview(text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "update_org_mollie_tokens(uuid,text,text,text,text,timestamp with time zone,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "upsert_organization_mollie_connect(jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.assert_rate_limit(text,integer,integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_deployment_cron_status()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "rls_auto_enable()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_public_event_detail(text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "platform_admin_access_state(uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_event_detail_admin_core(uuid,uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.mask_iban(text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "duplicate_event(jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.validate_organization_bank_iban_change()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "assert_organization_contract_ready(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "create_organization(jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.can_create_event(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.generate_unique_org_slug(text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.prune_rate_limits(interval)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "rpc_upsert_organization_billing(jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "platform_admin_read(uuid,uuid,text,text,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "create_event_product(jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_event_admin_orders_view(uuid,uuid,text,integer,integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "update_event_product(jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "create_event_form_field_group(jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "apply_order_payment(uuid,text,integer,text,text,jsonb,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.create_order_intent_internal(uuid,jsonb,jsonb,jsonb,text,text)"
+    },
+    {
+      "acl": null,
+      "owner": "postgres",
+      "routine": "private.record_signup_terms()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_org_plan(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "search_event_admin_orders_view(uuid,text,uuid,text,text,integer,integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_delete_event_form_field(uuid,uuid,uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_delete_event_form_field_group(uuid,uuid,uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "admin_update_order_attendee(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "apply_subscription_state(uuid,text,text,text,text,timestamp with time zone,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "assert_can_add_form_field(uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "assert_can_add_product(uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_event_by_slug(uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "assert_event_registrations_limit_bulk(uuid,uuid,integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "assert_rate_limit(text,integer,integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "create_subscription_intent(uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_event_registrations_count(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_public_org_by_slug(text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "is_attendee_org_member(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "is_event_org_member(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "is_event_paid(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "is_order_org_member(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "is_org_member(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "issue_order_tickets(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "rpc_get_organization_billing(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "rpc_set_invoice_pdf_path(uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "rpc_create_invoice_peppol(jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "search_event_admin_tickets_view(uuid,text,integer,integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "slugify(text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "default_asset_url(text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "consume_rate_limit(text,text,integer,integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.organizer_promo_input(jsonb,boolean)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_create_event_promo_code(uuid,jsonb)"
+    },
+    {
+      "acl": null,
+      "owner": "postgres",
+      "routine": "private.use_stripe_for_new_organizations()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "claim_payment_webhook_event(text,text,text,text,text,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "create_manual_subscription_invoice(uuid,text,integer,text,text,integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "apply_order_refund(uuid,text,text,text,integer,text,text,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "rpc_list_invoices(uuid,integer,timestamp with time zone,uuid)"
+    },
+    {
+      "acl": null,
+      "owner": "postgres",
+      "routine": "private.protect_stripe_connect_allowlist()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "mark_bank_transfer_manually_confirmed(uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "prepare_stripe_checkout(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.normalize_iban(text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.is_valid_iban(text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "create_bank_transfer_payment(uuid,integer,text,text,text,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_bank_transfer_instructions(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "expire_bank_transfer_order(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_bank_transfer_admin_summaries(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "renew_manual_subscriptions()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_dashboard_bootstrap()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "complete_bank_transfer_email(uuid,uuid,boolean)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "claim_payment_refund_notification(text,text,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "complete_payment_refund_notification(text,text,boolean,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "claim_bank_transfer_email(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "list_pending_bank_transfer_emails(integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "claim_invoice_billit_delivery(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "complete_invoice_billit_delivery(uuid,uuid,text,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "register_stripe_checkout_payment(uuid,text,text,text,integer,text,bigint,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "apply_stripe_order_refund(uuid,text,text,text,integer,text,text,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "record_stripe_late_refund(text,text,text,boolean)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.expire_unpaid_order_reservation(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "expire_orders(integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "close_stripe_checkout(uuid,text,text,text,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_stripe_checkouts_to_reconcile(integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "accept_organization_sales_terms(uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "record_order_terms_acceptance(uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "store_stripe_checkout_payment(uuid,text,text,text,integer,text,timestamp with time zone,timestamp with time zone,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "update_organization_payment_settings(uuid,text,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.prevent_deferred_subscription_invoice()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "replace_stripe_account_for_standard_migration(uuid,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "cancel_internal_subscription(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "apply_stripe_checkout_payment(uuid,text,text,text,integer,text,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "complete_payment_webhook_event(text,text,boolean,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.platform_assert_admin(uuid,uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.platform_write_audit(uuid,uuid,text,text,text,text,text,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.platform_consume_step_up(uuid,uuid,text,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "platform_admin_issue_step_up(uuid,uuid,text,text,text,text,timestamp with time zone)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "platform_public_config(text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "platform_find_auth_user_by_email(text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "claim_order_confirmation_email(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "rpc_update_invoice_peppol_status(jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "check_in_ticket_internal(uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "admin_delete_order(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "platform_admin_create_email_campaign(uuid,uuid,text,jsonb,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "platform_admin_read_email_campaigns(uuid,uuid,text,integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "update_organization_seller_identity(uuid,text,text,text,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "accept_organization_platform_agreements(uuid,text,text,text,text)"
+    },
+    {
+      "acl": null,
+      "owner": "postgres",
+      "routine": "private.guard_profile_contract_fields()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "expire_unstarted_checkout(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "create_order_intent_with_terms(uuid,jsonb,jsonb,jsonb,text,text,text,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres",
+        "anon=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "get_public_organization_sales_terms(text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "admin_grant_subscription(uuid,text,integer,timestamp with time zone)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "log_email_once(uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.enqueue_order_confirmation()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.order_confirmation_eligible(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "claim_order_confirmation_delivery(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "prepare_order_confirmation_dispatch(uuid,uuid,jsonb,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "complete_order_confirmation_delivery(uuid,uuid,boolean,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "list_pending_order_confirmations(integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "mark_order_confirmation_email_sent(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "mark_order_confirmation_email_error(uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_create_organization(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_update_organization(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_update_seller_identity(uuid,uuid,text,text,text,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_accept_platform_agreements(uuid,uuid,text,text,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_upsert_organization_billing(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.organizer_assert_paid_event_capacity(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_get_events_overview(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_get_event_detail_admin_core(uuid,uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_create_event(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_update_event(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_duplicate_event(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_create_event_product(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.organizer_form_scope(uuid,uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_update_event_product(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_delete_event_product(uuid,uuid,uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.organizer_form_input(jsonb,text[])"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.organizer_option_length(text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.organizer_validate_form_field(event_form_fields,boolean)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.organizer_validate_form_group(event_form_field_groups)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_create_event_form_field(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_update_event_form_field(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_create_event_form_field_group(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_update_event_form_field_group(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_reorder_event_form(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.organizer_promo_scope(uuid,uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.organizer_validate_promo(promo_codes)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_update_event_promo_code(uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_delete_event_promo_code(uuid,uuid,uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_get_event_tickets_admin(uuid,uuid,integer,integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_check_in_ticket(uuid,uuid,uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_check_in_ticket_by_qr(uuid,uuid,text,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "catalog_get_public_org_by_slug(uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "catalog_get_public_event_detail(uuid,text,text,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "catalog_get_public_org_events_overview(uuid,text,text,integer,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "catalog_get_public_organization_sales_terms(uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "catalog_event_share(uuid,uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_get_event_admin_orders_view(uuid,uuid,text,integer,integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_search_event_admin_orders_view(uuid,text,uuid,text,text,integer,integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_search_event_admin_tickets_view(uuid,uuid,text,integer,integer)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_get_event_admin_participants_export_data(uuid,uuid,text,boolean,integer,uuid,uuid,timestamp with time zone)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_get_bank_transfer_admin_summaries(uuid,uuid,integer,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_admin_update_order_attendee(uuid,uuid,uuid,uuid,jsonb)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_admin_delete_order(uuid,uuid,uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_expire_bank_transfer_order(uuid,uuid,uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "platform_admin_complete_email_delivery(uuid,uuid,uuid,boolean,text,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_accept_organization_sales_terms(uuid,uuid,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.guard_new_order_organization_status()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_update_organization_payment_settings(uuid,uuid,text,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.protect_platform_organization_status()"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "private.assert_organization_accepts_new_orders(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "create_order_intent(uuid,jsonb,jsonb,jsonb,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "organizer_delete_event(uuid,uuid,uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "platform_admin_mutate(uuid,uuid,text,text,jsonb,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "platform_admin_authorize_onboarding(uuid,uuid,text,uuid,text,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "platform_admin_email_campaign_deliveries(uuid)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "platform_admin_record_email_delivery(uuid,uuid,boolean,text,text,text)"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "owner": "postgres",
+      "routine": "platform_admin_finish_email_campaign(uuid)"
+    }
+  ],
+  "relation_acls": [
+    {
+      "acl": [
+        "postgres=rwU/postgres",
+        "anon=rwU/postgres",
+        "authenticated=rwU/postgres",
+        "service_role=rwU/postgres"
+      ],
+      "rls": false,
+      "owner": "postgres",
+      "relation": "invoice_number_seq"
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "owner": "postgres",
+      "relation": "private.rate_limit_hits"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=arw/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.payment_webhook_events"
+    },
+    {
+      "acl": null,
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.mollie_connect_states"
+    },
+    {
+      "acl": null,
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.organization_mollie_connect"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=ar/postgres"
+      ],
+      "rls": false,
+      "owner": "postgres",
+      "relation": "private.organization_bank_account_audit"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=arw/postgres"
+      ],
+      "rls": false,
+      "owner": "postgres",
+      "relation": "private.bank_transfer_payment_instructions"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.bank_transfer_email_deliveries"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.stripe_late_payment_refunds"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=ar/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.organization_sales_terms_acceptances"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=arw/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.payment_refund_notifications"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "allowed_return_origins"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "event_form_field_groups"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=rxtm/postgres",
+        "authenticated=rdxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "event_products"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "event_form_fields"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "invoice_peppol"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "events"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "invoices"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=rDxtm/postgres",
+        "authenticated=rdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "order_attendees"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=rDxtm/postgres",
+        "authenticated=rDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "order_attendee_answers"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "order_email_logs"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=rDxtm/postgres",
+        "authenticated=rDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "order_items"
+    },
+    {
+      "acl": null,
+      "rls": false,
+      "owner": "postgres",
+      "relation": "private.platform_audit_log_id_seq"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.platform_admins"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.platform_audit_log"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.platform_step_up_grants"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.platform_settings"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.platform_announcements"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.platform_onboarding_operations"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=rDxtm/postgres",
+        "authenticated=rdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "orders"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "organization_billing"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "organization_members"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.platform_email_campaigns"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.platform_email_deliveries"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "organization_profile"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=r/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.user_platform_terms_acceptances"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=ardDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "organizations"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=rDxtm/postgres",
+        "authenticated=rDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "payments"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=r/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.legal_document_versions"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=ar/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.organization_platform_acceptances"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "plan_limits"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "private.order_confirmation_deliveries"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "subscriptions"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "tickets"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "anon=arwdDxtm/postgres",
+        "authenticated=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "user_profile"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres",
+        "authenticated=arwd/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "promo_codes"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": true,
+      "owner": "postgres",
+      "relation": "promo_code_redemptions"
+    },
+    {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=arwdDxtm/postgres"
+      ],
+      "rls": false,
+      "owner": "postgres",
+      "relation": "private.app_environment"
+    }
+  ]
+}
