@@ -16,26 +16,33 @@ const service = createClient(base, serviceKey, options);
 const anonymous = createClient(base, anonKey, options);
 const users = [], orgs = [], invoicePaths = [], assetPaths = [];
 const runId = randomUUID();
-let phase = 'setup', operation = 'configuration', lastStatus = 'none', checks = 0;
+let phase = 'setup', operation = 'configuration', lastStatus = 'none', remoteCode = 'none', checks = 0;
 function verify(value, label) {
   assert.ok(value, `${phase}: ${label}`);
   checks++;
 }
 function data(result, label) {
-  if (result.error) throw new Error(`${phase}: ${label} failed (${result.error.code ?? 'remote-error'})`);
+  if (result.error) {
+    remoteCode = /^[a-zA-Z0-9_]{1,80}$/.test(result.error.code ?? '') ? result.error.code : 'remote-error';
+    lastStatus = Number.isInteger(result.error.status) ? String(result.error.status) : lastStatus;
+    throw new Error(`${phase}: ${label} failed (${remoteCode})`);
+  }
   return result.data;
 }
 async function insert(table, rows) {
   data(await service.from(table).insert(rows), `Seed ${table}`);
 }
 async function actor() {
+  operation = 'auth-admin-create-user';
+  remoteCode = 'none';
   const email = `boundary-${randomUUID()}@example.test`;
-  const password = `Staging-${randomUUID()}-${randomUUID()}`;
+  const password = `Staging-${randomUUID()}`;
   const created = data(await service.auth.admin.createUser({ email, password, email_confirm: true,
     user_metadata: { platform_terms_version: '2026-10-01', platform_terms_accepted: true },
   }), 'Create synthetic Auth user');
   users.push(created.user.id);
   const client = createClient(base, anonKey, options);
+  operation = 'auth-password-sign-in';
   const signed = data(await client.auth.signInWithPassword({ email, password }), 'Sign in synthetic actor');
   verify(signed.session?.access_token, 'Auth access token exists');
   return { id: created.user.id, token: signed.session.access_token, client };
@@ -255,7 +262,7 @@ try {
   console.log(`Staging deployed business boundary: ${checks} checks passed.`);
 } catch {
   // Emit only a safe phase marker, never SDK objects or response bodies.
-  console.error(`::error title=Business boundary integration failed::Phase: ${phase}; operation: ${operation}; HTTP: ${lastStatus}`);
+  console.error(`::error title=Business boundary integration failed::Phase: ${phase}; operation: ${operation}; HTTP: ${lastStatus}; SDK code: ${remoteCode}`);
   process.exitCode = 1;
 } finally {
   const cleanupErrors = [];
