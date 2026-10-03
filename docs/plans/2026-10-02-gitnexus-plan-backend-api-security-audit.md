@@ -11,8 +11,10 @@
 > **Bascule staging du 3 octobre : fermeture déployée et recette hébergée réussie**
 > au commit `97c5599` (70 migrations). Tables/colonnes/RPC métier et accès aux schémas
 > `public`/`private` fermés aux rôles navigateur ; Auth et lecture publique des assets conservées.
-> Le retrait RLS métier est préparé dans une migration staging distincte, avec recette
-> hébergée répétée après application. Les fermetures production restent différées.
+> **Retrait RLS déployé et recette hébergée répétée avec succès** au commit `03c080c`
+> (71 migrations, 23 tables public sans RLS, zéro policy public, zéro droit direct
+> navigateur table/colonne/RPC applicative). Auth/Storage/private sont conservés.
+> Les fermetures et le retrait RLS production restent différés.
 > Voir le [rapport de bascule staging](../audits/2026-10-03-staging-edge-only-cutover.md)
 > pour distinguer préparation, déploiement et preuves finales.
 > Les mentions et empreintes du 2 octobre ci-dessous constituent la provenance historique.
@@ -476,7 +478,14 @@ Conserver l'historique factures Mollie.
 
 ### B6 — Fermer la frontière et contrôler les régressions — P2 — Sol high
 
-**Statut au 3 octobre : implémenté/testé localement ; accès directs fermés seulement
+**Bascule staging au 3 octobre : terminée et vérifiée** en deux publications,
+fermeture puis retrait RLS distinct. La recette des Edge déployées et des refus
+cross-tenant/REST/RPC/GraphQL/Storage passe avant et après retrait RLS ; frontend
+publié. [Preuves et limites de recette](../audits/2026-10-03-staging-edge-only-cutover.md).
+Les scripts différés B0–B6 restent des références à adapter pour production ;
+ne pas les promouvoir mécaniquement ni modifier leurs versions historiques.
+
+**État historique avant cette bascule : implémenté/testé localement ; accès directs fermés seulement
 en base jetable ; fermetures et retrait RLS différés, non déployés.** Scanner AST
 CI avec allowlist Auth explicite/Storage vide ; derniers RPC serveur de paramètres
 de paiement adaptés à l’acteur/client privilégié, création administrative sans

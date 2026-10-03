@@ -1,0 +1,375 @@
+{
+  "project_id": "cpcmcxerrsnnjncrhldr",
+  "captured_at": "2026-10-03T17:32:14.964Z",
+  "latest": "20261003193000",
+  "migrations": 71,
+  "protected_rls": [
+    {
+      "rls": true,
+      "table": "audit_log_entries",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "custom_oauth_providers",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "flow_state",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "identities",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "instances",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "mfa_amr_claims",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "mfa_challenges",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "mfa_factors",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "mfa_recovery_code_sets",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "mfa_recovery_codes",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "oauth_authorizations",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "oauth_client_states",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "oauth_clients",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "oauth_consents",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "one_time_tokens",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "refresh_tokens",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "saml_providers",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "saml_relay_states",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "schema_migrations",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "scim_tokens",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "scim_users",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "sessions",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "sso_domains",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "sso_providers",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "users",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "webauthn_challenges",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "webauthn_credentials",
+      "schema": "auth",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "app_environment",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "bank_transfer_email_deliveries",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "bank_transfer_payment_instructions",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "legal_document_versions",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "mollie_connect_states",
+      "schema": "private",
+      "policies": 1
+    },
+    {
+      "rls": true,
+      "table": "order_confirmation_deliveries",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "organization_bank_account_audit",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "organization_mollie_connect",
+      "schema": "private",
+      "policies": 1
+    },
+    {
+      "rls": true,
+      "table": "organization_platform_acceptances",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "organization_sales_terms_acceptances",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "payment_refund_notifications",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "payment_webhook_events",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "platform_admins",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "platform_announcements",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "platform_audit_log",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "platform_email_campaigns",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "platform_email_deliveries",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "platform_onboarding_operations",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "platform_settings",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "platform_step_up_grants",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": false,
+      "table": "rate_limit_hits",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "stripe_late_payment_refunds",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "user_platform_terms_acceptances",
+      "schema": "private",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "buckets",
+      "schema": "storage",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "buckets_analytics",
+      "schema": "storage",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "buckets_vectors",
+      "schema": "storage",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "migrations",
+      "schema": "storage",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "objects",
+      "schema": "storage",
+      "policies": 1
+    },
+    {
+      "rls": true,
+      "table": "s3_multipart_uploads",
+      "schema": "storage",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "s3_multipart_uploads_parts",
+      "schema": "storage",
+      "policies": 0
+    },
+    {
+      "rls": true,
+      "table": "vector_indexes",
+      "schema": "storage",
+      "policies": 0
+    }
+  ],
+  "public_tables": 23,
+  "public_policies": 0,
+  "public_rls_tables": 0,
+  "browser_schema_usage": [
+    {
+      "role": "anon",
+      "public": false,
+      "private": false
+    },
+    {
+      "role": "authenticated",
+      "public": false,
+      "private": false
+    }
+  ],
+  "service_public_usage": true,
+  "open_browser_relations": 0,
+  "open_browser_app_routines": 0,
+  "protected_rls_unchanged": true
+}

@@ -75,7 +75,7 @@ téléchargement susceptible d'être mis en cache, e-mail public organisateur
 renseigné via Edge avant acceptation des conditions de vente. Aucun contrôle
 applicatif n'a été assoupli pour faire passer la recette.
 
-## Retrait RLS préparé après cette preuve
+## Retrait RLS appliqué après cette preuve
 
 Migration distincte `20261003193000_retire_staging_business_rls.sql` : même garde
 staging ; refus si un droit navigateur a été rouvert ; suppression des policies
@@ -83,5 +83,24 @@ public et désactivation de la RLS public uniquement. Les contraintes et opérat
 SQL atomiques restent présentes ; Auth, Storage et private sont conservés.
 71 migrations rejouées localement, puis cinq scénarios de fermeture et quatre
 scénarios de retrait réussis avec postgres explicitement non-superuser.
-Le workflow rejoue la recette hébergée après cette seconde migration. Son résultat
-et l'inventaire distant final sont requis pour revendiquer la bascule complète.
+La recette hébergée sans RLS et la publication frontend ont réussi au commit
+`03c080c`, dans le [workflow de retrait staging](https://github.com/nicolas286/eventflow/actions/runs/37140539432).
+La recette Auth/suppression de compte intégrée au pipeline passe également.
+La bascule métier Edge-only est donc **déployée et vérifiée sur staging**.
+Production/main restent hors de cette autorisation et inchangés.
+
+Le catalogue après application au commit `03c080c` confirme 71 migrations,
+23 tables public sans RLS, zéro policy public et zéro accès direct table/colonne
+ou routine applicative pour les deux rôles navigateur. USAGE public/private est
+absent pour ces rôles ; service_role conserve USAGE public.
+Les 58 tables Auth/Storage/private conservent exactement leurs états RLS et nombres
+de policies relevés après fermeture et avant retrait. Voir
+[l'inventaire final](2026-10-03-staging-boundary-after.json), sans données métier.
+
+L'Advisor sécurité n'a pas remonté d'erreur d'exposition métier. Il conserve des
+observations sur 17 [tables privées avec RLS sans policy](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy) (accès serveur), huit
+[fonctions historiques au search_path mutable](https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable),
+[unaccent dans public](https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public)
+et la [protection Auth contre les mots de passe compromis désactivée](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
+Ces fonctions et l'extension restent inaccessibles aux rôles navigateur par les
+droits vérifiés. Ces observations ne sont pas une preuve d'absence de toute faille.
