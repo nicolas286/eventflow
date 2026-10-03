@@ -4,7 +4,7 @@ Autorisation utilisateur : fermeture des accès directs puis retrait RLS sur sta
 Cible vérifiée : `eventflow-staging`, `cpcmcxerrsnnjncrhldr`, 69 migrations avant bascule.
 Le frontend et les Edge A0–D5 avaient été publiés et vérifiés au commit `8c12269`.
 
-## Fermeture préparée
+## Fermeture déployée et vérifiée
 
 Migration `20261003192000_close_staging_business_browser_access.sql`, limitée à la
 cible via sa configuration d'assets exacte. Production et replay local standard
@@ -59,5 +59,29 @@ reste dans le pipeline production. Les scripts différés historiques B0–B6 ga
 leur valeur de référence pour la future bascule production, à adapter aux droits
 et à la configuration attestés de cette autre cible.
 
-Ce document décrit la préparation ; les résultats hébergés sont établis par les
-workflows des commits de bascule et l'inventaire final, pas par les seuls tests locaux.
+## Résultats hébergés de la fermeture
+
+La migration de fermeture a été appliquée sur staging au commit `63b6ca0`.
+Le catalogue confirme 70 migrations, zéro droit table/colonne et zéro EXECUTE
+applicatif pour anon/authenticated, aucun USAGE public/private pour ces rôles,
+23 tables public avec RLS et 65 policies encore présentes à cette phase.
+Storage objects conserve uniquement la policy de lecture publique des assets.
+
+La recette hébergée a réussi au commit `97c5599`, dans le
+[workflow staging](https://github.com/nicolas286/eventflow/actions/runs/37139995279).
+Trois corrections de fixtures ont été nécessaires : mot de passe Auth limité à
+72 caractères, suppression d'assets vérifiée par métadonnées au lieu d'un
+téléchargement susceptible d'être mis en cache, e-mail public organisateur
+renseigné via Edge avant acceptation des conditions de vente. Aucun contrôle
+applicatif n'a été assoupli pour faire passer la recette.
+
+## Retrait RLS préparé après cette preuve
+
+Migration distincte `20261003193000_retire_staging_business_rls.sql` : même garde
+staging ; refus si un droit navigateur a été rouvert ; suppression des policies
+public et désactivation de la RLS public uniquement. Les contraintes et opérations
+SQL atomiques restent présentes ; Auth, Storage et private sont conservés.
+71 migrations rejouées localement, puis cinq scénarios de fermeture et quatre
+scénarios de retrait réussis avec postgres explicitement non-superuser.
+Le workflow rejoue la recette hébergée après cette seconde migration. Son résultat
+et l'inventaire distant final sont requis pour revendiquer la bascule complète.

@@ -67,6 +67,7 @@ jobs:
           node tests/database/platform-corrections.checks.mjs supabase_db_eventflow-front --ci
           node tests/database/organization-suspension-concurrency.checks.mjs supabase_db_eventflow-front --ci
           node tests/database/staging-browser-closure.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/staging-business-rls.checks.mjs supabase_db_eventflow-front --ci
           for recipe in tests/database/b2/*concurrency.checks.mjs; do
             node "$recipe" supabase_db_eventflow-front --ci
           done

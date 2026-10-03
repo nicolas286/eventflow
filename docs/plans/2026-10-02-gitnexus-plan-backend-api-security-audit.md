@@ -8,8 +8,13 @@
 > L'utilisateur a également confirmé le blocage des nouvelles commandes d'une organisation suspendue.
 > Voir le [rapport de revue et ses validations](../audits/2026-10-03-integration-review-a0-d5.md).
 > La publication autorisée vise **dev/staging**, pas `main` ni production.
-> **B0–B6 : les fermetures d'ACL et le retrait RLS restent différés** ; leur présence dans
-> le dépôt et leur validation locale ne signifient pas que la cible est déjà Edge-only.
+> **Bascule staging du 3 octobre : fermeture déployée et recette hébergée réussie**
+> au commit `97c5599` (70 migrations). Tables/colonnes/RPC métier et accès aux schémas
+> `public`/`private` fermés aux rôles navigateur ; Auth et lecture publique des assets conservées.
+> Le retrait RLS métier est préparé dans une migration staging distincte, avec recette
+> hébergée répétée après application. Les fermetures production restent différées.
+> Voir le [rapport de bascule staging](../audits/2026-10-03-staging-edge-only-cutover.md)
+> pour distinguer préparation, déploiement et preuves finales.
 > Les mentions et empreintes du 2 octobre ci-dessous constituent la provenance historique.
 
 > **Actualisation après synchronisation de dev, le 2 octobre 2026.** Les 20 commits distants entre `34cde6d` et `4ef53f4` ont été intégrés localement. Le dashboard plateforme existe désormais dans le périmètre examiné. Lire le complément `docs/audits/2026-10-02-dev-sync-platform-security-review.md` avant d'exécuter une tâche. L'ancien rapport A0–A3 reste une preuve historique, pas l'état du code courant.
