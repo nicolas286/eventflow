@@ -1,3 +1,4 @@
+import { EVENTFLOW_BUYER_TERMS_VERSION } from "../../../../shared/legal/documents.ts";
 import {
   BodyTooLargeError,
   readLimitedJson,
@@ -34,7 +35,7 @@ export async function parseRegisterPayload(req: Request) {
     throw badRequest("INVALID_PAYLOAD");
   }
 
-  if (parsed.data.platformTermsVersion !== "2026-10-01") {
+  if (parsed.data.platformTermsVersion !== EVENTFLOW_BUYER_TERMS_VERSION) {
     throw new ResponseError(409, "TERMS_CHANGED_RELOAD");
   }
   return parsed.data;

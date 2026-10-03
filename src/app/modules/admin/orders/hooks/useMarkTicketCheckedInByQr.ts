@@ -1,46 +1,38 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
-import { normalizeError } from "@errors/errors";
-
 import { markTicketCheckedInByQrRepo } from "../data/markTicketCheckedInByQrRepo";
-import type { MarkTicketCheckedInByQrResponse } from "../schemas/admin.markTicketCheckedIn.schema";
-
-export function useMarkTicketCheckedInByQr(params: { supabase: SupabaseClient }) {
-  const { supabase } = params;
-
-  const repo = useMemo(() => markTicketCheckedInByQrRepo(supabase), [supabase]);
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
+import {
+  OrganizerMutationObsoleteError,
+  useScopedEventMutation,
+} from "../../singleEvent/hooks/useScopedEventMutation";
+export function useMarkTicketCheckedInByQr(
+  params: { supabase: SupabaseClient; eventId: string },
+) {
+  const repo = useMemo(() => markTicketCheckedInByQrRepo(params.supabase), [
+    params.supabase,
+  ]);
+  const mutate = useCallback(
+    (input: { qrToken: string; eventId: string }) =>
+      repo.markTicketCheckedInByQr(input),
+    [repo],
+  );
+  const scoped = useScopedEventMutation(
+    mutate,
+    { eventId: params.eventId },
+    "Impossible de valider le billet",
+    true,
+  );
+  const mutateScoped = scoped.mutate;
   const markTicketCheckedInByQr = useCallback(
-  async (qrToken: string, eventId: string): Promise<MarkTicketCheckedInByQrResponse> => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const data = await repo.markTicketCheckedInByQr({ qrToken, eventId });
-      return data;
-    } catch (e: unknown) {
-      const ne = normalizeError(e, "Impossible de valider le ticket via le QR code");
-      setError(ne.message);
-      throw new Error(ne.message);
-    } finally {
-      setLoading(false);
-    }
-  },
-  [repo],
-);
-
-  const reset = useCallback(() => {
-    setError(null);
-  }, []);
-
-  return {
-    loading,
-    error,
-    reset,
-    markTicketCheckedInByQr,
-  };
+    async (qrToken: string, eventId: string) => {
+      if (eventId !== params.eventId) {
+        throw new OrganizerMutationObsoleteError();
+      }
+      const result = await mutateScoped({ qrToken, eventId });
+      if (!result) throw new OrganizerMutationObsoleteError();
+      return result;
+    },
+    [params.eventId, mutateScoped],
+  );
+  return { ...scoped, markTicketCheckedInByQr };
 }

@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { platformPublicConfigSchema } from "../../../shared/schemas/platform-admin.ts";
 import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
+import { applicationRateLimits } from "../_shared/app/config/rate-limits.ts";
+import { consumeRequestRateLimit } from "../_shared/app/rate-limit/mod.ts";
+import { resolveRequestClientIp } from "../_shared/app/client-ip.ts";
 import { json } from "../_shared/app/http.ts";
 import { ResponseError } from "../_shared/errors.ts";
 import { serializeError } from "../_shared/modules/logger/mod.ts";
@@ -26,11 +29,19 @@ export const handlePlatformConfigRequest = createEdgeHandler(
       return json(req, { error: "UNEXPECTED_ERROR" }, 500);
     },
   },
-  async ({ req, serviceClient }) => {
+  async ({ req, serviceClient, logger }) => {
     const path = new URL(req.url).pathname.split("/").filter(Boolean);
     if (path[path.length - 1] !== "platform-config") {
       return json(req, { error: "NOT_FOUND" }, 404);
     }
+
+    const clientIp = await resolveRequestClientIp(req);
+    const quota = await consumeRequestRateLimit({
+      req, supabase: serviceClient, logger,
+      key: clientIp ? `ip:${clientIp.ip}` : "shared:unresolved",
+      ...(clientIp ? applicationRateLimits.platformConfigIp : applicationRateLimits.platformConfigFallback),
+    });
+    if (!quota.allowed) return quota.response;
 
     const audience = audienceSchema.parse(
       new URL(req.url).searchParams.get("audience") ?? "public",

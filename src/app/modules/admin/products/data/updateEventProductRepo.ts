@@ -1,80 +1,25 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabaseSafe } from "@gateways/supabase/supabaseSafe";
-import { camelToSnake } from "@helpers/camelToSnake";
-import { snakeToCamel } from "@helpers/snakeToCamel";
-
+import { edgeSafe } from "@gateways/supabase/supabaseEdgeSafe";
 import {
-  eventProductSchema,
-  type EventProduct,
-} from "@shared/models/db/db.eventProducts.schema";
-
-import { createEventProductSchema,
-  type CreateEventProductInput
- } from "../schemas/admin.createEventProduct.schema";
-
-const updateEventProductPatchSchema = createEventProductSchema.partial();
-export type UpdateEventProductPatch = Partial<CreateEventProductInput>;
-
-function compactUndefined<T extends Record<string, any>>(obj: T) {
-  const out: any = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (v !== undefined) out[k] = v;
-  }
-  return out as Partial<T>;
-}
-
-function normalizePatch(patch: UpdateEventProductPatch): UpdateEventProductPatch {
-  const out: UpdateEventProductPatch = { ...patch };
-
-  // on ne touche que si la clé est réellement présente dans le patch
-  if (Object.prototype.hasOwnProperty.call(out, "currency")) {
-    out.currency = out.currency ?? "EUR";
-  }
-  if (Object.prototype.hasOwnProperty.call(out, "description")) {
-    out.description = out.description ?? null;
-  }
-  if (Object.prototype.hasOwnProperty.call(out, "stockQty")) {
-    out.stockQty = out.stockQty === 0 ? null : (out.stockQty ?? null);
-  }
-
-  return out;
-}
+  productUpdatePatchSchema, productUpdateRequestSchema, productReadRequestSchema,
+  eventProductSchema, type EventProduct, type UpdateEventProductPatch,
+} from "@contracts/event-products";
+export type { UpdateEventProductPatch } from "@contracts/event-products";
+const updateOrReadRequestSchema = productReadRequestSchema.extend({ patch: productUpdatePatchSchema }).strict();
 
 export function updateEventProductRepo(supabase: SupabaseClient) {
   return {
-    async updateEventProduct(input: {
-      productId: string;
-      patch: UpdateEventProductPatch;
-    }): Promise<EventProduct> {
-      const productId = input.productId;
-      if (!productId) throw new Error("VALIDATION_ERROR: productId is required");
-
-      const validatedPatch = updateEventProductPatchSchema.parse(input.patch);
-      const normalizedPatch = normalizePatch(validatedPatch);
-      const patchClean = compactUndefined(normalizedPatch);
-
-      if (Object.keys(patchClean).length === 0) {
-        const row = await supabaseSafe(() =>
-          supabase.from("event_products").select("*").eq("id", productId).single()
-        );
-        return eventProductSchema.parse(snakeToCamel(row));
-      }
-
-      const payload = camelToSnake(patchClean) as Record<string, unknown>;
-
-      const row = await supabaseSafe(() =>
-        supabase.rpc("update_event_product", {
-          p_input: Object.assign({ product_id: productId }, payload),
-        })
-      );
-
-
-      const updatedRow = await supabaseSafe(() =>
-        supabase.from("event_products").select("*").eq("id", row).single()
-      );
-
-      return eventProductSchema.parse(snakeToCamel(updatedRow));
+    async updateEventProduct(input: { productId: string; patch: UpdateEventProductPatch }): Promise<EventProduct> {
+      const parsed = updateOrReadRequestSchema.parse(input);
+      const patch = Object.fromEntries(Object.entries(parsed.patch).filter(([, value]) => value !== undefined));
+      const reading = Object.keys(patch).length === 0;
+      const body = reading
+        ? productReadRequestSchema.parse({ productId: parsed.productId })
+        : productUpdateRequestSchema.parse({ productId: parsed.productId, patch });
+      const raw = await edgeSafe<unknown>(() => supabase.functions.invoke(
+        reading ? "events/products/read" : "events/products/update", { body }
+      ));
+      return eventProductSchema.parse(raw);
     },
   };
 }
-

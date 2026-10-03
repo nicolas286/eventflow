@@ -1,4 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
+import { applicationRateLimits } from "../_shared/app/config/rate-limits.ts";
+import { consumeRequestRateLimit } from "../_shared/app/rate-limit/mod.ts";
+import { createEdgeLogger } from "../_shared/modules/logger/mod.ts";
 import { cancelSubscriptionPayloadSchema } from "../../../shared/schemas/subscriptions-cancel.ts";
 import { corsHeaders, getBearer, json } from "./http.ts";
 
@@ -53,6 +56,13 @@ export async function cancelSubscription(
       .maybeSingle();
     if (membershipError) return json(req, { error: "AUTH_CHECK_FAILED" }, 500);
     if (!membership) return json(req, { error: "FORBIDDEN" }, 403);
+
+    const quota = await consumeRequestRateLimit({
+      req, supabase: service, logger: createEdgeLogger("subscriptions-cancel"),
+      key: `user:${userData.user.id}:org:${orgId.toLowerCase()}`,
+      ...applicationRateLimits.subscriptionCancel,
+    });
+    if (!quota.allowed) return quota.response;
 
     const { data: subscription, error: subscriptionError } = await service
       .from("subscriptions")

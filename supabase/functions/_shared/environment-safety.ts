@@ -1,3 +1,5 @@
+import { internal } from "./errors.ts";
+
 const productionOrigin = "https://dixirvllhfkvqoahhfqh.supabase.co";
 
 export function isRestrictedEnvironment() {
@@ -67,5 +69,32 @@ export function assertFunctionsUrl(functionsUrl: string, supabaseUrl: string) {
       `${supabaseUrl.replace(/\/+$/, "")}/functions/v1`
   ) {
     throw new Error("CROSS_PROJECT_FUNCTIONS_URL");
+  }
+}
+
+/** Restricted payments alone do not authorize skipping CAPTCHA. */
+export function assertTurnstileBypassAllowed() {
+  const environment = Deno.env.get("APP_ENV");
+  let url: URL;
+  try {
+    if (!isRestrictedEnvironment() || environment === "production") {
+      throw new Error("PRODUCTION");
+    }
+    url = new URL(Deno.env.get("SUPABASE_URL") ?? "");
+    if (url.hostname === new URL(productionOrigin).hostname) {
+      throw new Error("PRODUCTION");
+    }
+  } catch {
+    throw internal("TURNSTILE_BYPASS_FORBIDDEN");
+  }
+  const local =
+    ["localhost", "127.0.0.1", "[::1]", "kong"].includes(url.hostname) &&
+    ["http:", "https:"].includes(url.protocol);
+  const staging = environment === "staging" && url.protocol === "https:" &&
+    url.hostname.endsWith(".supabase.co");
+  const localEnvironment = !environment ||
+    ["local", "development", "staging"].includes(environment);
+  if (!staging && !(local && localEnvironment)) {
+    throw internal("TURNSTILE_BYPASS_FORBIDDEN");
   }
 }

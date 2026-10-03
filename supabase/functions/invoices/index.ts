@@ -1,8 +1,11 @@
 import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
+import { applicationRateLimits } from "../_shared/app/config/rate-limits.ts";
+import { consumeRequestRateLimit } from "../_shared/app/rate-limit/mod.ts";
 import { json } from "../_shared/app/http.ts";
 import { serializeError } from "../_shared/modules/logger/mod.ts";
 import { handleGetInvoicePdfUrl } from "./handler.ts";
 import { createInvoicePdfUrlRepository } from "./repository.ts";
+import { handleInvoiceHistoryRequest } from "./history.ts";
 
 export const handleGetInvoicePdfUrlRequest = createEdgeHandler(
   {
@@ -19,11 +22,25 @@ export const handleGetInvoicePdfUrlRequest = createEdgeHandler(
       return json(req, { error: "UNEXPECTED" }, 500);
     },
   },
-  ({ req, supabase, serviceClient }) =>
+  ({ req, serviceClient, user, logger }) =>
     handleGetInvoicePdfUrl({
       req,
-      repository: createInvoicePdfUrlRepository(supabase, serviceClient),
+      repository: createInvoicePdfUrlRepository(serviceClient, user.id),
+      consumeAuthorizedQuota: async (orgId) => {
+        const quota = await consumeRequestRateLimit({
+          req, supabase: serviceClient, logger, key: `user:${user.id}:org:${orgId}`,
+          ...applicationRateLimits.invoicePdf,
+        });
+        return quota.allowed ? null : quota.response;
+      },
     }),
 );
 
-Deno.serve(handleGetInvoicePdfUrlRequest);
+export function handleInvoicesRequest(req: Request): Promise<Response> {
+  if (new URL(req.url).pathname.endsWith("/invoices/list")) {
+    return handleInvoiceHistoryRequest(req);
+  }
+  return handleGetInvoicePdfUrlRequest(req);
+}
+
+if (import.meta.main) Deno.serve(handleInvoicesRequest);

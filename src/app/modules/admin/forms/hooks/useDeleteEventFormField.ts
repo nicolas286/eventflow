@@ -1,47 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
-
 import { deleteEventFormFieldRepo } from "../data/deleteEventFormFieldRepo";
-import { normalizeError } from "@errors/errors";
+import type { DeleteEventFormFieldInput } from "@contracts/event-forms";
+import { useScopedEventMutation } from "../../singleEvent/hooks/useScopedEventMutation";
 
-type State = {
-  loading: boolean;
-  error: string | null;
-};
-
-export function useDeleteEventFormField(params: { supabase: SupabaseClient }) {
-  const { supabase } = params;
-
-  const repo = useMemo(() => deleteEventFormFieldRepo(supabase), [supabase]);
-
-  const [state, setState] = useState<State>({
-    loading: false,
-    error: null,
-  });
-
-  async function deleteEventFormField(input: { id: string }): Promise<boolean> {
-    try {
-      setState({ loading: true, error: null });
-
-      await repo.deleteEventFormField({ id: input.id });
-
-      setState({ loading: false, error: null });
-      return true;
-    } catch (e: unknown) {
-      const ne = normalizeError(e, "Impossible de supprimer le champ de formulaire.");
-      setState({ loading: false, error: ne.message });
-      return false;
-    }
-  }
-
-  function reset() {
-    setState({ loading: false, error: null });
-  }
-
-  return {
-    ...state,
-    deleteEventFormField,
-    reset,
-  };
+export function useDeleteEventFormField(params: { supabase: SupabaseClient; orgId?: string; eventId?: string }) {
+  const repo = useMemo(() => deleteEventFormFieldRepo(params.supabase), [params.supabase]);
+  const operation = useMemo(() => async (input: DeleteEventFormFieldInput) => { await repo.deleteEventFormField(input); return true; }, [repo]);
+  const { mutate, result: deleted, ...state } = useScopedEventMutation(operation, params, "Impossible de supprimer le champ de formulaire.");
+  const deleteEventFormField = async (input: DeleteEventFormFieldInput) => (await mutate(input)) === true;
+  return { ...state, deleted, deleteEventFormField };
 }

@@ -1,5 +1,7 @@
 # TODO — Configurer Mollie sur staging
 
+> Archive historique depuis le 3 octobre 2026 : les parcours nominaux utilisent Stripe et les abonnements internes. Les commandes de configuration ci-dessous ne sont plus des consignes actives. Voir [le backlog actuel](README.md).
+
 **Statut : configuration et parcours nominaux validés en test le 20 septembre 2026 par le propriétaire : Mollie Connect, paiement de billets et souscription.** Les contrôles complémentaires non confirmés restent ouverts ci-dessous. Ne pas remplacer la connexion OAuth ou les secrets de production.
 
 ## Deux circuits distincts

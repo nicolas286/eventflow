@@ -1,13 +1,20 @@
-import { adminRegisterSuccessSchema } from "./adminRegister.contracts.ts";
+import {
+  adminAppliedPaymentSchema,
+  adminRegisterSuccessSchema,
+} from "./adminRegister.contracts.ts";
 import crypto from "node:crypto";
 import { json as baseJson } from "../../_shared/app/http.ts";
 import { serializeError } from "../../_shared/logger.ts";
 import { getBearer } from "../../_shared/auth.ts";
 import { createEdgeHandler } from "../../_shared/app/edge-handler/mod.ts";
+import { applicationRateLimits } from "../../_shared/app/config/rate-limits.ts";
+import { consumeRequestRateLimit } from "../../_shared/app/rate-limit/mod.ts";
 import { parseAdminRegisterPayload } from "./validation.ts";
 import { ResponseError } from "../../_shared/errors.ts";
 import { type AdminRegisterPayload } from "./adminRegister.contracts.ts";
 import { assertPlatformRegistrationsOpen } from "../platform-registration.ts";
+import { assertOrganizationManager } from "../../_shared/organization-access.ts";
+import { assertOrganizationRegistrationsAllowed } from "../organization-registration.ts";
 
 function json(req: Request, data: unknown, status = 200) {
   if (status < 400) adminRegisterSuccessSchema.parse(data);
@@ -38,7 +45,7 @@ export const handleAdminOrderRequest = createEdgeHandler(
         error: getBearer(req) ? "INVALID_SESSION" : "NOT_AUTHENTICATED",
       }, 401),
   },
-  async ({ req, logger, supabase: userClient, serviceClient: admin, user }) => {
+  async ({ req, logger, serviceClient: admin, user }) => {
     try {
       await assertPlatformRegistrationsOpen(admin);
 
@@ -54,26 +61,17 @@ export const handleAdminOrderRequest = createEdgeHandler(
         }, 404);
       }
 
-      const { data: isMember, error: memErr } = await userClient.rpc(
-        "is_org_member",
-        {
-          p_org_id: ev.org_id,
-        },
-      );
+      await assertOrganizationManager(admin, ev.org_id, user.id);
+      await assertOrganizationRegistrationsAllowed(admin, ev.org_id);
 
-      if (memErr) {
-        logger.warn("auth_check_failed");
-        return json(req, {
-          error: "AUTH_CHECK_FAILED",
-        }, 500);
-      }
-
-      if (!isMember) {
-        logger.warn("user_not_org_member");
-        return json(req, {
-          error: "FORBIDDEN",
-        }, 403);
-      }
+      const quota = await consumeRequestRateLimit({
+        req,
+        supabase: admin,
+        logger,
+        key: `user:${user.id}:org:${ev.org_id}`,
+        ...applicationRateLimits.adminOrderCreate,
+      });
+      if (!quota.allowed) return quota.response;
 
       const itemProductIds = body.items.map((x) => x.eventProductId);
 
@@ -141,6 +139,9 @@ export const handleAdminOrderRequest = createEdgeHandler(
       );
 
       if (rpcErr) {
+        if (rpcErr.message === "ORGANIZATION_SUSPENDED") {
+          return json(req, { error: "ORGANIZATION_SUSPENDED" }, 403);
+        }
         logger.warn("rpc_create_order_intent_failed");
         return json(req, {
           error: "RPC_CREATE_ORDER_INTENT_FAILED",
@@ -217,6 +218,18 @@ export const handleAdminOrderRequest = createEdgeHandler(
           return json(req, { error: "INVALID_PAYMENT_AMOUNT" }, 400);
         }
 
+        const parsedDue = adminRegisterSuccessSchema.shape.dueNowCents
+          .safeParse(
+            dueNowCentsRaw,
+          );
+        if (
+          !parsedDue.success || parsedDue.data === null ||
+          parsedDue.data > totalCents
+        ) {
+          logger.warn("order_payment_requirement_invalid");
+          return json(req, { error: "ORDER_PAYMENT_REQUIREMENT_INVALID" }, 500);
+        }
+
         const offlineRef = `offline:${crypto.randomUUID()}`;
 
         const metaNote = [
@@ -248,6 +261,27 @@ export const handleAdminOrderRequest = createEdgeHandler(
           }, 400);
         }
 
+        const parsedPayment = adminAppliedPaymentSchema.safeParse(payRes);
+        if (
+          !parsedPayment.success || parsedPayment.data.order_id !== orderId ||
+          parsedPayment.data.total_cents !== totalCents
+        ) {
+          logger.warn("apply_order_payment_invalid_result");
+          return json(
+            req,
+            { error: "APPLY_ORDER_PAYMENT_INVALID_RESULT" },
+            500,
+          );
+        }
+        const payment = parsedPayment.data;
+        // create_order_intent supplies the SQL deposit requirement. A paid
+        // deposit can leave a total balance without any of that requirement due.
+        const dueNowCents = Math.max(
+          0,
+          Math.min(parsedDue.data, payment.effective_total_cents) -
+            payment.paid_cents,
+        );
+
         logger.info("offline_payment_applied", {
           orderId,
           amountCents,
@@ -255,7 +289,7 @@ export const handleAdminOrderRequest = createEdgeHandler(
 
         logger.info("completed", {
           orderId,
-          status: "paid",
+          status: payment.status,
           markPaid: true,
         });
 
@@ -263,13 +297,13 @@ export const handleAdminOrderRequest = createEdgeHandler(
           ok: true,
           orderId,
           currency: String(currency).toUpperCase(),
-          totalCents,
-          status: "paid",
-          amountAppliedCents: amountCents,
-          dueNowCents: 0,
+          totalCents: payment.total_cents,
+          status: payment.status,
+          amountAppliedCents: payment.idempotent ? 0 : amountCents,
+          dueNowCents,
           bookingToken: null,
           expiresAt: null,
-          payment: payRes ?? null,
+          payment: payRes,
         });
       }
 

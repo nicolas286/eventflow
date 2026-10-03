@@ -1,66 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabaseSafe } from "@gateways/supabase/supabaseSafe";
-import { camelToSnake } from "@helpers/camelToSnake";
-import { snakeToCamel } from "@helpers/snakeToCamel";
-
-import { eventFormFieldSchema,
-  type EventFormField
- } from "@shared/models/db/db.eventFormFields.schema";
-
-import { updateEventFormFieldPatchSchema,
-  type UpdateEventFormFieldPatch
- } from "../schemas/admin.updateEventFormFieldPatch.schema";
-
-function normalizePatch(patch: UpdateEventFormFieldPatch): UpdateEventFormFieldPatch {
-  const out: UpdateEventFormFieldPatch = { ...patch };
-
-  if ("options" in out) out.options = out.options ?? null;
-
-  if ("label" in out) out.label = out.label?.trim() ?? out.label;
-  if ("fieldKey" in out) out.fieldKey = out.fieldKey?.trim() ?? out.fieldKey;
-
-  return out;
-}
+import { edgeSafe } from "@gateways/supabase/supabaseEdgeSafe";
+import { fieldUpdateRequestSchema, fieldUpdatePatchSchema, fieldReadRequestSchema, eventFormFieldSchema, type EventFormField, type UpdateEventFormFieldPatch } from "@contracts/event-forms";
+const updateOrReadRequestSchema = fieldReadRequestSchema.extend({ patch: fieldUpdatePatchSchema }).strict();
 
 export function updateEventFormFieldRepo(supabase: SupabaseClient) {
   return {
-    async updateEventFormField(input: {
-      fieldId: string;
-      patch: Omit<UpdateEventFormFieldPatch, "id">; // on force fieldId séparé, comme productId dans ton exemple
-    }): Promise<EventFormField> {
-      const fieldId = input.fieldId;
-      if (!fieldId) throw new Error("VALIDATION_ERROR: fieldId is required");
-
-      const validated = updateEventFormFieldPatchSchema.parse({
-        id: fieldId,
-        ...input.patch,
-      });
-
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { id: _ignored, ...patchOnly } = validated;
-
-      const normalizedPatch = normalizePatch(patchOnly as any);
-
-      // patch vide => refetch
-      if (Object.keys(normalizedPatch).length === 0) {
-        const row = await supabaseSafe(() =>
-          supabase.from("event_form_fields").select("*").eq("id", fieldId).single()
-        );
-        return eventFormFieldSchema.parse(snakeToCamel(row));
-      }
-
-      const payload = camelToSnake(normalizedPatch);
-
-      const row = await supabaseSafe(() =>
-        supabase
-          .from("event_form_fields")
-          .update(payload)
-          .eq("id", fieldId)
-          .select("*")
-          .single()
-      );
-
-      return eventFormFieldSchema.parse(snakeToCamel(row));
+    async updateEventFormField(input: { fieldId: string; patch: Omit<UpdateEventFormFieldPatch, "id"> }): Promise<EventFormField> {
+      const parsed = updateOrReadRequestSchema.parse(input);
+      const patch = Object.fromEntries(Object.entries(parsed.patch).filter(([, value]) => value !== undefined));
+      const reading = Object.keys(patch).length === 0;
+      const body = reading
+        ? fieldReadRequestSchema.parse({ fieldId: parsed.fieldId })
+        : fieldUpdateRequestSchema.parse({ fieldId: parsed.fieldId, patch });
+      const raw = await edgeSafe<unknown>(() => supabase.functions.invoke(
+        reading ? "events/forms/fields/read" : "events/forms/fields/update", { body }
+      ));
+      return eventFormFieldSchema.parse(raw);
     },
   };
 }

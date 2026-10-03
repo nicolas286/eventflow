@@ -383,6 +383,10 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
 
+[functions.organizations]
+verify_jwt = false
+entrypoint = "./functions/organizations/index.ts"
+
 [functions.accounts]
 verify_jwt = false
 import_map = "./functions/import_map.json"
@@ -423,5 +427,9 @@ verify_jwt = false
 import_map = "./functions/import_map.json"
 
 [functions.platform-config]
+verify_jwt = false
+import_map = "./functions/import_map.json"
+
+[functions.events]
 verify_jwt = false
 import_map = "./functions/import_map.json"

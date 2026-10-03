@@ -6,9 +6,11 @@ const SIGNED_URL_TTL_SECONDS = 120;
 export async function handleGetInvoicePdfUrl({
   req,
   repository,
+  consumeAuthorizedQuota,
 }: {
   req: Request;
   repository: InvoicePdfUrlRepository;
+  consumeAuthorizedQuota: (orgId: string) => Promise<Response | null>;
 }): Promise<Response> {
   const route = new URL(req.url).pathname.match(/\/invoices\/([^/]+)\/pdf$/);
   if (!route) return json(req, { error: "NOT_FOUND" }, 404);
@@ -42,6 +44,9 @@ export async function handleGetInvoicePdfUrl({
   }
 
   if (!membershipResult.data) return json(req, { error: "FORBIDDEN" }, 403);
+
+  const quotaResponse = await consumeAuthorizedQuota(invoice.orgId);
+  if (quotaResponse) return quotaResponse;
 
   let pdfPath = invoice.pdfPath;
   if (!pdfPath) {

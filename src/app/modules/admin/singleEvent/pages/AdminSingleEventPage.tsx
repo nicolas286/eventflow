@@ -48,7 +48,7 @@ export function AdminSingleEventPage() {
     eventSlug,
   });
 
-  const update = useUpdateEvent({ supabase });
+  const update = useUpdateEvent({ supabase, orgId, eventId: core.eventId ?? undefined });
 
   if (!eventSlug) {
     return (
@@ -68,8 +68,10 @@ export function AdminSingleEventPage() {
       : "Événement";
 
   async function refreshAll() {
+    if (!core.isCurrentScope()) return;
     if (typeof core.refetch === "function") {
       await core.refetch();
+      if (!core.isCurrentScope()) return;
     }
 
     if (typeof refetchDashboard === "function") {
@@ -80,6 +82,7 @@ export function AdminSingleEventPage() {
   async function handleConfirmFullPatch(
     patch: UpdateEventFullPatch,
   ): Promise<void> {
+    if (!core.isCurrentScope() || !update.isCurrentScope()) return;
     if (!event?.id) return;
 
     const normalizedPatch: UpdateEventFullPatch = {
@@ -95,7 +98,7 @@ export function AdminSingleEventPage() {
       patch: normalizedPatch,
     });
 
-    if (!next) return;
+    if (!next || !core.isCurrentScope() || !update.isCurrentScope()) return;
 
     const nextSlug = (next.slug ?? "").trim();
 
@@ -120,7 +123,7 @@ export function AdminSingleEventPage() {
     });
   }
 
-  const showCoreLoading = core.loading;
+  const showCoreLoading = core.loading && !core.data;
   const showCoreError = core.error;
 
   return (
@@ -165,7 +168,7 @@ export function AdminSingleEventPage() {
           <div className="adminEventAlert isError">{showCoreError}</div>
         )}
 
-        {!showCoreLoading && !showCoreError && core.data && event && (
+        {core.data && event && (
           <>
             {tab === "details" && (
               <SingleEventDetailsSection
@@ -187,6 +190,7 @@ export function AdminSingleEventPage() {
 
             {tab === "form" && (
               <SingleEventFormSection
+                orgId={orgId}
                 event={event}
                 fields={core.data.formFields}
                 fieldsGroups={core.data.formFieldsGroups}

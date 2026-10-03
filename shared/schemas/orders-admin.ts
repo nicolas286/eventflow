@@ -150,6 +150,30 @@ const orderStatusSchema = z
 
 const paymentAnySchema = z.unknown().nullable();
 
+/** JSONB returned by apply_order_payment, including its replay branch. */
+export const adminAppliedPaymentSchema = z.object({
+  ok: z.literal(true),
+  order_id: uuidSchema,
+  paid_cents: z.number().int().min(0),
+  total_cents: z.number().int().min(0),
+  discount_cents: z.number().int().min(0),
+  effective_total_cents: z.number().int().min(0),
+  status: z.enum(["paid", "partially_paid"]),
+  idempotent: z.boolean(),
+}).superRefine((payment, ctx) => {
+  if (
+    payment.effective_total_cents !==
+      Math.max(0, payment.total_cents - payment.discount_cents) ||
+    payment.paid_cents > payment.effective_total_cents ||
+    payment.status !==
+      (payment.paid_cents >= payment.effective_total_cents
+        ? "paid"
+        : "partially_paid")
+  ) {
+    ctx.addIssue({ code: "custom", message: "INCONSISTENT_PAYMENT_RESULT" });
+  }
+});
+
 export const adminRegisterSuccessSchema = z
   .object({
     ok: z.literal(true),
@@ -160,6 +184,7 @@ export const adminRegisterSuccessSchema = z
     totalCents: z.number().int().min(0),
     status: orderStatusSchema,
 
+    // Unpaid part of the initial SQL payment/deposit requirement, not total balance.
     dueNowCents: z.number().int().min(0).nullable(),
     bookingToken: z.string().trim().min(1).nullable(),
     expiresAt: z.string().nullable(),

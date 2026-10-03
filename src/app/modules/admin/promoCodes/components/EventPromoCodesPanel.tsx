@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type SetStateAction } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import Button from "@ui/components/button/Button";
@@ -40,118 +40,139 @@ export function EventPromoCodesPanel(props: {
 }) {
   const { supabase, orgId, event, onChanged } = props;
 
-  const promoCodes = useAdminPromoCodes({ supabase });
+  const promoCodes = useAdminPromoCodes({ supabase, orgId, eventId: event.id });
+  const { loadPromoCodes, isCurrentScope, getError, getGeneration } = promoCodes;
+  const draftRevisionRef = useRef(0);
 
-  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
+  const [draft, setDraftState] = useState<Draft>(EMPTY_DRAFT);
+  function setDraft(next: SetStateAction<Draft>) {
+    draftRevisionRef.current++;
+    setDraftState(next);
+  }
 
   const { showToast } = useToast();
 
   useEffect(() => {
-  if (!promoCodes.error) return;
+    if (!event.id || !isCurrentScope()) return;
+    const pending = loadPromoCodes({ eventId: event.id });
+    const request = getGeneration();
+    void pending.then(() => {
+      if (!isCurrentScope() || request !== getGeneration()) return;
+      const error = getError();
+      if (error) showToast({ title: "Erreur", description: error, variant: "error", duration: 6000 });
+    });
+  }, [event.id, loadPromoCodes, isCurrentScope, getError, getGeneration, showToast]);
 
-  showToast({
-    title: "Erreur",
-    description: promoCodes.error,
-    variant: "error",
-    duration: 6000,
-  });
-}, [promoCodes.error, showToast]);
-
-  useEffect(() => {
-    if (!event.id) return;
-    void promoCodes.loadPromoCodes({ eventId: event.id });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [event.id]);
+  function showCurrentError() {
+    const error = getError();
+    if (error) showToast({ title: "Erreur", description: error, variant: "error", duration: 6000 });
+  }
 
   async function handleCreate() {
-  if (!orgId) {
-    showToast({
-      title: "Organisation introuvable",
-      description: "Impossible de créer un code promo sans organisation.",
-      variant: "error",
-      duration: 6000,
+    if (!isCurrentScope() || promoCodes.loading || promoCodes.saving || promoCodes.deleting) return;
+    const revision = draftRevisionRef.current;
+    if (!orgId) {
+      showToast({
+        title: "Organisation introuvable",
+        description: "Impossible de créer un code promo sans organisation.",
+        variant: "error",
+        duration: 6000,
+      });
+      return;
+    }
+
+    const discountPercent =
+      draft.discountType === "percent" ? toNullableInt(draft.discountPercent) : null;
+
+    const discountCents =
+      draft.discountType === "fixed" ? eurosToCents(draft.discountEuros) : null;
+
+    const pending = promoCodes.createPromoCode({
+      orgId,
+      eventId: event.id,
+      code: draft.code,
+      discountPercent,
+      discountCents,
+      maxUses: toNullableInt(draft.maxUses),
+      startsAt: dateTimeLocalToIsoOrNull(draft.startsAt),
+      endsAt: dateTimeLocalToIsoOrNull(draft.endsAt),
+      isActive: draft.isActive,
     });
-    return;
+
+    const request = getGeneration();
+    const created = await pending;
+    if (!isCurrentScope() || request !== getGeneration() || revision !== draftRevisionRef.current) return;
+    if (!created) { showCurrentError(); return; }
+
+    setDraft(EMPTY_DRAFT);
+
+    showToast({
+      title: "Code promo créé",
+      description: `Le code ${created.code} est maintenant disponible.`,
+      variant: "success",
+      duration: 3500,
+    });
+
+    await onChanged();
+    if (!isCurrentScope()) return;
   }
 
-  const discountPercent =
-    draft.discountType === "percent" ? toNullableInt(draft.discountPercent) : null;
-
-  const discountCents =
-    draft.discountType === "fixed" ? eurosToCents(draft.discountEuros) : null;
-
-  const created = await promoCodes.createPromoCode({
-    orgId,
-    eventId: event.id,
-    code: draft.code,
-    discountPercent,
-    discountCents,
-    maxUses: toNullableInt(draft.maxUses),
-    startsAt: dateTimeLocalToIsoOrNull(draft.startsAt),
-    endsAt: dateTimeLocalToIsoOrNull(draft.endsAt),
-    isActive: draft.isActive,
-  });
-
-  if (!created) return;
-
-  setDraft(EMPTY_DRAFT);
-
-  showToast({
-    title: "Code promo créé",
-    description: `Le code ${created.code} est maintenant disponible.`,
-    variant: "success",
-    duration: 3500,
-  });
-
-  await onChanged();
-}
-
-async function handleToggleActive(code: DbPromoCode) {
-  const updated = await promoCodes.updatePromoCode({
-    promoCodeId: code.id,
-    patch: {
-      isActive: !code.isActive,
-    },
-  });
-
-  if (!updated) return;
-
-  showToast({
-    title: updated.isActive ? "Code promo activé" : "Code promo désactivé",
-    description: `Le code ${updated.code} a été mis à jour.`,
-    variant: "success",
-    duration: 3500,
-  });
-
-  await onChanged();
-}
-
-async function handleDelete(code: DbPromoCode) {
-  if (code.usedCount > 0) {
-    showToast({
-      title: "Suppression impossible",
-      description: "Ce code a déjà été utilisé. Désactive-le plutôt que de le supprimer.",
-      variant: "error",
-      duration: 6000,
+  async function handleToggleActive(code: DbPromoCode) {
+    if (!isCurrentScope() || promoCodes.saving || promoCodes.deleting) return;
+    const pending = promoCodes.updatePromoCode({
+      promoCodeId: code.id,
+      patch: {
+        isActive: !code.isActive,
+      },
     });
-    return;
+
+    const request = getGeneration();
+    const updated = await pending;
+    if (!isCurrentScope() || request !== getGeneration()) return;
+    if (!updated) { showCurrentError(); return; }
+
+    showToast({
+      title: updated.isActive ? "Code promo activé" : "Code promo désactivé",
+      description: `Le code ${updated.code} a été mis à jour.`,
+      variant: "success",
+      duration: 3500,
+    });
+
+    await onChanged();
+    if (!isCurrentScope()) return;
   }
 
-  const ok = await promoCodes.deletePromoCode({
-    id: code.id,
-  });
+  async function handleDelete(code: DbPromoCode) {
+    if (!isCurrentScope() || promoCodes.saving || promoCodes.deleting) return;
+    if (code.usedCount > 0) {
+      showToast({
+        title: "Suppression impossible",
+        description: "Ce code a déjà été utilisé. Désactive-le plutôt que de le supprimer.",
+        variant: "error",
+        duration: 6000,
+      });
+      return;
+    }
 
-  if (!ok) return;
+    const pending = promoCodes.deletePromoCode({
+      id: code.id,
+    });
 
-  showToast({
-    title: "Code promo supprimé",
-    description: `Le code ${code.code} a été supprimé.`,
-    variant: "success",
-    duration: 3500,
-  });
+    const request = getGeneration();
+    const ok = await pending;
+    if (!isCurrentScope() || request !== getGeneration()) return;
+    if (!ok) { showCurrentError(); return; }
 
-  await onChanged();
-}
+    showToast({
+      title: "Code promo supprimé",
+      description: `Le code ${code.code} a été supprimé.`,
+      variant: "success",
+      duration: 3500,
+    });
+
+    await onChanged();
+    if (!isCurrentScope()) return;
+  }
 
   return (
     <section className="adminSubSection adminSingleEventPromoCodes">
@@ -322,7 +343,7 @@ async function handleDelete(code: DbPromoCode) {
             <Button
             type="button"
             onClick={handleCreate}
-            disabled={promoCodes.saving || !canCreatePromoCode(draft, Boolean(orgId))}
+            disabled={promoCodes.loading || promoCodes.saving || !canCreatePromoCode(draft, Boolean(orgId))}
             >
             {promoCodes.saving ? "Création…" : "Créer le code"}
             </Button>

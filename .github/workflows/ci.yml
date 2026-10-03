@@ -16,6 +16,7 @@ jobs:
           node-version: '24.19.0'
           cache: npm
       - run: npm ci
+      - run: npm run check:browser-boundary
       - run: npm test
       - run: npm run build
         env:
@@ -52,6 +53,21 @@ jobs:
         run: |
           for sql_file in tests/database/*.sql; do
             docker exec -i supabase_db_eventflow-front psql -U postgres -d postgres -v ON_ERROR_STOP=1 < "$sql_file"
+          done
+          node tests/database/invoice-history.checks.mjs supabase_db_eventflow-front
+          node tests/database/organizer-migrations.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/organizer-boundary.checks.mjs supabase_db_eventflow-front b1 --ci
+          node tests/database/organizer-boundary.checks.mjs supabase_db_eventflow-front b2 --ci
+          node tests/database/orders-management.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/b3/orders-concurrency.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/ticket-check-in.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/b4/tickets-concurrency.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/public-catalog.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/edge-boundary.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/platform-corrections.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/organization-suspension-concurrency.checks.mjs supabase_db_eventflow-front --ci
+          for recipe in tests/database/b2/*concurrency.checks.mjs; do
+            node "$recipe" supabase_db_eventflow-front --ci
           done
       - name: Stop the CI database
         if: always()

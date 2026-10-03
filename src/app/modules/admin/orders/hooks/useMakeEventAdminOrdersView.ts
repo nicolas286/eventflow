@@ -3,6 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { makeEventAdminOrdersViewRepo } from "../data/makeEventAdminOrdersViewRepo";
 import type { EventAdminOrdersView } from "../schemas/admin.eventOrdersView.schema";
+import { useAuth } from "@providers/AuthProvider/useAuth";
+import { getSessionScope } from "@gateways/supabase/sessionScope";
 import { normalizeError } from "@errors/errors";
 
 type State = {
@@ -11,36 +13,37 @@ type State = {
   data: EventAdminOrdersView | null;
 };
 
-function createAdminSingleEventOrdersViewStore(
+export function createAdminSingleEventOrdersViewStore(
   loadFn: () => Promise<Omit<State, "loading" | "error">>,
   enabled: boolean,
 ) {
-  let state: State = {
+  const empty: State = {
     loading: enabled,
     error: null,
     data: null,
   };
 
+  let state = empty;
+  let generation = 0;
   const listeners = new Set<() => void>();
   const emit = () => listeners.forEach((l) => l());
 
   let started = false;
 
   async function load() {
-    if (!enabled) {
-      state = { ...state, loading: false };
-      emit();
-      return;
-    }
-
+    if (!enabled || listeners.size === 0) return;
+    const request = ++generation;
+    const isCurrent = () => request === generation && listeners.size > 0;
     state = { ...state, loading: true, error: null };
     emit();
 
     try {
       const next = await loadFn();
+      if (!isCurrent()) return;
       state = { loading: false, error: null, ...next };
       emit();
     } catch (e: unknown) {
+      if (!isCurrent()) return;
       const ne = normalizeError(
         e,
         "Impossible de charger les commandes de l’événement",
@@ -58,9 +61,12 @@ function createAdminSingleEventOrdersViewStore(
 
   return {
     subscribe(cb: () => void) {
-      ensureStarted();
       listeners.add(cb);
-      return () => listeners.delete(cb);
+      ensureStarted();
+      return () => {
+        listeners.delete(cb);
+        if (listeners.size === 0) { generation++; state = empty; started = false; }
+      };
     },
     getSnapshot() {
       return state;
@@ -87,6 +93,9 @@ export function useAdminSingleEventOrdersViewData(params: {
     ordersLimit,
     ordersOffset = 0,
   } = params;
+
+  const { session } = useAuth();
+  const sessionScope = getSessionScope(session);
 
   const ordersRepo = useMemo(
     () => makeEventAdminOrdersViewRepo(supabase),
@@ -115,8 +124,8 @@ export function useAdminSingleEventOrdersViewData(params: {
   ]);
 
   const store = useMemo(
-    () => createAdminSingleEventOrdersViewStore(loadFn, enabled),
-    [loadFn, enabled],
+    () => createAdminSingleEventOrdersViewStore(loadFn, enabled && sessionScope !== null),
+    [loadFn, enabled, sessionScope],
   );
 
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot);

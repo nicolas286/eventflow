@@ -42,6 +42,9 @@ import "./attendees.css";
 type FilterMode = "all" | "order" | `field:${string}`;
 type InlineEditorProps = Omit<ComponentProps<typeof AttendeeEditorPanel>, "layout">;
 
+import { useAuth } from "@providers/AuthProvider/useAuth";
+import { getSessionScope } from "@gateways/supabase/sessionScope";
+
 export function SingleEventOrdersSubSection(props: {
   orgId: string | null | undefined;
   event: AdminEventDetailEvent;
@@ -75,6 +78,14 @@ export function SingleEventOrdersSubSection(props: {
     onChanged,
   } = props;
 
+  const { session } = useAuth();
+  const sessionScope = getSessionScope(session);
+  const activeScope = useRef<string | null>(null);
+  useEffect(() => {
+    activeScope.current = JSON.stringify([sessionScope, orgId, event.id]);
+    return () => { activeScope.current = null; };
+  }, [sessionScope, orgId, event.id]);
+
   const productsRows = useMemo(() => toRows<EventProduct>(products), [products]);
   const baseOrderItemsRows = useMemo(() => toRows(orderItems), [orderItems]);
   const isMobile = useIsMobile(720);
@@ -87,14 +98,15 @@ export function SingleEventOrdersSubSection(props: {
   const [attendeeEditorMode, setAttendeeEditorMode] = useState<"create" | "edit">("create");
   const [editorOrderId, setEditorOrderId] = useState<string | null>(null);
   const [editingAttendeeId, setEditingAttendeeId] = useState<string | null>(null);
+  const editorRevision = useRef(0);
 
   const [orderWizardOpen, setOrderWizardOpen] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
 
-  const updateAttendee = useAdminUpdateOrderAttendee({ supabase });
-  const deleteOrder = useDeleteOrder({ supabase });
+  const updateAttendee = useAdminUpdateOrderAttendee({ supabase, orgId: orgId ?? undefined, eventId: event.id });
+  const deleteOrder = useDeleteOrder({ supabase, orgId: orgId ?? undefined, eventId: event.id });
   const markBankTransferPaid = useMarkBankTransferPaid({ supabase });
 
   const [confirmDeleteOrderOpen, setConfirmDeleteOrderOpen] = useState(false);
@@ -223,6 +235,8 @@ export function SingleEventOrdersSubSection(props: {
   }, []);
 
   const closeAttendeeEditor = useCallback(() => {
+    editorRevision.current++;
+    setSaving(false);
     setAttendeeEditorOpen(false);
     setEditingAttendeeId(null);
     setEditorOrderId(null);
@@ -254,6 +268,8 @@ export function SingleEventOrdersSubSection(props: {
 
   const openEdit = useCallback(
     (attendeeId: string, orderId: string) => {
+      editorRevision.current++;
+      setSaving(false);
       setEditorError(null);
       closeOrderWizard();
       setAttendeeEditorMode("edit");
@@ -280,6 +296,9 @@ export function SingleEventOrdersSubSection(props: {
 
   const handleSubmitParticipant = useCallback(
     async (value: Record<string, unknown>) => {
+      const revision = editorRevision.current;
+      const capturedScope = activeScope.current;
+      const isCurrent = () => editorRevision.current === revision && activeScope.current === capturedScope && updateAttendee.isCurrentScope();
       try {
         setSaving(true);
         setEditorError(null);
@@ -295,9 +314,11 @@ export function SingleEventOrdersSubSection(props: {
 
         const res = await updateAttendee.updateOrderAttendee({
           attendeeId: editingAttendeeId,
+          eventId: event.id, orgId: orgId ?? undefined,
           attendee,
         });
 
+        if (!isCurrent()) return;
         if (!res) {
           setEditorError(updateAttendee.error ?? "Impossible de modifier le participant");
           return;
@@ -317,16 +338,17 @@ export function SingleEventOrdersSubSection(props: {
         closeAttendeeEditor();
         await onChanged?.().catch(() => {});
       } catch (e: unknown) {
+        if (!isCurrent()) return;
         setEditorError(e instanceof Error ? e.message : "Erreur inconnue");
       } finally {
-        setSaving(false);
+        if (isCurrent()) setSaving(false);
       }
     },
     [
       attendeeEditorMode,
       editingAttendeeId,
       regFields,
-      updateAttendee,
+      updateAttendee, event.id, orgId,
       onChanged,
       closeAttendeeEditor,
     ],
@@ -493,6 +515,8 @@ export function SingleEventOrdersSubSection(props: {
     sortMode: "alpha" | "orderRef",
     stripeMode: "row" | "order" = "order",
   ) => {
+    const capturedScope = activeScope.current;
+    const isCurrent = () => capturedScope !== null && activeScope.current === capturedScope;
     try {
       const exportData =
         eventSlug && orgId
@@ -506,6 +530,7 @@ export function SingleEventOrdersSubSection(props: {
               confirmedOnly: true,
             });
 
+      if (!isCurrent()) return;
       const exportOrders = toRows<OrderUI>(exportData.orders.rows ?? []);
       const exportOrderItems = toRows<OrderItem>(exportData.orderItems ?? []);
       const exportAttendees = toRows<Attendee>(exportData.attendees ?? []);
@@ -523,6 +548,7 @@ export function SingleEventOrdersSubSection(props: {
       });
 
       await exportParticipantsXls({
+        shouldDownload: isCurrent,
         eventTitle: event.title,
         regFields,
         localAttendees: exportAttendees,

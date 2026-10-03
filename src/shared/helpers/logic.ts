@@ -1,4 +1,5 @@
-import type { OrderStatus } from "../../app/modules/public/register/pages/OrderPage";
+import type { OrderPublicResponse } from "@contracts/orders-read";
+type OrderStatus = OrderPublicResponse["status"];
 
 /* ============================================================
    NUMERIC HELPERS

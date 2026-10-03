@@ -3,16 +3,25 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@providers/AuthProvider/useAuth";
 import { normalizeError } from "@errors/errors";
 import { platformAdminRepo } from "../data/platformAdminRepo";
+import { getSessionClaims, getSessionScope } from "@gateways/supabase/sessionScope";
 
 type State = "loading" | "allowed" | "mfa" | "denied";
 
 export function PlatformAccessGate({ children }: { children: ReactNode }) {
+  const { session } = useAuth();
+  const scope = getSessionScope(session);
+  const aal = session ? getSessionClaims(session)?.aal : null;
+  return <VerifiedPlatformAccess key={JSON.stringify([scope, aal])}>{children}</VerifiedPlatformAccess>;
+}
+
+function VerifiedPlatformAccess({ children }: { children: ReactNode }) {
   const { user, loading: authLoading, signOut } = useAuth();
+  const userId = user?.id;
   const [state, setState] = useState<State>("loading");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (authLoading || !userId) return;
     let active = true;
     void platformAdminRepo.access().then((access) => {
       if (!active) return;
@@ -23,7 +32,7 @@ export function PlatformAccessGate({ children }: { children: ReactNode }) {
       setState("denied");
     });
     return () => { active = false; };
-  }, [authLoading, user]);
+  }, [authLoading, userId]);
 
   if (authLoading) return <div className="platformCentered">Vérification de la session sécurisée…</div>;
   if (!user) return <Navigate to="/platform/login" replace />;

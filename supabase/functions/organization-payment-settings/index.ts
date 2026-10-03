@@ -4,6 +4,8 @@ import {
   organizationPaymentSettingsResultSchema,
 } from "../../../shared/schemas/bank-transfer.ts";
 import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
+import { applicationRateLimits } from "../_shared/app/config/rate-limits.ts";
+import { consumeRequestRateLimit } from "../_shared/app/rate-limit/mod.ts";
 import { json } from "../_shared/app/http.ts";
 import {
   BodyTooLargeError,
@@ -17,27 +19,9 @@ import {
 } from "../_shared/errors.ts";
 import { sendEmailOrThrow } from "../_shared/app/email.ts";
 import { escapeHtml } from "../_shared/text.ts";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { assertOrganizationManager } from "../_shared/organization-access.ts";
 
 const MAX_BODY_BYTES = 65_536;
-
-async function assertOrganizationManager(
-  serviceClient: SupabaseClient,
-  orgId: string,
-  userId: string,
-) {
-  const { data, error } = await serviceClient
-    .from("organization_members")
-    .select("role")
-    .eq("org_id", orgId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (error) throw internal("MEMBERSHIP_LOAD_FAILED");
-  if (!data || !["owner", "admin"].includes(data.role)) {
-    throw forbidden("FORBIDDEN");
-  }
-}
 
 function securityEmailHtml(input: {
   organizationName: string;
@@ -83,7 +67,7 @@ export const handleOrganizationPaymentSettingsRequest = createEdgeHandler(
       return json(req, { error: "UNEXPECTED_ERROR" }, 500);
     },
   },
-  async ({ req, user, supabase, serviceClient, logger }) => {
+  async ({ req, user, serviceClient, logger }) => {
     const parsed = organizationPaymentSettingsRequestSchema.safeParse(
       await readLimitedJson(req, MAX_BODY_BYTES),
     );
@@ -91,6 +75,20 @@ export const handleOrganizationPaymentSettingsRequest = createEdgeHandler(
 
     const input = parsed.data;
     await assertOrganizationManager(serviceClient, input.orgId, user.id);
+
+    const policy = input.action === "read"
+      ? applicationRateLimits.paymentSettingsRead
+      : input.action === "accept_terms"
+      ? applicationRateLimits.paymentSettingsAcceptTerms
+      : applicationRateLimits.paymentSettingsUpdate;
+    const quota = await consumeRequestRateLimit({
+      req,
+      supabase: serviceClient,
+      logger,
+      key: `user:${user.id}:org:${input.orgId.toLowerCase()}`,
+      ...policy,
+    });
+    if (!quota.allowed) return quota.response;
 
     if (input.action === "read") {
       const { data, error } = await serviceClient
@@ -147,9 +145,10 @@ export const handleOrganizationPaymentSettingsRequest = createEdgeHandler(
     }
 
     if (input.action === "accept_terms") {
-      const { data: accepted, error: acceptError } = await supabase.rpc(
-        "accept_organization_sales_terms",
+      const { data: accepted, error: acceptError } = await serviceClient.rpc(
+        "organizer_accept_organization_sales_terms",
         {
+          p_actor_id: user.id,
           p_org_id: input.orgId,
           p_sales_terms: input.salesTerms,
         },
@@ -171,9 +170,10 @@ export const handleOrganizationPaymentSettingsRequest = createEdgeHandler(
       return json(req, organizationPaymentSettingsResultSchema.parse(accepted));
     }
 
-    const { data: updated, error: updateError } = await supabase.rpc(
-      "update_organization_payment_settings",
+    const { data: updated, error: updateError } = await serviceClient.rpc(
+      "organizer_update_organization_payment_settings",
       {
+        p_actor_id: user.id,
         p_org_id: input.orgId,
         p_provider: input.paymentsProvider,
         p_bank_transfer_beneficiary: input.bankTransferBeneficiary,

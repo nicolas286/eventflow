@@ -1,10 +1,11 @@
 import type { RateLimitOptions, RateLimitResult } from "./types.ts";
+import { z } from "zod";
 
-type ConsumeRateLimitRow = {
-  allowed: boolean;
-  request_count: number;
-  retry_after_seconds: number;
-};
+const resultSchema = z.array(z.object({
+  allowed: z.boolean(),
+  request_count: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  retry_after_seconds: z.number().int().nonnegative().max(86400),
+})).length(1);
 
 export async function consumeRateLimit({
   supabase,
@@ -21,13 +22,15 @@ export async function consumeRateLimit({
   });
 
   if (error) {
-    throw new Error(`Unable to consume rate limit: ${error.message}`, {
-      cause: error,
-    });
+    throw new Error("Unable to consume rate limit");
   }
 
-  const result = (data as ConsumeRateLimitRow[] | null)?.[0];
-  if (!result) throw new Error("Rate limit RPC returned no result");
+  const parsed = resultSchema.safeParse(data);
+  if (!parsed.success) throw new Error("Invalid rate limit result");
+  const result = parsed.data[0];
+  if (!result.allowed && result.retry_after_seconds < 1) {
+    throw new Error("Invalid rate limit retry interval");
+  }
 
   return {
     allowed: result.allowed,

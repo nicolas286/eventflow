@@ -2,24 +2,11 @@ import { z } from "zod";
 
 /* --------- 📦 shared response -------- */
 
-const isoDateSchema = z.string().min(1);
-
-export const ticketCheckInResponseSchema = z
-  .object({
-    ok: z.literal(true),
-    outcome: z.literal("validated").or(z.literal("already_checked")),
-    ticketId: z.uuid(),
-    eventId: z.uuid(),
-    orderId: z.uuid(),
-    ticketIndex: z.number().int().min(1),
-    qrToken: z.string().trim().min(1),
-    status: z.string().trim().min(1),
-    checkedInAt: isoDateSchema,
-    checkedInBy: z.uuid(),
-  })
-  .strict();
-
-export type TicketCheckInResponse = z.infer<typeof ticketCheckInResponseSchema>;
+import {
+  type TicketCheckInResponse,
+  ticketCheckInResponseSchema,
+} from "@contracts/ticket-check-in";
+export { type TicketCheckInResponse, ticketCheckInResponseSchema };
 
 /* --------- 📦 mark_ticket_checked_in input -------- */
 
@@ -51,6 +38,7 @@ export type MarkTicketCheckedInByQrInput = z.infer<
   typeof markTicketCheckedInByQrInputSchema
 >;
 
-export const markTicketCheckedInByQrResponseSchema = ticketCheckInResponseSchema;
+export const markTicketCheckedInByQrResponseSchema =
+  ticketCheckInResponseSchema;
 
 export type MarkTicketCheckedInByQrResponse = TicketCheckInResponse;

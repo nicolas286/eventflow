@@ -63,6 +63,7 @@ jobs:
         if: inputs.target == 'production'
         run: node scripts/deployment/close-production-signup.mjs
       - run: npm ci
+      - run: npm run check:browser-boundary
       - run: npm test
       - name: Check all Edge Functions and shared contracts
         working-directory: supabase/functions
@@ -81,6 +82,21 @@ jobs:
           for sql_file in tests/database/*.sql; do
             docker exec -i supabase_db_eventflow-front psql -U postgres -d postgres -v ON_ERROR_STOP=1 < "$sql_file"
           done
+          node tests/database/invoice-history.checks.mjs supabase_db_eventflow-front
+          node tests/database/organizer-migrations.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/organizer-boundary.checks.mjs supabase_db_eventflow-front b1 --ci
+          node tests/database/organizer-boundary.checks.mjs supabase_db_eventflow-front b2 --ci
+          node tests/database/orders-management.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/b3/orders-concurrency.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/ticket-check-in.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/b4/tickets-concurrency.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/public-catalog.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/edge-boundary.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/platform-corrections.checks.mjs supabase_db_eventflow-front --ci
+          node tests/database/organization-suspension-concurrency.checks.mjs supabase_db_eventflow-front --ci
+          for recipe in tests/database/b2/*concurrency.checks.mjs; do
+            node "$recipe" supabase_db_eventflow-front --ci
+          done
       - name: Stop the verification database
         if: always()
         run: supabase stop --no-backup
@@ -91,7 +107,11 @@ jobs:
         run: supabase db query --linked --file scripts/deployment/verify-stripe-onboarding.production.sql
       - name: Inspect pending migrations
         run: supabase db push --dry-run
-      - name: Apply migrations
+      - name: Pause campaign sends and drain existing workers
+        # The legacy campaign writer must have no workers left before D5 SQL.
+        # Failure keeps campaigns paused until a successful deployment resumes them.
+        run: node scripts/deployment/pause-platform-campaigns.mjs
+      - name: Apply migrations after campaign drain
         run: supabase db push --yes
       - name: Apply environment-specific asset configuration
         run: |

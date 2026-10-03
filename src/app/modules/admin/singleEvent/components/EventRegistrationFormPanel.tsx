@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type SetStateAction } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type {
@@ -12,6 +12,8 @@ import { useDeleteEventFormField } from "../../forms/hooks/useDeleteEventFormFie
 import { useCreateEventFormFieldGroup } from "../../forms/hooks/useCreateEventFormFieldGroup";
 import { useUpdateEventFormFieldGroup } from "../../forms/hooks/useUpdateEventFormFieldGroup";
 import { useDeleteEventFormFieldGroup } from "../../forms/hooks/useDeleteEventFormFieldGroup";
+import { useReorderEventForm } from "../../forms/hooks/useReorderEventForm";
+import { OrganizerMutationObsoleteError } from "../hooks/useScopedEventMutation";
 import { Button, EditorShell, FilterBar } from "@ui/components";
 import { FIELD_TYPES, type FieldType } from "@shared/constants/fieldTypes";
 import { useMediaQuery } from "@helpers/ui";
@@ -32,6 +34,7 @@ import "./adminSingleEvent.form.mobile.css";
 
 type Props = {
   supabase: SupabaseClient;
+  orgId: string;
   event: { id: string } | null;
   fields: EventFormField[];
   fieldsGroups: EventFormFieldGroup[];
@@ -72,30 +75,55 @@ export type DraftField = {
 type MoveDir = "up" | "down";
 
 export function EventRegistrationFormPanel(props: Props) {
-  const { supabase, event, fields, fieldsGroups, onChanged } = props;
+  const { supabase, orgId, event, fields, fieldsGroups, onChanged } = props;
+  const scope = { supabase, orgId, eventId: event?.id ?? "" };
 
   const isMobile = useMediaQuery("(max-width: 1050px)");
   const { showToast } = useToast();
 
-  const create = useCreateEventFormField({ supabase });
-  const update = useUpdateEventFormField({ supabase });
-  const del = useDeleteEventFormField({ supabase });
+  const create = useCreateEventFormField(scope);
+  const update = useUpdateEventFormField(scope);
+  const del = useDeleteEventFormField(scope);
 
-  const createGroup = useCreateEventFormFieldGroup({ supabase });
-  const updateGroup = useUpdateEventFormFieldGroup({ supabase });
-  const deleteGroup = useDeleteEventFormFieldGroup({ supabase });
+  const createGroup = useCreateEventFormFieldGroup(scope);
+  const updateGroup = useUpdateEventFormFieldGroup(scope);
+  const deleteGroup = useDeleteEventFormFieldGroup(scope);
+
+  const reorder = useReorderEventForm(scope);
+  const isCurrentScope = () => create.isCurrentScope() && update.isCurrentScope() && del.isCurrentScope()
+    && createGroup.isCurrentScope() && updateGroup.isCurrentScope() && deleteGroup.isCurrentScope()
+    && reorder.isCurrentScope();
+  const editorRevisionRef = useRef(0);
+  const orderRevisionRef = useRef(0);
 
   const [draft, setDraft] = useState<DraftField[]>([]);
 
-  const [editing, setEditing] = useState<EditState | null>(null);
+  const [editing, setEditingState] = useState<EditState | null>(null);
   const [editingKind, setEditingKind] = useState<"field" | "group" | null>(null);
-  const [editingGroup, setEditingGroup] = useState<GroupEditState | null>(null);
+  const [editingGroup, setEditingGroupState] = useState<GroupEditState | null>(null);
   const [creating, setCreating] = useState(false);
 
-  const [newGroupLabel, setNewGroupLabel] = useState("");
-  const [newGroupDescription, setNewGroupDescription] = useState("");
+  const [newGroupLabel, setNewGroupLabelState] = useState("");
+  const [newGroupDescription, setNewGroupDescriptionState] = useState("");
 
-  const lastLoadedSigRef = useRef<string>("");
+  function setEditing(next: SetStateAction<EditState | null>) {
+    editorRevisionRef.current++;
+    setEditingState(next);
+  }
+  function setEditingGroup(next: SetStateAction<GroupEditState | null>) {
+    editorRevisionRef.current++;
+    setEditingGroupState(next);
+  }
+  function setNewGroupLabel(next: SetStateAction<string>) {
+    editorRevisionRef.current++;
+    setNewGroupLabelState(next);
+  }
+  function setNewGroupDescription(next: SetStateAction<string>) {
+    editorRevisionRef.current++;
+    setNewGroupDescriptionState(next);
+  }
+
+  const [lastLoadedSig, setLastLoadedSig] = useState<string | null>(null);
 
   const [moveAnim, setMoveAnim] = useState<Record<string, MoveDir>>({});
   const moveTimerRef = useRef<number | null>(null);
@@ -113,7 +141,8 @@ export function EventRegistrationFormPanel(props: Props) {
     del.loading ||
     createGroup.loading ||
     updateGroup.loading ||
-    deleteGroup.loading;
+    deleteGroup.loading ||
+    reorder.loading;
 
   const sortedGroups = useMemo(() => {
     return [...fieldsGroups].sort((a, b) => {
@@ -152,9 +181,12 @@ export function EventRegistrationFormPanel(props: Props) {
     return `${incomingFieldsSig}__${incomingGroupsSig}`;
   }, [incomingFieldsSig, incomingGroupsSig]);
 
-  useEffect(() => {
-    if (lastLoadedSigRef.current === incomingSig) return;
+  useLayoutEffect(() => {
+    // Invalidate old reorder responses before the refreshed order is painted.
+    orderRevisionRef.current++;
+  }, [incomingSig]);
 
+  if (lastLoadedSig !== incomingSig) {
     const next: DraftField[] = sortFromDB(fields).map((f) => ({
       id: f.id,
       clientId: f.id,
@@ -169,8 +201,8 @@ export function EventRegistrationFormPanel(props: Props) {
     }));
 
     setDraft(next);
-    lastLoadedSigRef.current = incomingSig;
-  }, [incomingSig, fields]);
+    setLastLoadedSig(incomingSig);
+  }
 
   useEffect(() => {
     return () => {
@@ -215,6 +247,7 @@ export function EventRegistrationFormPanel(props: Props) {
     createGroup.reset();
     updateGroup.reset();
     deleteGroup.reset();
+    reorder.reset();
   }
 
   function openCreate() {
@@ -270,6 +303,8 @@ export function EventRegistrationFormPanel(props: Props) {
   }
 
   function closeEditor() {
+    if (!isCurrentScope()) return;
+    const revision = editorRevisionRef.current;
     const key =
       editingKind === "group"
         ? editingGroup?.id ?? null
@@ -291,6 +326,7 @@ export function EventRegistrationFormPanel(props: Props) {
     if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
 
     closeTimerRef.current = window.setTimeout(() => {
+      if (!isCurrentScope() || revision !== editorRevisionRef.current) return;
       setEditing(null);
       setEditingGroup(null);
       setEditingKind(null);
@@ -311,6 +347,7 @@ export function EventRegistrationFormPanel(props: Props) {
     });
 
     moveTimerRef.current = window.setTimeout(() => {
+      if (!isCurrentScope()) return;
       setMoveAnim({});
       moveTimerRef.current = null;
     }, 220);
@@ -320,17 +357,18 @@ export function EventRegistrationFormPanel(props: Props) {
     field: DraftField,
     patch: Partial<Pick<DraftField, "isRequired" | "isActive">>
   ) {
-    if (isSaving) return;
+    if (isSaving || !isCurrentScope()) return;
 
     const updated = await update.updateEventFormField({
       fieldId: field.id,
       patch,
     });
+    if (!isCurrentScope()) return;
 
-    if (!updated) {
+    if (!updated.ok) {
       showToast({
         title: "Modification impossible",
-        description: update.error || "Impossible de modifier le champ.",
+        description: updated.error,
         variant: "error",
         duration: 6000,
       });
@@ -348,20 +386,21 @@ export function EventRegistrationFormPanel(props: Props) {
   }
 
   async function moveFieldPersisted(clientId: string, dir: -1 | 1) {
-    if (isSaving) return;
+    if (!event?.id || isSaving || !isCurrentScope()) return;
+    const revision = ++orderRevisionRef.current;
 
     const sortedDraft = [...draft].sort((a, b) => {
-    const diff = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
-    if (diff !== 0) return diff;
-    return String(a.id).localeCompare(String(b.id));
-  });
+      const diff = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+      if (diff !== 0) return diff;
+      return String(a.id).localeCompare(String(b.id));
+    });
 
-  const current = sortedDraft.find((f) => f.clientId === clientId);
-  if (!current?.id) return;
+    const current = sortedDraft.find((f) => f.clientId === clientId);
+    if (!current?.id) return;
 
-  const sameGroup = sortedDraft.filter(
-    (f) => (f.groupId ?? null) === (current.groupId ?? null)
-  );
+    const sameGroup = sortedDraft.filter(
+      (f) => (f.groupId ?? null) === (current.groupId ?? null)
+    );
 
     const idx = sameGroup.findIndex((f) => f.clientId === clientId);
     if (idx < 0) return;
@@ -372,44 +411,32 @@ export function EventRegistrationFormPanel(props: Props) {
     const target = sameGroup[targetIdx];
     if (!target?.id) return;
 
+    const currentSort = clampInt(current.sortOrder, { fallback: 0 });
+    const targetSort = clampInt(target.sortOrder, { fallback: 0 });
     try {
-      const currentSort = clampInt(current.sortOrder, { fallback: 0 });
-      const targetSort = clampInt(target.sortOrder, { fallback: 0 });
-
-          setDraft((prev) =>
-      prev.map((f) => {
-        if (f.clientId === current.clientId) {
-          return { ...f, sortOrder: targetSort };
-        }
-
-        if (f.clientId === target.clientId) {
-          return { ...f, sortOrder: currentSort };
-        }
-
-        return f;
-      })
-    );
+      setDraft((prev) =>
+        prev.map((f) => {
+          if (f.clientId === current.clientId) {
+            return { ...f, sortOrder: targetSort };
+          }
+          if (f.clientId === target.clientId) {
+            return { ...f, sortOrder: currentSort };
+          }
+          return f;
+        })
+      );
 
       const aDir: MoveDir = dir === -1 ? "up" : "down";
       const bDir: MoveDir = dir === -1 ? "down" : "up";
 
-      const ok1 = await update.updateEventFormField({
-        fieldId: current.id,
-        patch: { sortOrder: targetSort },
+      await reorder.reorderEventForm({
+        eventId: event.id,
+        fields: [
+          { id: current.id, sortOrder: targetSort },
+          { id: target.id, sortOrder: currentSort },
+        ],
       });
-
-      if (!ok1.ok) {
-      throw new Error(ok1.error);
-    }
-
-      const ok2 = await update.updateEventFormField({
-        fieldId: target.id,
-        patch: { sortOrder: currentSort },
-      });
-
-      if (!ok2.ok) {
-        throw new Error(ok2.error);
-      }
+      if (!isCurrentScope() || revision !== orderRevisionRef.current) return;
 
       triggerMoveAnim(current.clientId, aDir, target.clientId, bDir);
 
@@ -422,6 +449,13 @@ export function EventRegistrationFormPanel(props: Props) {
 
       // pas de onChanged ici, sinon reload + perte de scroll
     } catch (e) {
+      if (!isCurrentScope() || revision !== orderRevisionRef.current) return;
+      setDraft((previous) => previous.map((field) => {
+        if (field.clientId === current.clientId) return { ...field, sortOrder: currentSort };
+        if (field.clientId === target.clientId) return { ...field, sortOrder: targetSort };
+        return field;
+      }));
+      if (e instanceof OrganizerMutationObsoleteError) return;
       showToast({
         title: "Réordonnancement impossible",
         description: e instanceof Error ? e.message : "Erreur inconnue",
@@ -432,9 +466,11 @@ export function EventRegistrationFormPanel(props: Props) {
   }
 
   async function deleteFieldPersisted(field: DraftField) {
-    if (isSaving) return;
+    if (isSaving || !isCurrentScope()) return;
+    const revision = editorRevisionRef.current;
 
     const ok = await del.deleteEventFormField({ id: field.id });
+    if (!isCurrentScope()) return;
 
     if (!ok) {
       showToast({
@@ -446,7 +482,7 @@ export function EventRegistrationFormPanel(props: Props) {
       return;
     }
 
-    if (editing?.id === field.clientId) closeEditor();
+    if (revision === editorRevisionRef.current && editing?.id === field.clientId) closeEditor();
 
     showToast({
       title: "Champ supprimé",
@@ -459,7 +495,8 @@ export function EventRegistrationFormPanel(props: Props) {
   }
 
   async function saveFieldEditor() {
-    if (!event?.id || !editing || isSaving) return;
+    if (!event?.id || !editing || isSaving || !isCurrentScope()) return;
+    const revision = editorRevisionRef.current;
 
     const label = editing.label.trim();
     if (!label) return;
@@ -478,6 +515,7 @@ export function EventRegistrationFormPanel(props: Props) {
         sortOrder: draft.length + 1,
         options,
       });
+      if (!isCurrentScope() || revision !== editorRevisionRef.current) return;
 
       if (!created.ok) {
         showToast({
@@ -515,6 +553,7 @@ export function EventRegistrationFormPanel(props: Props) {
         options,
       },
     });
+    if (!isCurrentScope() || revision !== editorRevisionRef.current) return;
 
     if (!result.ok) {
       showToast({
@@ -542,7 +581,8 @@ export function EventRegistrationFormPanel(props: Props) {
   }
 
   async function saveGroupEditor() {
-    if (!editingGroup || isSaving) return;
+    if (!editingGroup || isSaving || !isCurrentScope()) return;
+    const revision = editorRevisionRef.current;
 
     const label = editingGroup.label.trim();
     if (!label) return;
@@ -556,6 +596,7 @@ export function EventRegistrationFormPanel(props: Props) {
         sortOrder: editingGroup.sortOrder,
       },
     });
+    if (!isCurrentScope() || revision !== editorRevisionRef.current) return;
 
     if (!updated) {
       showToast({
@@ -579,7 +620,8 @@ export function EventRegistrationFormPanel(props: Props) {
   }
 
   async function handleCreateGroup() {
-    if (!event?.id || isSaving) return;
+    if (!event?.id || isSaving || !isCurrentScope()) return;
+    const revision = editorRevisionRef.current;
 
     const label = newGroupLabel.trim();
     if (!label) return;
@@ -596,6 +638,7 @@ export function EventRegistrationFormPanel(props: Props) {
       sortOrder: nextSortOrder,
       isActive: true,
     });
+    if (!isCurrentScope() || revision !== editorRevisionRef.current) return;
 
     if (!created) {
       showToast({
@@ -620,7 +663,8 @@ export function EventRegistrationFormPanel(props: Props) {
   }
 
   async function handleDeleteGroup(group: EventFormFieldGroup) {
-    if (isSaving) return;
+    if (isSaving || !isCurrentScope()) return;
+    const revision = editorRevisionRef.current;
 
     const hasFields = draft.some((f) => f.groupId === group.id);
 
@@ -635,6 +679,7 @@ export function EventRegistrationFormPanel(props: Props) {
     }
 
     const ok = await deleteGroup.deleteEventFormFieldGroup({ id: group.id });
+    if (!isCurrentScope()) return;
 
     if (!ok) {
       showToast({
@@ -646,7 +691,7 @@ export function EventRegistrationFormPanel(props: Props) {
       return;
     }
 
-    if (editingKind === "group" && editingGroup?.id === group.id) {
+    if (revision === editorRevisionRef.current && editingKind === "group" && editingGroup?.id === group.id) {
       closeEditor();
     }
 
@@ -661,12 +706,13 @@ export function EventRegistrationFormPanel(props: Props) {
   }
 
   async function toggleGroupActive(group: EventFormFieldGroup) {
-    if (isSaving) return;
+    if (isSaving || !isCurrentScope()) return;
 
     const updated = await updateGroup.updateEventFormFieldGroup({
       groupId: group.id,
       patch: { isActive: !group.isActive },
     });
+    if (!isCurrentScope()) return;
 
     if (!updated) {
       showToast({
@@ -689,7 +735,7 @@ export function EventRegistrationFormPanel(props: Props) {
   }
 
   async function moveGroup(group: EventFormFieldGroup, dir: -1 | 1) {
-    if (isSaving) return;
+    if (!event?.id || isSaving || !isCurrentScope()) return;
 
     const sorted = [...fieldsGroups].sort(
       (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
@@ -712,37 +758,22 @@ export function EventRegistrationFormPanel(props: Props) {
       fallback: nextIdx + 1,
     });
 
-    const a = await updateGroup.updateEventFormFieldGroup({
-      groupId: current.id,
-      patch: { sortOrder: targetOrder },
-    });
-
-    if (!a) {
+    try {
+      await reorder.reorderEventForm({
+        eventId: event.id,
+        groups: [
+          { id: current.id, sortOrder: targetOrder },
+          { id: target.id, sortOrder: currentOrder },
+        ],
+      });
+      if (!isCurrentScope()) return;
+    } catch (error: unknown) {
+      if (!isCurrentScope() || error instanceof OrganizerMutationObsoleteError) return;
       showToast({
         title: "Réordonnancement impossible",
-        description: updateGroup.error || "Impossible de réordonner le groupe.",
-        variant: "error",
-        duration: 6000,
+        description: error instanceof Error ? error.message : "Impossible de réordonner le groupe.",
+        variant: "error", duration: 6000,
       });
-      return;
-    }
-
-    const b = await updateGroup.updateEventFormFieldGroup({
-      groupId: target.id,
-      patch: { sortOrder: currentOrder },
-    });
-
-    if (!b) {
-      showToast({
-        title: "Réordonnancement incomplet",
-        description:
-          updateGroup.error ||
-          "Le premier groupe a été déplacé, mais le second n’a pas pu être mis à jour.",
-        variant: "error",
-        duration: 6000,
-      });
-
-      onChanged?.();
       return;
     }
 

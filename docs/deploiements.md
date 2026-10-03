@@ -46,7 +46,7 @@ Le CLI Supabase utilise son jeton d'accès et un rôle de connexion temporaire ;
 
 Le pipeline vérifie les jobs cron via la connexion Postgres temporaire du CLI, après les migrations et le déploiement des fonctions. Le secret `SUPABASE_SERVICE_ROLE_KEY` n'est donc pas requis en production pour ce contrôle ; lorsqu'il est disponible sur staging, le contrôle HTTP effectue en plus la même vérification via le RPC réservé au service role.
 
-Pendant la maintenance des paiements, le déploiement `main` désactive les nouvelles inscriptions dans Supabase Auth via la Management API. Il vérifie en lecture seule, avant et après les migrations, que Stripe Connect reste fermé par défaut et que le compte Connect de l'organisation pilote reste inchang�. Le nombre d'utilisateurs autoris�s n'est pas limit� : l'onboarding peut �tre ouvert progressivement. Le déploiement s'arrête si la migration de rollout qui réinitialisait l'allowlist n'a pas encore été appliquée ; il ne modifie jamais le flag du pilote. Ces contrôles ne s'exécutent pas sur staging. Pour rouvrir les inscriptions, retirer le verrou du pipeline puis réactiver explicitement le réglage Auth ; la suppression du seul message frontend ne rouvre rien.
+Pendant la maintenance des paiements, le déploiement `main` désactive les nouvelles inscriptions dans Supabase Auth via la Management API. Il vérifie en lecture seule, avant et après les migrations, que Stripe Connect reste fermé par défaut et que le compte Connect de l'organisation pilote reste inchangé. Le nombre d'utilisateurs autorisés n'est pas limité : l'onboarding peut être ouvert progressivement. Le déploiement s'arrête si la migration de rollout qui réinitialisait l'allowlist n'a pas encore été appliquée ; il ne modifie jamais le flag du pilote. Ces contrôles ne s'exécutent pas sur staging. Pour rouvrir les inscriptions, retirer le verrou du pipeline puis réactiver explicitement le réglage Auth ; la suppression du seul message frontend ne rouvre rien.
 
 Les variables de dépôt `STAGING_DEPLOY_ENABLED` et `PRODUCTION_DEPLOY_ENABLED` contrôlent les workflows. La propriété `deploymentEnabled` du manifeste est un second contrôle. Un déploiement demande les deux contrôles actifs. L'activation production ne publie rien à elle seule : un push dans `main`, normalement issu d'une PR approuvée, déclenche la publication.
 
@@ -84,6 +84,30 @@ Créer une nouvelle migration pour toute évolution SQL. Ne pas modifier une mig
 La configuration et la recette des paiements sont détaillées dans le [TODO Mollie staging](todo/mollie-staging.md).
 
 ## Incident et retour arrière
+
+### Transition des campagnes plateforme (D5)
+
+Avant les migrations, le pipeline publie temporairement `platform-admin` avec
+la route d'envoi de campagnes en pause (HTTP 503), sans modifier les autres routes.
+Il vérifie la révision publiée puis attend 420 secondes, au-delà de la
+[durée maximale de 400 secondes des workers hébergés](https://supabase.com/docs/guides/functions/limits),
+en revérifiant la pause. Cela laisse les anciens handlers terminer leurs écritures
+avant le remplacement du writer D5. Le frontend reste disponible pendant cette pause.
+
+Les migrations passent ensuite, puis le déploiement normal des Edge réactive les
+campagnes. Le contrôle backend exige de nouveau le refus Auth 401 sur cette route.
+En cas d'échec entre pause et publication normale, les campagnes restent suspendues :
+corriger la cause et relancer le déploiement du commit courant ; ne pas rétablir
+l'ancienne Edge après la migration D5. Le script restaure toujours les sources locales.
+Cette phase de drainage ajoute sept minutes à chaque déploiement tant qu'elle est
+présente. La retirer après validation de D5 sur staging **et** production ; jusque-là,
+elle protège aussi la première publication de l'autre environnement.
+
+Les migrations de `supabase/deferred-migrations/` ne sont pas publiées par ce workflow.
+La fermeture des accès navigateur et le retrait RLS restent des phases distinctes,
+avec leurs préconditions B0–B6 et les droits nécessaires sur les objets gérés.
+
+### Procédure générale
 
 1. Mettre la variable GitHub de l'environnement concerné à `false` pour bloquer les nouveaux déploiements. Annuler explicitement un run déjà commencé si nécessaire ; changer la variable ne l'arrête pas.
 2. Consulter l'étape en échec et les migrations déjà appliquées. Une relance doit viser le commit encore courant de la branche.

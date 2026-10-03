@@ -1,46 +1,38 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
-import { normalizeError } from "@errors/errors";
-
 import { markTicketCheckedInRepo } from "../data/markTicketChekedInRepo";
-import type { MarkTicketCheckedInResponse } from "../schemas/admin.markTicketCheckedIn.schema";
-
-export function useMarkTicketCheckedIn(params: { supabase: SupabaseClient }) {
-  const { supabase } = params;
-
-  const repo = useMemo(() => markTicketCheckedInRepo(supabase), [supabase]);
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const markTicketCheckedIn = useCallback(
-    async (ticketId: string, eventId: string): Promise<MarkTicketCheckedInResponse | null> => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const data = await repo.markTicketCheckedIn({ ticketId, eventId });
-        return data;
-      } catch (e: unknown) {
-        const ne = normalizeError(e, "Impossible de marquer le ticket comme utilisé");
-        setError(ne.message);
-        throw new Error(ne.message);
-      } finally {
-        setLoading(false);
-      }
-    },
+import {
+  OrganizerMutationObsoleteError,
+  useScopedEventMutation,
+} from "../../singleEvent/hooks/useScopedEventMutation";
+export function useMarkTicketCheckedIn(
+  params: { supabase: SupabaseClient; eventId: string },
+) {
+  const repo = useMemo(() => markTicketCheckedInRepo(params.supabase), [
+    params.supabase,
+  ]);
+  const mutate = useCallback(
+    (input: { ticketId: string; eventId: string }) =>
+      repo.markTicketCheckedIn(input),
     [repo],
   );
-
-  const reset = useCallback(() => {
-    setError(null);
-  }, []);
-
-  return {
-    loading,
-    error,
-    reset,
-    markTicketCheckedIn,
-  };
+  const scoped = useScopedEventMutation(
+    mutate,
+    { eventId: params.eventId },
+    "Impossible de valider le billet",
+    true,
+  );
+  const mutateScoped = scoped.mutate;
+  const markTicketCheckedIn = useCallback(
+    async (ticketId: string, eventId: string) => {
+      if (eventId !== params.eventId) {
+        throw new OrganizerMutationObsoleteError();
+      }
+      const result = await mutateScoped({ ticketId, eventId });
+      if (!result) throw new OrganizerMutationObsoleteError();
+      return result;
+    },
+    [params.eventId, mutateScoped],
+  );
+  return { ...scoped, markTicketCheckedIn };
 }

@@ -15,14 +15,14 @@ function LinkedText({ text }: { text: string }) {
   });
 }
 
-export default function LegalDocumentPage({ text }: { text: string }) {
+export default function LegalDocumentPage({ text, documentVersion }: { text: string; documentVersion?: string }) {
   const navigate = useNavigate();
   const [intro, ...sections] = text.split("\n\n");
   const [title, version] = intro.split("\n");
   return <Container><div className="legalPage"><Card>
     <CardHeader title={title} />
     <CardBody>
-      <p>{version}</p>
+      <p>{version}{documentVersion ? <> · <time dateTime={documentVersion}>{documentVersion}</time></> : null}</p>
       {sections.map((section, index) => {
         const lines = section.split("\n");
         const hasHeading = /^\d+\./.test(lines[0]) || ["Éditeur du site", "Hébergement du site", "Responsabilité", "Propriété intellectuelle"].includes(lines[0]);

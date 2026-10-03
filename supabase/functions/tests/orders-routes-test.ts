@@ -9,6 +9,7 @@ const orderId = "11111111-1111-4111-8111-111111111111";
 async function withRuntime(run: () => Promise<void>) {
   const values: Record<string, string> = {
     SUPABASE_URL: "https://orders-fixture.supabase.co",
+    RATE_LIMIT_SALT: "fixture-a8-salt",
     SUPABASE_ANON_KEY: "fixture-anon",
     SUPABASE_SERVICE_ROLE_KEY: "fixture-service",
   };
@@ -72,6 +73,7 @@ Deno.test("an organization admin can confirm a bank transfer idempotently", () =
   const urls: string[] = [];
   globalThis.fetch = (input) => {
     const url = String(input);
+    if (url.includes("/rpc/consume_rate_limit")) return Promise.resolve(Response.json([{ allowed: true, request_count: 1, retry_after_seconds: 0 }]));
     urls.push(url);
     const data = url.includes("/auth/v1/user")
       ? { id: orderId, email: "fixture@example.com" }
@@ -118,16 +120,24 @@ Deno.test("an organization admin can confirm a bank transfer idempotently", () =
   } finally { globalThis.fetch = previous; }
 }));
 
-Deno.test("public order read requires booking token before accessing storage", () => withRuntime(async () => {
-  const response = await handleOrdersRequest(new Request(`https://edge.test/orders/${orderId}`));
-  assertEquals(response.status, 401);
-  assertEquals(await response.json(), { error: "MISSING_TOKEN" });
+Deno.test("public order read counts missing token before refusing access to order storage", () => withRuntime(async () => {
+  const previous = globalThis.fetch;
+  globalThis.fetch = (input) => {
+    assertStringIncludes(String(input), "/rpc/consume_rate_limit");
+    return Promise.resolve(Response.json([{ allowed: true, request_count: 1, retry_after_seconds: 0 }]));
+  };
+  try {
+    const response = await handleOrdersRequest(new Request(`https://edge.test/orders/${orderId}`));
+    assertEquals(response.status, 401);
+    assertEquals(await response.json(), { error: "MISSING_TOKEN" });
+  } finally { globalThis.fetch = previous; }
 }));
 
 Deno.test("public order lookup matches both order id and booking token", () => withRuntime(async () => {
   const previous = globalThis.fetch;
   const urls: string[] = [];
   globalThis.fetch = (input) => {
+    if (String(input).includes("/rpc/consume_rate_limit")) return Promise.resolve(Response.json([{ allowed: true, request_count: 1, retry_after_seconds: 0 }]));
     urls.push(String(input));
     return Promise.resolve(new Response("null", { status: 200, headers: { "content-type": "application/json" } }));
   };
@@ -146,6 +156,7 @@ Deno.test("public bank-transfer instructions require the matching booking token"
   const previous = globalThis.fetch;
   globalThis.fetch = (input) => {
     const url = String(input);
+    if (url.includes("/rpc/consume_rate_limit")) return Promise.resolve(Response.json([{ allowed: true, request_count: 1, retry_after_seconds: 0 }]));
     const data = url.includes("/orders?")
       ? { id: orderId, status: "awaiting_payment", total_cents: 2599, currency: "EUR" }
       : url.includes("/payments?")
@@ -186,6 +197,7 @@ Deno.test("public order read preserves the database cancelled spelling", () => w
   const previous = globalThis.fetch;
   globalThis.fetch = (input) => {
     const url = String(input);
+    if (url.includes("/rpc/consume_rate_limit")) return Promise.resolve(Response.json([{ allowed: true, request_count: 1, retry_after_seconds: 0 }]));
     const data = url.includes("/orders?")
       ? { id: orderId, status: "cancelled", total_cents: 2000, currency: "EUR", event_id: "22222222-2222-4222-8222-222222222222", org_id: "33333333-3333-4333-8333-333333333333", buyer_email: "participant@example.com" }
       : url.includes("/events?")
@@ -227,7 +239,7 @@ Deno.test("administrative creation requires membership in the event organization
       ? { registrationsOpen: true, registrationPublicMessage: "Bienvenue" }
       : url.includes("/events?")
       ? { id: orderId, org_id: "22222222-2222-4222-8222-222222222222" }
-      : false;
+      : null;
     return Promise.resolve(new Response(JSON.stringify(data), { headers: { "content-type": "application/json" } }));
   };
   try {

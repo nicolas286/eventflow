@@ -1,25 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabaseSafe } from "@gateways/supabase/supabaseSafe";
-import { deleteEventProductInputSchema, 
-  type DeleteEventProductInput } from "../schemas/admin.deleteEventProductInput.schema";
+import { edgeSafe } from "@gateways/supabase/supabaseEdgeSafe";
+import { productDeleteRequestSchema, productDeleteResponseSchema, type DeleteEventProductInput } from "@contracts/event-products";
 
 export function deleteEventProductRepo(supabase: SupabaseClient) {
   return {
     async deleteEventProduct(input: DeleteEventProductInput): Promise<void> {
-      const { id } = deleteEventProductInputSchema.parse(input);
-
-      const rows = await supabaseSafe<{ id: string }[]>(
-        () =>
-          supabase
-            .from("event_products")
-            .delete()
-            .eq("id", id)
-            .select("id"),
-      );
-
-      if (rows.length === 0) {
-        throw new Error("NOT_FOUND");
-      }
+      const body = productDeleteRequestSchema.parse(input);
+      const raw = await edgeSafe<unknown>(() => supabase.functions.invoke("events/products/delete", { body }));
+      productDeleteResponseSchema.parse(raw);
     },
   };
 }

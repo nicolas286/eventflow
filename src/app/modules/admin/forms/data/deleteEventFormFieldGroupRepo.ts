@@ -1,29 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabaseSafe } from "@gateways/supabase/supabaseSafe";
-
-import {
-  deleteEventFormFieldGroupInputSchema,
-  type DeleteEventFormFieldGroupInput,
-} from "../schemas/admin.deleteEventFormFieldGroupInput.schema";
+import { edgeSafe } from "@gateways/supabase/supabaseEdgeSafe";
+import { groupDeleteRequestSchema, mutationSuccessSchema, type DeleteEventFormFieldGroupInput } from "@contracts/event-forms";
 
 export function deleteEventFormFieldGroupRepo(supabase: SupabaseClient) {
   return {
-    async deleteEventFormFieldGroup(
-      input: DeleteEventFormFieldGroupInput,
-    ): Promise<void> {
-      const { id } = deleteEventFormFieldGroupInputSchema.parse(input);
-
-      const raw = await supabaseSafe<{ id: string }[]>(() =>
-        supabase
-          .from("event_form_field_groups")
-          .delete()
-          .eq("id", id)
-          .select("id"),
-      );
-
-      if (raw.length === 0) {
-        throw new Error("NOT_FOUND");
-      }
+    async deleteEventFormFieldGroup(input: DeleteEventFormFieldGroupInput): Promise<void> {
+      const body = groupDeleteRequestSchema.parse(input);
+      const raw = await edgeSafe<unknown>(() => supabase.functions.invoke("events/forms/groups/delete", { body }));
+      mutationSuccessSchema.parse(raw);
     },
   };
 }

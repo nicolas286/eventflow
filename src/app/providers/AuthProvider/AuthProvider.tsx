@@ -12,29 +12,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [bootstrapError, setBootstrapError] = useState<AppError | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const mountedRef = useRef(true);
+  const signingOutRef = useRef(false);
 
   useEffect(() => {
-    mountedRef.current = true;
+    let active = true;
+    let authChanged = false;
 
     (async () => {
       try {
         const s = await authRepo.getSession();
-        if (!mountedRef.current) return;
+        if (!active || authChanged || signingOutRef.current) return;
 
         setSession(s);
         setUser(s?.user ?? null);
         setBootstrapError(null);
       } catch (e) {
-        if (!mountedRef.current) return;
+        if (!active || authChanged || signingOutRef.current) return;
         setBootstrapError(normalizeError(e, "Impossible d'initialiser la session."));
       } finally {
-        if (mountedRef.current) setLoading(false);
+        if (active) setLoading(false);
       }
     })();
 
     const { data: sub } = supabase.auth.onAuthStateChange(
       (_event: AuthChangeEvent, newSession: Session | null) => {
+        authChanged = true;
+        if (!active || signingOutRef.current) return;
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setBootstrapError(null);
@@ -42,12 +45,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     return () => {
-      mountedRef.current = false;
+      active = false;
       sub.subscription.unsubscribe();
     };
   }, []);
 
   const signOut = useCallback(async () => {
+    signingOutRef.current = true;
+    setSession(null);
+    setUser(null);
     await authRepo.signOut();
   }, []);
 

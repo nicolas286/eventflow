@@ -167,6 +167,7 @@ export default function AdminDashboard() {
   const content = (
     <div className="adminPageRight">
       <Outlet
+        key={orgId ?? "onboarding"}
         context={
           {
             org: topNavOrg,

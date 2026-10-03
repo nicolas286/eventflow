@@ -95,8 +95,6 @@ export async function completeTicketPayment(input: {
   admin: AdminClient;
   object: StripeCheckoutObject;
   connectedAccountId: string;
-  functionsBase: string | null;
-  edgeServiceToken: string | null;
   logger: EdgeLogger;
 }) {
   const orderId = requiredString(input.object.metadata?.eventflow_order_id, "STRIPE_ORDER_METADATA_MISSING");
@@ -122,10 +120,7 @@ export async function completeTicketPayment(input: {
   }
   const { error: ticketError } = await input.admin.rpc("issue_order_tickets", { p_order_id: orderId });
   if (ticketError) throw new Error(`ISSUE_ORDER_TICKETS_FAILED:${ticketError.message}`);
-  if (input.functionsBase) {
-    await sendConfirmationEmailForOrderSafe({ admin: input.admin, orderId,
-      functionsBase: input.functionsBase, edgeServiceToken: input.edgeServiceToken, logger: input.logger });
-  }
+  await sendConfirmationEmailForOrderSafe({ admin: input.admin, orderId, logger: input.logger });
 }
 
 export async function markTicketPaymentStatus(input: {
@@ -167,7 +162,7 @@ export async function reconcileStripeCheckouts(admin: AdminClient, logger: EdgeL
       }).passthrough().parse(object);
       if (object.status === "complete" && object.payment_status === "paid") {
         await completeTicketPayment({ admin, object: parsed, connectedAccountId: checkout.account_id,
-          functionsBase: envTrim("FUNCTIONS_URL"), edgeServiceToken: envTrim("EDGE_SERVICE_TOKEN"), logger });
+          logger });
       } else if (object.status === "expired") {
         await markTicketPaymentStatus({ admin, object: parsed,
           connectedAccountId: checkout.account_id, status: "expired" });

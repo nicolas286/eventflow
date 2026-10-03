@@ -1,25 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabaseSafe } from "@gateways/supabase/supabaseSafe";
-import { deleteEventInputSchema, 
-  type DeleteEventInput } from "../schemas/admin.deleteEventInput.schema";
+import { edgeSafe } from "@gateways/supabase/supabaseEdgeSafe";
+import { deleteEventInputSchema, mutationSuccessSchema, type DeleteEventInput } from "@contracts/events";
 
 export function deleteEventRepo(supabase: SupabaseClient) {
   return {
     async deleteEvent(input: DeleteEventInput): Promise<void> {
-      const { eventId, orgId } = deleteEventInputSchema.parse(input);
-
-      const rows = await supabaseSafe<{ id: string }[]>(
-        () => {
-          let q = supabase.from("events").delete().eq("id", eventId);
-          if (orgId) q = q.eq("org_id", orgId);
-          return q.select("id");
-        },
+      const body = deleteEventInputSchema.parse(input);
+      const raw = await edgeSafe<unknown>(() =>
+        supabase.functions.invoke("events/delete", { body })
       );
-
-      if (rows.length === 0) {
-        throw new Error("NOT_FOUND");
-      }
+      mutationSuccessSchema.parse(raw);
     },
   };
 }
-

@@ -1,5 +1,8 @@
 // netlify/functions/share-event.js
-const { createClient } = require("@supabase/supabase-js");
+import {
+  publicEventRequestSchema,
+  publicEventShareSchema,
+} from "../../shared/schemas/public-catalog.ts";
 
 function esc(s) {
   return String(s ?? "")
@@ -16,23 +19,32 @@ function safeSlice(s, n = 160) {
 }
 
 function isMetaBot(headers) {
-  const ua = String(headers?.["user-agent"] || headers?.["User-Agent"] || "").toLowerCase();
+  const ua = String(
+    headers?.["user-agent"] || headers?.["User-Agent"] || "",
+  ).toLowerCase();
   return ua.includes("facebookexternalhit") || ua.includes("facebot");
 }
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   try {
     // /share/o/:orgSlug/e/:eventSlug
     const path = event.path || "";
     const m = path.match(/^\/share\/o\/([^/]+)\/e\/([^/]+)\/?$/);
-    const orgSlug = m?.[1];
-    const eventSlug = m?.[2];
+    let orgSlug;
+    let eventSlug;
+    try {
+      orgSlug = m?.[1] ? decodeURIComponent(m[1]) : null;
+      eventSlug = m?.[2] ? decodeURIComponent(m[2]) : null;
+    } catch {
+      return { statusCode: 400, body: "Invalid params" };
+    }
 
     if (!orgSlug || !eventSlug) {
       return { statusCode: 400, body: "Missing params" };
     }
 
-    if (!process.env.PUBLIC_BASE_URL) return { statusCode: 500, body: "Missing public URL" };
+    if (!process.env.PUBLIC_BASE_URL)
+      return { statusCode: 500, body: "Missing public URL" };
     const baseUrl = new URL(process.env.PUBLIC_BASE_URL).origin;
     const supabaseUrl = process.env.VITE_SUPABASE_URL;
     const supabaseAnon = process.env.VITE_SUPABASE_ANON_KEY;
@@ -41,40 +53,41 @@ exports.handler = async (event) => {
       return { statusCode: 500, body: "Missing Supabase env" };
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnon);
-
-    // 1) org via RPC public
-    const { data: org, error: orgErr } = await supabase.rpc("get_public_org_by_slug", {
-      p_slug: orgSlug,
-    });
-    if (orgErr || !org) return { statusCode: 404, body: "Org not found" };
-
-    // 2) events overview via RPC public
-    const { data: overview, error: ovErr } = await supabase.rpc("get_public_org_events_overview", {
-      p_org_slug: orgSlug,
-    });
-    if (ovErr || !overview) return { statusCode: 404, body: "Events not found" };
-
-    // ⚠️ adapte si ta shape est différente
-    const events = overview?.events ?? overview?.data?.events ?? [];
-    const ev = Array.isArray(events) ? events.find((x) => String(x?.slug) === eventSlug) : null;
-    if (!ev) return { statusCode: 404, body: "Event not found" };
-
-    const orgName = org?.name ?? "Eventflow";
-    const orgDesc = org?.description ?? "";
-
-    const evTitle = ev?.title ?? "Événement";
-    const evDesc = ev?.description ?? "";
-
-    const title = `${evTitle} – ${orgName}`;
-    const desc = safeSlice(evDesc || orgDesc || "Infos et billets.", 160);
-
-    const ogImage =
-      ev?.bannerUrl ||
-      ev?.banner_url ||
-      org?.bannerUrl ||
-      org?.banner_url ||
-      `${baseUrl}/og/default.jpg`;
+    const input = publicEventRequestSchema.safeParse({ orgSlug, eventSlug });
+    if (!input.success) return { statusCode: 400, body: "Invalid params" };
+    const response = await fetch(
+      `${supabaseUrl.replace(/\/$/, "")}/functions/v1/events/public/share`,
+      {
+        method: "POST",
+        headers: { apikey: supabaseAnon, "content-type": "application/json" },
+        body: JSON.stringify(input.data),
+        signal: AbortSignal.timeout(10000),
+      },
+    );
+    if (!response.ok) {
+      const statusCode = [400, 404, 429, 503].includes(response.status)
+        ? response.status
+        : 502;
+      return {
+        statusCode,
+        headers: {
+          "cache-control": "no-store",
+          ...(response.headers.get("retry-after")
+            ? { "retry-after": response.headers.get("retry-after") }
+            : {}),
+        },
+        body: statusCode === 404 ? "Event not found" : "Catalog unavailable",
+      };
+    }
+    const metadata = publicEventShareSchema.parse(await response.json());
+    const title = `${metadata.eventTitle} \u2013 ${metadata.orgName}`;
+    const desc = safeSlice(
+      metadata.eventDescription ||
+        metadata.orgDescription ||
+        "Infos et billets.",
+      160,
+    );
+    const ogImage = metadata.bannerUrl || `${baseUrl}/og/default.jpg`;
 
     const targetUrl = `${baseUrl}/o/${encodeURIComponent(orgSlug)}/e/${encodeURIComponent(eventSlug)}/billets`;
     const shareUrl = `${baseUrl}/share/o/${encodeURIComponent(orgSlug)}/e/${encodeURIComponent(eventSlug)}`;

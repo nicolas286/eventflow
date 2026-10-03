@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { useAuth } from "@providers/AuthProvider/useAuth";
-import { supabase } from "@gateways/supabase/supabaseClient";
+import { authRepo } from "@app/modules/admin/auth/data/authRepo";
 import { normalizeError } from "@errors/errors";
 import "../platform.css";
 
@@ -21,8 +21,7 @@ export function PlatformLoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) throw signInError;
+      await authRepo.signIn({ email, password }, { rememberMe: false });
       navigate("/platform/mfa", { replace: true });
     } catch (cause) {
       setError(normalizeError(cause, "Connexion impossible.").message);

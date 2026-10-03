@@ -1,60 +1,17 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { deleteEventRepo } from "../../events/data/deleteEventRepo";
-import { normalizeError } from "@errors/errors";
+import { useScopedEventMutation } from "./useScopedEventMutation";
 
-export type DeleteEventInput = {
-  eventId: string;
-  orgId?: string;
-};
+export type DeleteEventInput = { eventId: string; orgId?: string };
 
-type State = {
-  loading: boolean;
-  error: string | null;
-  deletedId: string | null;
-};
-
-export function useDeleteEvent(params: { supabase: SupabaseClient }) {
-  const { supabase } = params;
-
-  const repo = useMemo(() => deleteEventRepo(supabase), [supabase]);
-
-  const [state, setState] = useState<State>({
-    loading: false,
-    error: null,
-    deletedId: null,
-  });
-
-  async function deleteEvent(input: DeleteEventInput): Promise<boolean> {
-    try {
-      setState({ loading: true, error: null, deletedId: null });
-
-      await repo.deleteEvent(input);
-
-      setState({
-        loading: false,
-        error: null,
-        deletedId: input.eventId,
-      });
-
-      return true;
-    } catch (e: unknown) {
-      const ne = normalizeError(e, "Impossible de supprimer l’événement");
-
-      setState({
-        loading: false,
-        error: ne.message,
-        deletedId: null,
-      });
-
-      return false;
-    }
-  }
-
-  function reset() {
-    setState({ loading: false, error: null, deletedId: null });
-  }
-
-  return { ...state, deleteEvent, reset };
+export function useDeleteEvent(params: { supabase: SupabaseClient; orgId?: string }) {
+  const repo = useMemo(() => deleteEventRepo(params.supabase), [params.supabase]);
+  const remove = useMemo(() => async (input: DeleteEventInput) => {
+    await repo.deleteEvent(input);
+    return input.eventId;
+  }, [repo]);
+  const { result, mutate, ...state } = useScopedEventMutation(remove, params, "Impossible de supprimer l'événement");
+  async function deleteEvent(input: DeleteEventInput): Promise<boolean> { return (await mutate(input)) !== null; }
+  return { ...state, deletedId: result, deleteEvent };
 }

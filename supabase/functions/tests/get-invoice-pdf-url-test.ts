@@ -48,6 +48,7 @@ async function invoke(
   const response = await handleGetInvoicePdfUrl({
     req,
     repository: currentRepository,
+    consumeAuthorizedQuota: () => Promise.resolve(null),
   });
 
   return {

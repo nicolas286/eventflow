@@ -14,22 +14,32 @@ const { users } = checked(await admin.auth.admin.listUsers({ perPage: 1000 }));
 if (!users.some(user => user.email === email)) checked(await admin.auth.admin.createUser({ email, password, email_confirm: true }));
 checked(await client.auth.signInWithPassword({ email, password }));
 const name = 'Eventflow démonstration staging';
-let org = checked(await client.from('organizations').select('id').eq('name', name).maybeSingle());
-if (!org) org = { id: checked(await client.rpc('create_organization', { p_input: { name, type: 'association' } })) };
-let event = checked(await client.from('events').select('id,slug').eq('org_id', org.id).eq('title', 'Rencontre de démonstration').maybeSingle());
-if (!event) event = checked(await client.rpc('create_event', { p_input: {
-  org_id: org.id, title: 'Rencontre de démonstration', description: 'Événement fictif pour tester Eventflow. Aucun paiement réel.',
-  location: 'Salle de démonstration', starts_at: new Date(Date.now() + 30 * 86400000).toISOString(),
-  ends_at: new Date(Date.now() + 30 * 86400000 + 7200000).toISOString(), max_attendees: 50, deposit_cents: 0,
+let bootstrap = checked(await client.functions.invoke('organizations/bootstrap', { body: {} }));
+let org = bootstrap.organization;
+if (org && org.name !== name) throw new Error('Seed owner belongs to an unexpected organization');
+if (!org) {
+  const orgId = checked(await client.functions.invoke('organizations/create', { body: { name, type: 'association' } }));
+  bootstrap = checked(await client.functions.invoke('organizations/bootstrap', { body: { orgId } }));
+  org = bootstrap.organization;
+}
+if (!org?.id) throw new Error('Unexpected organizations bootstrap response');
+const overview = checked(await client.functions.invoke('events/overview', { body: { orgId: org.id } }));
+let event = overview.events.map(row => row.event).find(row => row.title === 'Rencontre de démonstration');
+if (!event) event = checked(await client.functions.invoke('events/create', { body: {
+  orgId: org.id, title: 'Rencontre de démonstration', description: 'Événement fictif pour tester Eventflow. Aucun paiement réel.',
+  location: 'Salle de démonstration', startsAt: new Date(Date.now() + 30 * 86400000).toISOString(),
+  endsAt: new Date(Date.now() + 30 * 86400000 + 7200000).toISOString(), maxAttendees: 50, depositCents: 0,
 } }));
-if (!event?.id) throw new Error('Unexpected create_event response');
-checked(await admin.from('events').update({ is_published: true }).eq('id', event.id));
-let product = checked(await client.from('event_products').select('id').eq('event_id', event.id).eq('name', 'Entrée gratuite').maybeSingle());
-if (!product) product = { id: checked(await client.rpc('create_event_product', { p_input: {
-  event_id: event.id, name: 'Entrée gratuite', price_cents: 0, currency: 'EUR', stock_qty: 50,
-  creates_attendees: true, attendees_per_unit: 1, is_active: true, sort_order: 1,
-} })) };
-checked(await admin.from('event_products').update({ creates_attendees: true }).eq('id', product.id));
-const profile = checked(await client.from('organization_profile').select('slug').eq('org_id', org.id).single());
+if (!event?.id) throw new Error('Unexpected events/create response');
+checked(await client.functions.invoke('events/update', { body: { eventId: event.id, patch: { isPublished: true } } }));
+const detail = checked(await client.functions.invoke('events/detail', { body: { eventId: event.id } }));
+let product = detail.products.find(row => row.name === 'Entrée gratuite');
+if (!product) product = checked(await client.functions.invoke('events/products/create', { body: {
+  eventId: event.id, name: 'Entrée gratuite', priceCents: 0, currency: 'EUR', stockQty: 50,
+  createsAttendees: true, attendeesPerUnit: 1, isActive: true, sortOrder: 1,
+} }));
+checked(await client.functions.invoke('events/products/update', { body: { productId: product.id, patch: { createsAttendees: true } } }));
+const profile = bootstrap.organizationProfile;
+if (!profile?.slug) throw new Error('Unexpected organization profile response');
 console.log(JSON.stringify({ email, orgId: org.id, eventId: event.id, productId: product.id, publicPath: `/o/${profile.slug}/e/${event.slug}/billets` }));
 await client.auth.signOut();

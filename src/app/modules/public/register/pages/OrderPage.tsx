@@ -1,4 +1,5 @@
-import { orderPublicSchema } from "@contracts/orders-read";
+import type { OrderPublicResponse } from "@contracts/orders-read";
+import { readPublicOrder } from "@gateways/supabase/repositories/readPublicOrder";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Navigate,
@@ -8,6 +9,7 @@ import {
 } from "react-router-dom";
 
 import { supabase } from "@gateways/supabase/supabaseClient";
+import { EdgeRequestError, humanEdgeRequestMessage } from "@errors/edgeRequestError";
 import { usePublicEventDetail } from "../../events/hooks/usePublicEventDetail";
 
 import Container from "@ui/components/container/Container";
@@ -16,46 +18,14 @@ import Button from "@ui/components/button/Button";
 
 import { PublicEventHeader } from "../components/PublicEventHeader";
 import { formatMoney } from "@helpers/normalize";
-import type { BankTransferInstructions } from "@contracts/bank-transfer";
+
 
 import "@app/layouts/publicCheckoutBase.desktop.css";
 import "./orderReturnPage.desktop.css";
 import "./orderReturnPage.mobile.css";
 
-export type OrderStatus =
-  | "open"
-  | "pending"
-  | "paid"
-  | "failed"
-  | "cancelled"
-  | "canceled"
-  | "expired"
-  | "awaiting_payment"
-  | "partially_paid"
-  | "refunded";
-
-export type OrderItemPublic = {
-  name?: string;
-  quantity?: number;
-  unitPriceCents?: number;
-  totalCents?: number;
-  currency?: string;
-};
-
-export type OrderPublic = {
-  id: string;
-  status: OrderStatus;
-  totalCents?: number;
-  currency?: string;
-  paymentMethod?: "stripe" | "bank_transfer" | null;
-  bankTransfer?: BankTransferInstructions | null;
-
-  orgSlug?: string;
-  eventSlug?: string;
-
-  buyerEmail?: string;
-  items?: OrderItemPublic[];
-};
+type OrderPublic = OrderPublicResponse;
+export type OrderStatus = OrderPublicResponse["status"];
 
 function isFinalStatus(status: OrderStatus) {
   return (
@@ -79,47 +49,6 @@ function isFailureStatus(status: OrderStatus) {
     status === "expired" ||
     status === "refunded"
   );
-}
-
-async function fetchOrder(
-  orderId: string,
-  token: string,
-): Promise<OrderPublic> {
-  if (!orderId) throw new Error("order_fetch_failed");
-
-  const res = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/orders/${encodeURIComponent(
-      orderId,
-    )}?token=${encodeURIComponent(token)}`,
-    {
-      headers: {
-        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-      },
-    },
-  );
-
-  if (!res.ok) throw new Error("order_fetch_failed");
-  const parsed = orderPublicSchema.parse(await res.json());
-  const j = {
-    ...parsed,
-    totalCents: parsed.totalCents ?? undefined,
-    currency: parsed.currency ?? undefined,
-  };
-
-  return {
-    id: j.id,
-    status: j.status,
-
-    totalCents: j.totalCents,
-    currency: j.currency,
-    paymentMethod: j.paymentMethod,
-    bankTransfer: j.bankTransfer ?? null,
-    orgSlug: j.orgSlug ?? undefined,
-    eventSlug: j.eventSlug ?? undefined,
-    buyerEmail: j.buyerEmail ?? undefined,
-    items: j.items,
-  };
 }
 
 /**
@@ -156,6 +85,8 @@ export function OrderPage() {
   const intervalRef = useRef<number | null>(null);
   const timeoutRef = useRef<number | null>(null);
   const copyFeedbackTimeoutRef = useRef<number | null>(null);
+  const retryAtRef = useRef(0);
+  const requestInFlightRef = useRef(false);
 
   const orgSlug = useMemo(
     () => order?.orgSlug ?? orgSlugFromQuery ?? null,
@@ -182,9 +113,19 @@ export function OrderPage() {
     timeoutRef.current = null;
   }, []);
 
+  const handleFetchError = useCallback((cause: unknown) => {
+    if (cause instanceof EdgeRequestError) {
+      retryAtRef.current = Date.now() + cause.retryAfterSeconds * 1000;
+      setError(humanEdgeRequestMessage(cause));
+    } else {
+      setError("Impossible de charger la commande.");
+    }
+  }, []);
+
   const loadOnce = useCallback(
     async (opts?: { silent?: boolean }) => {
       if (!orderId || !bookingToken) return;
+      if (Date.now() < retryAtRef.current || requestInFlightRef.current) return;
 
       const silent = opts?.silent ?? false;
 
@@ -194,9 +135,10 @@ export function OrderPage() {
       };
 
       try {
+        requestInFlightRef.current = true;
         if (!silent) setIsRefreshing(true);
 
-        const o = await fetchOrder(orderId, bookingToken);
+        const o = await readPublicOrder(orderId, bookingToken);
         if (cancelled) return;
 
         setOrder(o);
@@ -205,18 +147,19 @@ export function OrderPage() {
 
         // si c'est final, aucun intérêt de poll
         if (isFinalStatus(o.status)) stopPolling();
-      } catch {
+      } catch (cause) {
         if (cancelled) return;
 
         setLoading(false);
-        setError("Impossible de charger la commande.");
+        handleFetchError(cause);
       } finally {
+        requestInFlightRef.current = false;
         if (!silent) setIsRefreshing(false);
       }
 
       return cancel;
     },
-    [orderId, bookingToken, stopPolling],
+    [orderId, bookingToken, stopPolling, handleFetchError],
   );
 
   /* ---------------- Initial load + polling retour PSP ---------------- */
@@ -234,29 +177,38 @@ export function OrderPage() {
     async function firstLoad() {
       if (!orderId || !bookingToken) return;
       try {
-        const o = await fetchOrder(orderId, bookingToken);
+        requestInFlightRef.current = true;
+        const o = await readPublicOrder(orderId, bookingToken);
         if (cancelled) return;
         safeSetOrder(o);
         setError(null);
         setLoading(false);
 
         if (isFinalStatus(o.status)) stopPolling();
-      } catch {
+      } catch (cause) {
         if (cancelled) return;
-        setError("Impossible de charger la commande.");
+        handleFetchError(cause);
         setLoading(false);
+      } finally {
+        requestInFlightRef.current = false;
       }
     }
 
     async function poll() {
       if (!orderId || !bookingToken) return;
+      if (Date.now() < retryAtRef.current || requestInFlightRef.current) return;
       try {
-        const o = await fetchOrder(orderId, bookingToken);
+        requestInFlightRef.current = true;
+        const o = await readPublicOrder(orderId, bookingToken);
         if (cancelled) return;
         safeSetOrder(o);
+        setError(null);
         if (isFinalStatus(o.status)) stopPolling();
-      } catch {
+      } catch (cause) {
+        if (!cancelled && cause instanceof EdgeRequestError) handleFetchError(cause);
         // tolère (réseau / edge)
+      } finally {
+        requestInFlightRef.current = false;
       }
     }
 
@@ -274,7 +226,7 @@ export function OrderPage() {
       cancelled = true;
       stopPolling();
     };
-  }, [orderId, bookingToken, isReturn, stopPolling]);
+  }, [orderId, bookingToken, isReturn, stopPolling, handleFetchError]);
 
   useEffect(
     () => () => {
@@ -586,7 +538,7 @@ export function OrderPage() {
 
                 {error ? (
                   <div className="orderReturnHint" role="status">
-                    La dernière actualisation a échoué. Vous pouvez réessayer.
+                    {error}
                   </div>
                 ) : null}
               </CardBody>
@@ -707,7 +659,7 @@ export function OrderPage() {
                 <div className="orderReturnSummaryHeader">
                   <span>Montant total</span>
                   <strong>
-                    {formatMoney(order.totalCents, order.currency)}
+                    {formatMoney(order.totalCents ?? undefined, order.currency ?? undefined)}
                   </strong>
                 </div>
                 <div className="orderReturnSummaryStatus">

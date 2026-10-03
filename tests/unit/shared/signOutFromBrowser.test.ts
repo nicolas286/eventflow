@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { signOutFromBrowser } from "../../../src/shared/gateways/supabase/signOutFromBrowser";
+import { createAuthStorage } from "../../../src/shared/gateways/supabase/authStorage";
 
-const { signOut } = vi.hoisted(() => ({ signOut: vi.fn() }));
+const { signOut, clear } = vi.hoisted(() => ({ signOut: vi.fn(), clear: vi.fn() }));
 vi.mock("../../../src/shared/gateways/supabase/supabaseClient", () => ({
   supabase: { auth: { signOut } },
+  authStorage: { clear },
 }));
 
 const key = "sb-staging-project-auth-token";
@@ -15,7 +17,7 @@ beforeEach(() => {
   vi.stubEnv("VITE_SUPABASE_URL", "https://staging-project.supabase.co");
   stores = [new Map(), new Map()];
   for (const store of stores) {
-    for (const suffix of ["", "-code-verifier", "-user"]) store.set(key + suffix, "stale");
+    for (const suffix of ["", "-code-verifier", "-user", "-remember"]) store.set(key + suffix, "stale");
     store.set("theme", "dark");
     store.set("sb-other-project-auth-token", "other");
   }
@@ -26,6 +28,13 @@ beforeEach(() => {
     location: { replace },
   });
   signOut.mockReset();
+  const storage = stores.map((store) => ({
+    getItem: (name: string) => store.get(name) ?? null,
+    setItem: (name: string, value: string) => { store.set(name, value); },
+    removeItem: (name: string) => { store.delete(name); },
+  }));
+  const adapter = createAuthStorage(storage[0], storage[1], key);
+  clear.mockImplementation(() => adapter.clear());
 });
 
 afterEach(() => {

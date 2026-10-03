@@ -1,31 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabaseSafe } from "../../../../../shared/gateways/supabase/supabaseSafe";
-import { camelToSnake } from "../../../../../shared/helpers/camelToSnake";
-import { snakeToCamel } from "../../../../../shared/helpers/snakeToCamel";
-
-import {
-  createEventFormFieldGroupInputSchema,
-  type CreateEventFormFieldGroupInput,
-} from "../schemas/admin.createEventFormFieldGroupInput.schema";
-
-import { eventFormFieldGroupSchema, 
-    type EventFormFieldGroup
- } from "@shared/models/db/db.eventFormFields.schema";
+import { edgeSafe } from "@gateways/supabase/supabaseEdgeSafe";
+import { groupCreateRequestSchema, eventFormFieldGroupSchema, type EventFormFieldGroup, type CreateEventFormFieldGroupInput } from "@contracts/event-forms";
 
 export function createEventFormFieldGroupRepo(supabase: SupabaseClient) {
   return {
-    async createEventFormFieldGroup(
-      input: CreateEventFormFieldGroupInput,
-    ): Promise<EventFormFieldGroup> {
-      const validated = createEventFormFieldGroupInputSchema.parse(input);
-      const payload = camelToSnake(validated);
-
-      const raw = await supabaseSafe<unknown>(() =>
-        supabase.rpc("create_event_form_field_group", { p_input: payload }),
-      );
-
-      const camel = snakeToCamel(raw);
-      return eventFormFieldGroupSchema.parse(camel);
+    async createEventFormFieldGroup(input: CreateEventFormFieldGroupInput): Promise<EventFormFieldGroup> {
+      const body = groupCreateRequestSchema.parse(input);
+      const raw = await edgeSafe<unknown>(() => supabase.functions.invoke("events/forms/groups/create", { body }));
+      return eventFormFieldGroupSchema.parse(raw);
     },
   };
 }

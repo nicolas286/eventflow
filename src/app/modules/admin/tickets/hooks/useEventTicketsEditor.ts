@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type SetStateAction } from "react";
 
 import type { EventProduct, EventProducts } from "@shared/models/db/db.eventProducts.schema";
 import type { CreateEventProductInput } from "../../products/schemas/admin.createEventProduct.schema";
@@ -6,6 +6,7 @@ import type { UpdateEventProductPatch } from "@app/modules/admin/products/data/u
 
 import { makeClientId, nonNegInt, posInt, sortBySortOrder } from "@helpers/logic";
 import { toNullIfEmpty } from "@helpers/fields";
+import { OrganizerMutationObsoleteError } from "../../singleEvent/hooks/useScopedEventMutation";
 
 export type TicketDraft = {
   id: string | null;
@@ -64,6 +65,7 @@ type Params = {
   onUpdate: (input: { productId: string; patch: UpdateEventProductPatch }) => Promise<void>;
   onRemove?: (productId: string) => Promise<void>;
   onChanged?: () => void;
+  isCurrentScope: () => boolean;
 
   onActionSuccess?: (kind: ActionKind) => void;
   onActionError?: (message: string) => void;
@@ -80,6 +82,7 @@ export function useEventTicketsEditor({
   onUpdate,
   onRemove,
   onChanged,
+  isCurrentScope,
   onActionSuccess,
   onActionError,
   createLoading = false,
@@ -88,7 +91,12 @@ export function useEventTicketsEditor({
 }: Params) {
   const [draft, setDraft] = useState<TicketDraft[]>([]);
 
-  const [editing, setEditing] = useState<EditState | null>(null);
+  const [editing, setEditingState] = useState<EditState | null>(null);
+  const editorGenerationRef = useRef(0);
+  function setEditing(next: SetStateAction<EditState | null>) {
+    editorGenerationRef.current++;
+    setEditingState(next);
+  }
   const [creating, setCreating] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
@@ -152,6 +160,7 @@ export function useEventTicketsEditor({
   }, []);
 
   function handleError(e: unknown, fallback = "Erreur inconnue") {
+    if (e instanceof OrganizerMutationObsoleteError || !isCurrentScope()) return;
     const message = e instanceof Error ? e.message : fallback;
     setError(message);
     onActionError?.(message);
@@ -227,6 +236,7 @@ export function useEventTicketsEditor({
   }
 
   function closeEditor() {
+    if (!isCurrentScope()) return;
     if (!editing) {
       setCreating(false);
       return;
@@ -242,12 +252,14 @@ export function useEventTicketsEditor({
 
     setIsClosing(true);
     setClosingKey(key);
+    const editorGeneration = editorGenerationRef.current;
 
     if (closeTimerRef.current) {
       window.clearTimeout(closeTimerRef.current);
     }
 
     closeTimerRef.current = window.setTimeout(() => {
+      if (!isCurrentScope() || editorGeneration !== editorGenerationRef.current) return;
       setEditing(null);
       setCreating(false);
       setIsClosing(false);
@@ -297,16 +309,19 @@ export function useEventTicketsEditor({
   }
 
   async function saveEditor() {
+    if (!isCurrentScope()) return;
     if (!eventId || !editing || isSaving) return;
 
     const input = buildCreateInputFromEditing();
     if (!input) return;
+    const editorGeneration = editorGenerationRef.current;
 
     try {
       clearError();
 
       if (creating) {
         await onCreate(input);
+        if (!isCurrentScope() || editorGeneration !== editorGenerationRef.current) return;
         onActionSuccess?.("created");
       } else {
         if (!editing.id) return;
@@ -318,6 +333,7 @@ export function useEventTicketsEditor({
           productId: current.id,
           patch: createInputToPatch(input),
         });
+        if (!isCurrentScope() || editorGeneration !== editorGenerationRef.current) return;
 
         onActionSuccess?.("updated");
       }
@@ -325,11 +341,13 @@ export function useEventTicketsEditor({
       closeEditor();
       onChanged?.();
     } catch (e) {
+      if (editorGeneration !== editorGenerationRef.current) return;
       handleError(e, creating ? "Impossible de créer le ticket." : "Impossible de modifier le ticket.");
     }
   }
 
   async function togglePersisted(clientId: string, patch: Partial<Pick<TicketDraft, "isActive">>) {
+    if (!isCurrentScope()) return;
     if (isSaving) return;
 
     const current = draft.find((t) => t.clientId === clientId);
@@ -342,6 +360,7 @@ export function useEventTicketsEditor({
         productId: current.id,
         patch,
       });
+      if (!isCurrentScope()) return;
 
       onActionSuccess?.(patch.isActive ? "activated" : "deactivated");
       onChanged?.();
@@ -351,6 +370,7 @@ export function useEventTicketsEditor({
   }
 
   async function removePersisted(clientId: string) {
+    if (!isCurrentScope()) return;
     if (isSaving || !onRemove) return;
 
     const current = draft.find((t) => t.clientId === clientId);
@@ -358,13 +378,15 @@ export function useEventTicketsEditor({
 
     const ok = window.confirm("Supprimer ce ticket ? (les commandes passées restent intactes)");
     if (!ok) return;
+    const editorGeneration = editorGenerationRef.current;
 
     try {
       clearError();
 
       await onRemove(current.id);
+      if (!isCurrentScope()) return;
 
-      if (editing?.id === clientId) {
+      if (editing?.id === clientId && editorGeneration === editorGenerationRef.current) {
         closeEditor();
       }
 
@@ -376,6 +398,7 @@ export function useEventTicketsEditor({
   }
 
   async function movePersisted(clientId: string, dir: -1 | 1) {
+    if (!isCurrentScope()) return;
     if (isSaving || isFiltering) return;
 
     const sortedNow = sortBySortOrder(draft);
@@ -401,11 +424,13 @@ export function useEventTicketsEditor({
         productId: current.id,
         patch: { sortOrder: targetOrder },
       });
+      if (!isCurrentScope()) return;
 
       await onUpdate({
         productId: target.id,
         patch: { sortOrder: currentOrder },
       });
+      if (!isCurrentScope()) return;
 
       armMoveFx({
         aId: current.clientId,

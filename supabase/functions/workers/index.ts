@@ -13,6 +13,7 @@ import {
   runManual,
 } from "../_shared/services/order-reminders/index.ts";
 import { deliverPendingManualSubscriptionInvoices } from "./manual-invoice-delivery.ts";
+import { retryOrderConfirmations } from "../orders/public/emails.ts";
 export const handleSendReminderMailRequest = createEdgeHandler(
   {
     name: "workers/reminders",
@@ -77,6 +78,13 @@ export const handleSendReminderMailRequest = createEdgeHandler(
     } catch (error) {
       logger.error("stripe_checkout_reconciliation_unavailable", { error: serializeError(error) });
     }
+    let confirmations = { sent: 0, failed: 0, skipped: 0 };
+    try {
+      confirmations = await retryOrderConfirmations(admin, logger);
+    } catch {
+      logger.error("confirmation_email_retry_unavailable");
+      confirmations.failed++;
+    }
     const result = await runCron({
       admin,
       appBaseUrl: config.appBaseUrl,
@@ -98,6 +106,7 @@ export const handleSendReminderMailRequest = createEdgeHandler(
       ok: true,
       mode: "cron",
       manualInvoicesProcessed,
+      confirmations,
       ...result,
     });
   },

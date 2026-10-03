@@ -1,0 +1,768 @@
+{
+  "observed_on": "2026-10-02",
+  "method": "Supabase MCP; verified project IDs; BEGIN READ ONLY; metadata only; no mutating RPC, secrets or customer rows read",
+  "staging": {
+    "project_id": "cpcmcxerrsnnjncrhldr",
+    "name": "eventflow-staging",
+    "metadata": {
+      "cron": [
+        {
+          "name": "expire-orders",
+          "active": true,
+          "endpoint": "SQL/other",
+          "schedule": "*/2 * * * *",
+          "username": "postgres",
+          "sensitive_rpc_reference": false
+        },
+        {
+          "name": "send-reminder-mail",
+          "active": true,
+          "endpoint": "/functions/v1/workers/reminders",
+          "schedule": "30 seconds",
+          "username": "postgres",
+          "sensitive_rpc_reference": false
+        },
+        {
+          "name": "eventflow-manual-subscription-renewals",
+          "active": true,
+          "endpoint": "SQL/other",
+          "schedule": "*/5 * * * *",
+          "username": "postgres",
+          "sensitive_rpc_reference": false
+        }
+      ],
+      "rpcs": [
+        {
+          "acl": [
+            "postgres=X/postgres",
+            "service_role=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=public"
+          ],
+          "signature": "admin_grant_subscription(uuid,text,integer,timestamp with time zone)",
+          "anon_execute": false,
+          "definition_md5": "9e2d3a1dea31fc669ab79c987af36528",
+          "public_execute": false,
+          "service_execute": true,
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "acl": [
+            "postgres=X/postgres",
+            "service_role=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_temp, private, public"
+          ],
+          "signature": "claim_order_confirmation_email(uuid)",
+          "anon_execute": false,
+          "definition_md5": "1f6b96af004195ae8c658eb97b53537e",
+          "public_execute": false,
+          "service_execute": true,
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "acl": [
+            "postgres=X/postgres",
+            "service_role=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=public"
+          ],
+          "signature": "log_email_once(uuid,text)",
+          "anon_execute": false,
+          "definition_md5": "01749f4db874b7edc45a010c266f0884",
+          "public_execute": false,
+          "service_execute": true,
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "acl": [
+            "postgres=X/postgres",
+            "service_role=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_temp, private, public"
+          ],
+          "signature": "mark_order_confirmation_email_error(uuid,text)",
+          "anon_execute": false,
+          "definition_md5": "c697939868707f9527eaf5df6cad4b19",
+          "public_execute": false,
+          "service_execute": true,
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "acl": [
+            "postgres=X/postgres",
+            "service_role=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_temp, private, public"
+          ],
+          "signature": "mark_order_confirmation_email_sent(uuid)",
+          "anon_execute": false,
+          "definition_md5": "80e5a7cf5f6e9a7e13bdf7570587b7b1",
+          "public_execute": false,
+          "service_execute": true,
+          "security_definer": true,
+          "authenticated_execute": false
+        }
+      ],
+      "tables": [
+        {
+          "acl": [
+            "postgres=arwdDxtm/postgres",
+            "anon=arwdDxtm/postgres",
+            "authenticated=arwdDxtm/postgres",
+            "service_role=arwdDxtm/postgres"
+          ],
+          "rls": true,
+          "name": "event_form_field_groups"
+        },
+        {
+          "acl": [
+            "postgres=arwdDxtm/postgres",
+            "anon=arwdDxtm/postgres",
+            "authenticated=arwdDxtm/postgres",
+            "service_role=arwdDxtm/postgres"
+          ],
+          "rls": true,
+          "name": "event_form_fields"
+        },
+        {
+          "acl": [
+            "postgres=arwdDxtm/postgres",
+            "anon=rDxtm/postgres",
+            "authenticated=arwdDxtm/postgres",
+            "service_role=arwdDxtm/postgres"
+          ],
+          "rls": true,
+          "name": "event_products"
+        }
+      ],
+      "product_columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "event_id",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "name",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "description",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "price_cents",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "currency",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "stock_qty",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "is_active",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "sort_order",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "creates_attendees",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "attendees_per_unit",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "updated_at",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "reserved_qty",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "sold_qty",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "is_gatekeeper",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "close_event_when_sold_out",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        }
+      ],
+      "public_defaults": [
+        {
+          "acl": [
+            "postgres=arwdDxtm/postgres",
+            "anon=arwdDxtm/postgres",
+            "authenticated=arwdDxtm/postgres",
+            "service_role=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "creator": "postgres"
+        },
+        {
+          "acl": [
+            "postgres=X/postgres",
+            "anon=X/postgres",
+            "authenticated=X/postgres",
+            "service_role=X/postgres"
+          ],
+          "kind": "f",
+          "creator": "postgres"
+        },
+        {
+          "acl": [
+            "postgres=rwU/postgres",
+            "anon=rwU/postgres",
+            "authenticated=rwU/postgres",
+            "service_role=rwU/postgres"
+          ],
+          "kind": "S",
+          "creator": "postgres"
+        },
+        {
+          "acl": [
+            "postgres=rwU/supabase_admin",
+            "anon=rwU/supabase_admin",
+            "authenticated=rwU/supabase_admin",
+            "service_role=rwU/supabase_admin"
+          ],
+          "kind": "S",
+          "creator": "supabase_admin"
+        },
+        {
+          "acl": [
+            "postgres=arwdDxtm/supabase_admin",
+            "anon=arwdDxtm/supabase_admin",
+            "authenticated=arwdDxtm/supabase_admin",
+            "service_role=arwdDxtm/supabase_admin"
+          ],
+          "kind": "r",
+          "creator": "supabase_admin"
+        },
+        {
+          "acl": [
+            "postgres=X/supabase_admin",
+            "anon=X/supabase_admin",
+            "authenticated=X/supabase_admin",
+            "service_role=X/supabase_admin"
+          ],
+          "kind": "f",
+          "creator": "supabase_admin"
+        }
+      ],
+      "role_memberships": null,
+      "rpc_dependencies": null,
+      "form_foreign_keys": [
+        {
+          "name": "event_form_fields_event_id_fkey",
+          "validated": true,
+          "definition": "FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE"
+        },
+        {
+          "name": "event_form_fields_group_id_fkey",
+          "validated": true,
+          "definition": "FOREIGN KEY (group_id) REFERENCES event_form_field_groups(id) ON DELETE SET NULL"
+        }
+      ]
+    },
+    "edge_functions": [
+      "orders",
+      "subscriptions",
+      "accounts",
+      "invoices",
+      "workers",
+      "stripe-webhook-connect",
+      "stripe-connect-status",
+      "stripe-connect-start",
+      "organization-payment-settings",
+      "platform-config",
+      "platform-admin"
+    ]
+  },
+  "production": {
+    "project_id": "dixirvllhfkvqoahhfqh",
+    "name": "eventflow-prod",
+    "metadata": {
+      "cron": [
+        {
+          "name": "expire-orders-direct",
+          "active": true,
+          "endpoint": "SQL/other",
+          "schedule": "*/2 * * * *",
+          "username": "postgres",
+          "sensitive_rpc_reference": false
+        },
+        {
+          "name": "eventflow-manual-subscription-renewals",
+          "active": true,
+          "endpoint": "SQL/other",
+          "schedule": "*/5 * * * *",
+          "username": "postgres",
+          "sensitive_rpc_reference": false
+        },
+        {
+          "name": "send-reminder-mail",
+          "active": true,
+          "endpoint": "/functions/v1/workers/reminders",
+          "schedule": "0 * * * *",
+          "username": "postgres",
+          "sensitive_rpc_reference": false
+        }
+      ],
+      "rpcs": [
+        {
+          "acl": [
+            "postgres=X/postgres",
+            "anon=X/postgres",
+            "authenticated=X/postgres",
+            "service_role=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=public"
+          ],
+          "signature": "admin_grant_subscription(uuid,text,integer,timestamp with time zone)",
+          "anon_execute": true,
+          "definition_md5": "9e2d3a1dea31fc669ab79c987af36528",
+          "public_execute": false,
+          "service_execute": true,
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "acl": [
+            "postgres=X/postgres",
+            "anon=X/postgres",
+            "authenticated=X/postgres",
+            "service_role=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_temp, private, public"
+          ],
+          "signature": "claim_order_confirmation_email(uuid)",
+          "anon_execute": true,
+          "definition_md5": "1f6b96af004195ae8c658eb97b53537e",
+          "public_execute": false,
+          "service_execute": true,
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "acl": [
+            "postgres=X/postgres",
+            "anon=X/postgres",
+            "authenticated=X/postgres",
+            "service_role=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=public"
+          ],
+          "signature": "log_email_once(uuid,text)",
+          "anon_execute": true,
+          "definition_md5": "01749f4db874b7edc45a010c266f0884",
+          "public_execute": false,
+          "service_execute": true,
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "acl": [
+            "postgres=X/postgres",
+            "anon=X/postgres",
+            "authenticated=X/postgres",
+            "service_role=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_temp, private, public"
+          ],
+          "signature": "mark_order_confirmation_email_error(uuid,text)",
+          "anon_execute": true,
+          "definition_md5": "c697939868707f9527eaf5df6cad4b19",
+          "public_execute": false,
+          "service_execute": true,
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "acl": [
+            "postgres=X/postgres",
+            "anon=X/postgres",
+            "authenticated=X/postgres",
+            "service_role=X/postgres"
+          ],
+          "owner": "postgres",
+          "config": [
+            "search_path=pg_temp, private, public"
+          ],
+          "signature": "mark_order_confirmation_email_sent(uuid)",
+          "anon_execute": true,
+          "definition_md5": "80e5a7cf5f6e9a7e13bdf7570587b7b1",
+          "public_execute": false,
+          "service_execute": true,
+          "security_definer": true,
+          "authenticated_execute": true
+        }
+      ],
+      "tables": [
+        {
+          "acl": [
+            "postgres=arwdDxtm/postgres",
+            "anon=rDxtm/postgres",
+            "authenticated=arwdDxtm/postgres",
+            "service_role=arwdDxtm/postgres"
+          ],
+          "rls": true,
+          "name": "event_products"
+        },
+        {
+          "acl": [
+            "postgres=arwdDxtm/postgres",
+            "anon=arwdDxtm/postgres",
+            "authenticated=arwdDxtm/postgres",
+            "service_role=arwdDxtm/postgres"
+          ],
+          "rls": true,
+          "name": "event_form_fields"
+        },
+        {
+          "acl": [
+            "postgres=arwdDxtm/postgres",
+            "anon=arwdDxtm/postgres",
+            "authenticated=arwdDxtm/postgres",
+            "service_role=arwdDxtm/postgres"
+          ],
+          "rls": true,
+          "name": "event_form_field_groups"
+        }
+      ],
+      "product_columns": [
+        {
+          "acl": null,
+          "name": "id",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "event_id",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "name",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "description",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "price_cents",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "currency",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "stock_qty",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "is_active",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "sort_order",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "creates_attendees",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "attendees_per_unit",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "created_at",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "updated_at",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "reserved_qty",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "sold_qty",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "is_gatekeeper",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        },
+        {
+          "acl": null,
+          "name": "close_event_when_sold_out",
+          "anon_update": false,
+          "service_update": true,
+          "authenticated_insert": true,
+          "authenticated_update": true
+        }
+      ],
+      "public_defaults": [
+        {
+          "acl": [
+            "postgres=arwdDxtm/postgres",
+            "anon=arwdDxtm/postgres",
+            "authenticated=arwdDxtm/postgres",
+            "service_role=arwdDxtm/postgres"
+          ],
+          "kind": "r",
+          "creator": "postgres"
+        },
+        {
+          "acl": [
+            "postgres=X/postgres",
+            "anon=X/postgres",
+            "authenticated=X/postgres",
+            "service_role=X/postgres"
+          ],
+          "kind": "f",
+          "creator": "postgres"
+        },
+        {
+          "acl": [
+            "postgres=rwU/postgres",
+            "anon=rwU/postgres",
+            "authenticated=rwU/postgres",
+            "service_role=rwU/postgres"
+          ],
+          "kind": "S",
+          "creator": "postgres"
+        },
+        {
+          "acl": [
+            "postgres=rwU/supabase_admin",
+            "anon=rwU/supabase_admin",
+            "authenticated=rwU/supabase_admin",
+            "service_role=rwU/supabase_admin"
+          ],
+          "kind": "S",
+          "creator": "supabase_admin"
+        },
+        {
+          "acl": [
+            "postgres=arwdDxtm/supabase_admin",
+            "anon=arwdDxtm/supabase_admin",
+            "authenticated=arwdDxtm/supabase_admin",
+            "service_role=arwdDxtm/supabase_admin"
+          ],
+          "kind": "r",
+          "creator": "supabase_admin"
+        },
+        {
+          "acl": [
+            "postgres=X/supabase_admin",
+            "anon=X/supabase_admin",
+            "authenticated=X/supabase_admin",
+            "service_role=X/supabase_admin"
+          ],
+          "kind": "f",
+          "creator": "supabase_admin"
+        }
+      ],
+      "role_memberships": null,
+      "rpc_dependencies": null,
+      "form_foreign_keys": [
+        {
+          "name": "event_form_fields_event_id_fkey",
+          "validated": true,
+          "definition": "FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE"
+        },
+        {
+          "name": "event_form_fields_group_id_fkey",
+          "validated": true,
+          "definition": "FOREIGN KEY (group_id) REFERENCES event_form_field_groups(id) ON DELETE SET NULL"
+        }
+      ]
+    },
+    "edge_functions": [
+      "workers",
+      "invoices",
+      "stripe-connect-status",
+      "orders",
+      "organization-payment-settings",
+      "stripe-webhook-connect",
+      "accounts",
+      "stripe-connect-start",
+      "subscriptions"
+    ]
+  }
+}

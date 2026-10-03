@@ -13,24 +13,22 @@
     "preview": "vite preview",
     "check:backend": "deno task --config supabase/functions/deno.json check:edge",
     "lint:backend": "deno task --config supabase/functions/deno.json lint:edge",
-    "test:backend": "deno task --config supabase/functions/deno.json test:edge"
+    "test:backend": "deno task --config supabase/functions/deno.json test:edge",
+    "check:browser-boundary": "node scripts/security/check-browser-boundary.mjs"
   },
   "dependencies": {
     "@mdxeditor/editor": "^4.0.1",
     "@supabase/supabase-js": "^2.91.1",
     "exceljs": "^4.4.0",
     "html5-qrcode": "^2.3.8",
-    "nodemailer": "^8.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-helmet-async": "^2.0.5",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.13.0",
-    "rehype-raw": "^7.0.0",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "vitest": "^4.1.9",
-    "xlsx": "^0.18.5",
     "zod": "4.3.6"
   },
   "devDependencies": {

@@ -1,3 +1,5 @@
+import { useAuth } from "@providers/AuthProvider/useAuth";
+import { getSessionScope } from "@gateways/supabase/sessionScope";
 import { supabase } from "@gateways/supabase/supabaseClient";
 import { EventPromoCodesPanel } from "./EventPromoCodesPanel";
 
@@ -9,9 +11,12 @@ export function SingleEventPromoCodesSection(props: {
   onChanged: () => Promise<void>;
 }) {
   const { orgId, event, onChanged } = props;
+  const { session } = useAuth();
+  const sessionScope = getSessionScope(session);
 
   return (
     <EventPromoCodesPanel
+      key={JSON.stringify([sessionScope, orgId, event.id])}
       supabase={supabase}
       orgId={orgId}
       event={event}

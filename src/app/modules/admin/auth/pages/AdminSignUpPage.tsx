@@ -14,7 +14,7 @@ export function AdminSignUpPage() {
 
   return (
     <AuthScaffold
-      eyebrow="Créer votre espace"
+      eyebrow={signupsPaused ? "Maintenance" : "Créer votre espace"}
       title={signupsPaused ? "Inscriptions temporairement clôturées" : "Lancez votre prochain événement"}
       subtitle={signupsPaused
         ? "Nous effectuons une maintenance. Les comptes existants peuvent toujours se connecter."

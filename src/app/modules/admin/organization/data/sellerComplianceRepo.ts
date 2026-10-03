@@ -1,5 +1,11 @@
+import { DPA_VERSION, EVENTFLOW_CONNECT_TERMS_VERSION, EVENTFLOW_PLATFORM_TERMS_VERSION, EVENTFLOW_PRIVACY_VERSION } from "../../../../../../shared/legal/documents";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabaseSafe } from "@shared/gateways/supabase/supabaseSafe";
+import { edgeSafe } from "@shared/gateways/supabase/supabaseEdgeSafe";
+import {
+  sellerIdentityRequestSchema,
+  acceptAgreementsRequestSchema,
+  mutationSuccessSchema,
+} from "@contracts/organizations";
 
 export type SellerIdentityInput = {
   legalName: string;
@@ -12,23 +18,28 @@ export type SellerIdentityInput = {
 export function sellerComplianceRepo(supabase: SupabaseClient) {
   return {
     async saveIdentity(orgId: string, identity: SellerIdentityInput) {
-      await supabaseSafe(() => supabase.rpc("update_organization_seller_identity", {
-        p_org_id: orgId,
-        p_legal_name: identity.legalName.trim(),
-        p_address: identity.address.trim(),
-        p_business_number: identity.businessNumber.trim() || null,
-        p_seller_type: identity.sellerType,
-        p_phone: identity.phone.trim(),
-      }));
+      const body = sellerIdentityRequestSchema.parse({
+        ...identity,
+        orgId,
+        businessNumber: identity.businessNumber.trim() || null,
+      });
+      const raw = await edgeSafe<unknown>(() =>
+        supabase.functions.invoke("organizations/seller-identity", { body })
+      );
+      mutationSuccessSchema.parse(raw);
     },
     async acceptAgreements(orgId: string) {
-      await supabaseSafe(() => supabase.rpc("accept_organization_platform_agreements", {
-        p_org_id: orgId,
-        p_connect_version: "2026-10-01",
-        p_dpa_version: "2026-10-01",
-        p_platform_terms_version: "2026-10-01",
-        p_privacy_version: "2026-10-01",
-      }));
+      const body = acceptAgreementsRequestSchema.parse({
+        orgId,
+        connectVersion: EVENTFLOW_CONNECT_TERMS_VERSION,
+        dpaVersion: DPA_VERSION,
+        platformTermsVersion: EVENTFLOW_PLATFORM_TERMS_VERSION,
+        privacyVersion: EVENTFLOW_PRIVACY_VERSION,
+      });
+      const raw = await edgeSafe<unknown>(() =>
+        supabase.functions.invoke("organizations/agreements", { body })
+      );
+      mutationSuccessSchema.parse(raw);
     },
   };
 }

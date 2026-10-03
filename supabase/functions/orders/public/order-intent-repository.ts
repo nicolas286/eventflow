@@ -7,6 +7,7 @@ function mapCreateOrderIntentError(message: unknown): ResponseError {
   const normalized = String(message ?? "");
 
   const mappings: ReadonlyArray<readonly [string, number, string]> = [
+    ["ORGANIZATION_SUSPENDED", 403, "ORGANIZATION_SUSPENDED"],
     ["TERMS_CHANGED_RELOAD", 409, "TERMS_CHANGED_RELOAD"],
     ["ORG_STRIPE_ONBOARDING_INCOMPLETE", 409, "ORG_STRIPE_ONBOARDING_INCOMPLETE"],
     [

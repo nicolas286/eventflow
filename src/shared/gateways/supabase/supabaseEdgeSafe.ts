@@ -1,22 +1,32 @@
+import { edgeRequestError } from "@errors/edgeRequestError";
+
 type SupabaseEdgeResponse<T> = {
   data: T | null;
   error: unknown;
 };
 
 async function extractEdgeErrorMessage(error: unknown): Promise<string | null> {
-  const ctx = (error as any)?.context;
+  const ctx = typeof error === "object" && error !== null && "context" in error
+    ? error.context
+    : null;
+  let body: unknown = null;
 
   try {
-    const body = await ctx?.json?.();
-
-    if (body && typeof body === "object") {
-      const obj = body as Record<string, unknown>;
-
-      if (typeof obj.error === "string") return obj.error;
-      if (typeof obj.message === "string") return obj.message;
+    if (typeof ctx === "object" && ctx !== null && "json" in ctx && typeof ctx.json === "function") {
+      body = await ctx.json();
     }
   } catch {
     // ignore
+  }
+
+  if (ctx instanceof Response) {
+    const controlledError = edgeRequestError(ctx, body);
+    if (controlledError) throw controlledError;
+  }
+
+  if (body && typeof body === "object") {
+    if ("error" in body && typeof body.error === "string") return body.error;
+    if ("message" in body && typeof body.message === "string") return body.message;
   }
 
   if (error instanceof Error) return error.message;

@@ -241,9 +241,9 @@ export function PlatformMfaPage() {
           {loading ? "Préparation…" : "Valider et accéder"}
         </button>
         <p className="platformMuted">
-          Facteur perdu ? Un autre administrateur actif doit faire révoquer puis
-          réattribuer l’accès après vérification d’identité. Aucun contournement
-          du MFA n’est proposé ici.
+          Facteur perdu ? Contactez un administrateur actif pour suspendre
+          l’accès et suivre la procédure de récupération Auth après vérification
+          d’identité. Réattribuer le rôle ne réinitialise pas le facteur perdu.
         </p>
         <button
           className="platformLinkButton"

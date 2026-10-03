@@ -1,3 +1,5 @@
+import { useAuth } from "@providers/AuthProvider/useAuth";
+import { getSessionScope } from "@gateways/supabase/sessionScope";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@gateways/supabase/supabaseClient";
@@ -36,6 +38,8 @@ export function SingleEventTicketsSubSection(props: {
     onScannerAutoOpened,
   } = props;
 
+  const { session } = useAuth();
+  const sessionScope = getSessionScope(session);
   const [query, setQuery] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [page, setPage] = useState(0);
@@ -79,8 +83,8 @@ export function SingleEventTicketsSubSection(props: {
   const rawTickets = useMemo(() => activeData?.tickets?.rows ?? [], [activeData]);
   const totalTickets = activeData?.tickets?.total ?? 0;
 
-  const markTicket = useMarkTicketCheckedIn({ supabase });
-  const markTicketByQr = useMarkTicketCheckedInByQr({ supabase });
+  const markTicket = useMarkTicketCheckedIn({ supabase, eventId });
+  const markTicketByQr = useMarkTicketCheckedInByQr({ supabase, eventId });
 
   const ticketsByQrToken = useMemo(() => {
     const map = new Map<string, AdminEventTicket>();
@@ -253,7 +257,7 @@ export function SingleEventTicketsSubSection(props: {
         <div className="adminTicketsList">
           {displayedTickets.map((ticket: AdminEventTicket) => {
             const isUsed = Boolean(ticket.checkedInAt);
-            const isInvalid = ticket.status === "invalid";
+            const isInvalid = ticket.status === "invalid" || ticket.status === "cancelled";
 
             return (
               <div key={ticket.id} className="adminTicketRow">
@@ -290,10 +294,13 @@ export function SingleEventTicketsSubSection(props: {
                       variant="secondary"
                       disabled={isUsed || isInvalid || markTicket.loading}
                       onClick={async () => {
-                        const res = await markTicket.markTicketCheckedIn(ticket.id, eventId);
-                        if (!res) return;
-                        await activeRefetch();
-                        await onChanged?.();
+                        try {
+                          await markTicket.markTicketCheckedIn(ticket.id, eventId);
+                          await activeRefetch();
+                          if (markTicket.isCurrentScope()) await onChanged?.();
+                        } catch {
+                          // Current failures are displayed by the scoped mutation hook.
+                        }
                       }}
                     >
                       Marquer comme utilisé
@@ -307,6 +314,7 @@ export function SingleEventTicketsSubSection(props: {
       )}
 
       <TicketQrScannerFullscreen
+        key={`${sessionScope}:${eventId}`}
         open={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onScanToken={handleScanToken}

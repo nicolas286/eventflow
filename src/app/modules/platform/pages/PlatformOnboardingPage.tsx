@@ -14,7 +14,8 @@ export function PlatformOnboardingPage() {
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setError(null); setSuccess(false);
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const ownerEmail = String(form.get("ownerEmail")).trim().toLowerCase();
     const payload = {
       ownerEmail,
@@ -32,9 +33,9 @@ export function PlatformOnboardingPage() {
     setLoading(true);
     try {
       await runCritical("organizations.onboard", ownerEmail, `Créer l’organisation « ${payload.organizationName} » et attribuer ${ownerEmail} comme propriétaire ? Une invitation peut être envoyée.`, (token) => platformAdminRepo.onboard(payload, token));
-      setSuccess(true); setIdempotencyKey(crypto.randomUUID()); event.currentTarget.reset();
+      setSuccess(true); setIdempotencyKey(crypto.randomUUID()); formElement.reset();
     } catch (cause) {
-      if ((cause as Error).message !== "Action annulée") setError(normalizeError(cause, "Onboarding impossible.").message);
+      if ((cause instanceof Error ? cause.message : null) !== "Action annulée") setError(normalizeError(cause, "Onboarding impossible.").message);
     } finally { setLoading(false); }
   };
 

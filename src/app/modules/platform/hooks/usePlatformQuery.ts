@@ -1,27 +1,42 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { normalizeError } from "@errors/errors";
+import { useAuth } from "@providers/AuthProvider/useAuth";
+import { getSessionScope } from "@gateways/supabase/sessionScope";
 
 export function usePlatformQuery<T>(load: () => Promise<T>, queryKey = "default") {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { session } = useAuth();
+  const sessionScope = getSessionScope(session);
+  const key = JSON.stringify([sessionScope, queryKey]);
+  const [result, setResult] = useState<{ key: string; data: T | null; loading: boolean; error: string | null }>({ key, data: null, loading: true, error: null });
+  const loaderRef = useRef(load);
+  const activeKeyRef = useRef<string | null>(null);
+  const generationRef = useRef(0);
+  useEffect(() => { loaderRef.current = load; }, [load]);
 
-  const loadersRef = useRef(new Map<string, () => Promise<T>>());
-  loadersRef.current.set(queryKey, load);
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const request = useCallback(async () => {
+    if (sessionScope === null || activeKeyRef.current !== key) return;
+    const generation = ++generationRef.current;
+    const isCurrent = () => activeKeyRef.current === key && generationRef.current === generation;
     try {
-      const currentLoad = loadersRef.current.get(queryKey);
-      if (!currentLoad) throw new Error("PLATFORM_QUERY_NOT_FOUND");
-      setData(await currentLoad());
+      const data = await loaderRef.current();
+      if (isCurrent()) setResult({ key, data, loading: false, error: null });
     } catch (cause) {
-      setError(normalizeError(cause, "Impossible de charger ces données.").message);
-    } finally {
-      setLoading(false);
+      if (isCurrent()) setResult({ key, data: null, loading: false, error: normalizeError(cause, "Impossible de charger ces données.").message });
     }
-  }, [queryKey]);
+  }, [key, sessionScope]);
 
-  useEffect(() => { void reload(); }, [reload]);
-  return { data, loading, error, reload };
+  const reload = useCallback(async () => {
+    if (sessionScope === null || activeKeyRef.current !== key) return;
+    setResult({ key, data: null, loading: true, error: null });
+    await request();
+  }, [key, request, sessionScope]);
+
+  useEffect(() => {
+    activeKeyRef.current = key;
+    void request();
+    return () => { activeKeyRef.current = null; };
+  }, [key, request]);
+  // Mask on the very first render of a different identity/org, before effects.
+  const current = sessionScope !== null && result.key === key;
+  return { data: current ? result.data : null, loading: current ? result.loading : sessionScope !== null, error: current ? result.error : null, reload };
 }

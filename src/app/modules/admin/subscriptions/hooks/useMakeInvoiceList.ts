@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { makeInvoiceListRepo } from "../data/makeInvoiceListRepo";
 
-import type { Invoice } from "@shared/models/db/db.invoice.schema";
+import type { InvoiceHistoryItem } from "@contracts/invoice-history";
 import { normalizeError } from "@errors/errors";
 
 /* ------------------------------------------------------------------ */
@@ -15,7 +15,7 @@ type Cursor = { issuedAt: string | null; id: string };
 type State = {
   loading: boolean;
   error: string | null;
-  items: Invoice[];
+  items: InvoiceHistoryItem[];
   nextCursor: Cursor | null;
 };
 
@@ -36,7 +36,7 @@ export function useMakeInvoiceList(params: { supabase: SupabaseClient }) {
   });
 
   const fetchFirst = useCallback(
-    async (input: { orgId: string; limit?: number }): Promise<Invoice[]> => {
+    async (input: { orgId: string; limit?: number }): Promise<InvoiceHistoryItem[]> => {
       try {
         setState((s) => ({ ...s, loading: true, error: null }));
 
@@ -50,7 +50,7 @@ export function useMakeInvoiceList(params: { supabase: SupabaseClient }) {
           loading: false,
           error: null,
           items: res.items,
-          nextCursor: (res.nextCursor as any) ?? null,
+          nextCursor: res.nextCursor,
         });
 
         return res.items;
@@ -64,7 +64,7 @@ export function useMakeInvoiceList(params: { supabase: SupabaseClient }) {
   );
 
   const fetchMore = useCallback(
-    async (input: { orgId: string; limit?: number }): Promise<Invoice[]> => {
+    async (input: { orgId: string; limit?: number }): Promise<InvoiceHistoryItem[]> => {
       try {
         setState((s) => ({ ...s, loading: true, error: null }));
 
@@ -86,7 +86,7 @@ export function useMakeInvoiceList(params: { supabase: SupabaseClient }) {
           loading: false,
           error: null,
           items: [...s.items, ...res.items],
-          nextCursor: (res.nextCursor as any) ?? null,
+          nextCursor: res.nextCursor,
         }));
 
         return res.items;

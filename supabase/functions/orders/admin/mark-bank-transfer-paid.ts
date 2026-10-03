@@ -2,6 +2,8 @@ import { markBankTransferPaidResponseSchema } from "../../../../shared/schemas/o
 import { orderIdSchema } from "../../../../shared/schemas/orders-read.ts";
 import { getBearer } from "../../_shared/auth.ts";
 import { createEdgeHandler } from "../../_shared/app/edge-handler/mod.ts";
+import { applicationRateLimits } from "../../_shared/app/config/rate-limits.ts";
+import { consumeRequestRateLimit } from "../../_shared/app/rate-limit/mod.ts";
 import { json as baseJson } from "../../_shared/app/http.ts";
 import {
   badRequest,
@@ -77,6 +79,12 @@ export const handleMarkBankTransferPaidRequest = createEdgeHandler(
       throw forbidden("FORBIDDEN");
     }
 
+    const quota = await consumeRequestRateLimit({
+      req, supabase: admin, logger, key: `user:${user.id}:org:${order.org_id}`,
+      ...applicationRateLimits.adminOrderMarkPaid,
+    });
+    if (!quota.allowed) return quota.response;
+
     if (["cancelled", "canceled", "expired"].includes(order.status)) {
       throw conflict("ORDER_NOT_PAYABLE");
     }
@@ -141,8 +149,6 @@ export const handleMarkBankTransferPaidRequest = createEdgeHandler(
     await sendConfirmationEmailForOrderSafe({
       admin,
       orderId: order.id,
-      functionsBase: Deno.env.get("FUNCTIONS_URL") ?? "",
-      edgeServiceToken: Deno.env.get("EDGE_SERVICE_TOKEN") ?? null,
       logger,
     });
 

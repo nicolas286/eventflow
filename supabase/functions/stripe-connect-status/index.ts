@@ -1,4 +1,8 @@
+import { stripeConnectStatusResultSchema } from "../../../shared/schemas/stripe-connect.ts";
+import { readStripeConnectInput } from "../_shared/payments/stripe-connect-http.ts";
 import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
+import { applicationRateLimits } from "../_shared/app/config/rate-limits.ts";
+import { consumeRequestRateLimit } from "../_shared/app/rate-limit/mod.ts";
 import { json } from "../_shared/app/http.ts";
 import { envTrim } from "../_shared/config.ts";
 import {
@@ -19,16 +23,6 @@ import {
   isStripeConnectAllowedForOrganization,
 } from "../_shared/payments/stripe-access.ts";
 
-function isUuid(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-      .test(
-        value,
-      )
-  );
-}
-
 export const handleStripeConnectStatus = createEdgeHandler(
   {
     name: "stripe-connect-status",
@@ -43,12 +37,8 @@ export const handleStripeConnectStatus = createEdgeHandler(
       return json(req, { error: "UNEXPECTED" }, 500);
     },
   },
-  async ({ req, user, serviceClient: admin }) => {
-    const body = await req.json().catch(() => null);
-    const orgId = body && typeof body === "object" && "orgId" in body
-      ? (body as { orgId?: unknown }).orgId
-      : null;
-    if (!isUuid(orgId)) throw badRequest("INVALID_ORG_ID");
+  async ({ req, user, serviceClient: admin, logger }) => {
+    const { orgId } = await readStripeConnectInput(req);
 
     const stripeSecretKey = envTrim("STRIPE_SECRET_KEY");
     if (!stripeSecretKey) throw internal("STRIPE_SECRET_KEY_MISSING");
@@ -78,6 +68,12 @@ export const handleStripeConnectStatus = createEdgeHandler(
       throw forbidden("STRIPE_CONNECT_NOT_ALLOWED");
     }
 
+    const quota = await consumeRequestRateLimit({
+      req, supabase: admin, logger, key: `user:${user.id}:org:${orgId.toLowerCase()}`,
+      ...applicationRateLimits.connectStatus,
+    });
+    if (!quota.allowed) return quota.response;
+
     const provider = new StripeConnectedAccountProvider(stripeSecretKey);
     const status = await provider.getConnectedAccountStatus(
       org.stripe_connected_account_id,
@@ -87,22 +83,25 @@ export const handleStripeConnectStatus = createEdgeHandler(
       expectedAccountId: org.stripe_connected_account_id,
     });
 
-    return json(req, {
-      ok: true,
-      status: !status.configurationSupported
-        ? "requires_migration"
-        : isStripeAccountReady(status)
-        ? "connected"
-        : "pending",
-      accountType: status.accountType,
-      configurationSupported: status.configurationSupported,
-      complianceVerified: status.configurationSupported,
-      requirementsDisabledReason: status.requirementsDisabledReason,
-      requirementsCurrentlyDue: status.requirementsCurrentlyDue,
-      detailsSubmitted: status.detailsSubmitted,
-      chargesEnabled: status.chargesEnabled,
-      payoutsEnabled: status.payoutsEnabled,
-    });
+    return json(
+      req,
+      stripeConnectStatusResultSchema.parse({
+        ok: true,
+        status: !status.configurationSupported
+          ? "requires_migration"
+          : isStripeAccountReady(status)
+          ? "connected"
+          : "pending",
+        accountType: status.accountType,
+        configurationSupported: status.configurationSupported,
+        complianceVerified: status.configurationSupported,
+        requirementsDisabledReason: status.requirementsDisabledReason,
+        requirementsCurrentlyDue: status.requirementsCurrentlyDue,
+        detailsSubmitted: status.detailsSubmitted,
+        chargesEnabled: status.chargesEnabled,
+        payoutsEnabled: status.payoutsEnabled,
+      }),
+    );
   },
 );
 

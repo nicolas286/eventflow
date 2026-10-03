@@ -12,14 +12,15 @@ export function PlatformAdminsPage() {
   const [error, setError] = useState<string | null>(null);
   const [revokeReason, setRevokeReason] = useState("");
   const grant = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); const form = new FormData(event.currentTarget); const email = String(form.get("email")).trim().toLowerCase(); const reason = String(form.get("reason")); const note = String(form.get("note"));
-    try { await runCritical("admins.grant", email, `Accorder à ${email} un accès complet au back-office plateforme ?`, (token) => platformAdminRepo.changeAdmin("grant", { email, reason, note }, token)); await query.reload(); event.currentTarget.reset(); }
-    catch (cause) { if ((cause as Error).message !== "Action annulée") setError(normalizeError(cause, "Attribution impossible.").message); }
+    event.preventDefault(); const formElement = event.currentTarget;
+    const form = new FormData(formElement); const email = String(form.get("email")).trim().toLowerCase(); const reason = String(form.get("reason")); const note = String(form.get("note"));
+    try { await runCritical("admins.grant", email, `Accorder à ${email} un accès complet au back-office plateforme ?`, (token) => platformAdminRepo.changeAdmin("grant", { email, reason, note }, token)); await query.reload(); formElement.reset(); }
+    catch (cause) { if ((cause instanceof Error ? cause.message : null) !== "Action annulée") setError(normalizeError(cause, "Attribution impossible.").message); }
   };
   const revoke = async (userId: string, email: string) => {
     const reason = revokeReason.trim(); if (reason.length < 3) { setError("Indiquez un motif de révocation."); return; }
     try { await runCritical("admins.revoke", userId, `Révoquer immédiatement l’accès plateforme de ${email} ?`, (token) => platformAdminRepo.changeAdmin("revoke", { email, reason }, token)); setRevokeReason(""); await query.reload(); }
-    catch (cause) { if ((cause as Error).message !== "Action annulée") setError(normalizeError(cause, "Révocation impossible.").message); }
+    catch (cause) { if ((cause instanceof Error ? cause.message : null) !== "Action annulée") setError(normalizeError(cause, "Révocation impossible.").message); }
   };
   return <><Helmet><title>Administrateurs · Eventflow Platform</title></Helmet><PageHeader eyebrow="Accès internes" title="Administrateurs plateforme" />
     <div className="platformGrid"><Panel title="Accorder un accès"><form onSubmit={(event) => void grant(event)} className="platformFormGrid"><label>E-mail d’un compte existant<input name="email" type="email" required /></label><label>Note interne<input name="note" maxLength={1000} /></label><label>Motif<input name="reason" minLength={3} maxLength={1000} required /></label><button className="platformButton platformButton--danger">Réauthentifier et accorder</button></form>{error ? <p className="platformError">{error}</p> : null}</Panel>

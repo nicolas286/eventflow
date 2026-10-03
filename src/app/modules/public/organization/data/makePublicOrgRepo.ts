@@ -1,19 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabaseSafe } from "@gateways/supabase/supabaseSafe";
-import { snakeToCamel } from "@helpers/snakeToCamel";
-import { publicOrgBySlugSchema,
-  type PublicOrgBySlug
- } from "../schemas/public.orgBySlug.schema";
- 
+import { edgeSafe } from "@gateways/supabase/supabaseEdgeSafe";
+import {
+  publicOrgRequestSchema,
+  publicOrgBySlugSchema,
+} from "@contracts/public-catalog";
 export function makePublicOrgRepo(supabase: SupabaseClient) {
   return {
-    async getPublicOrgBySlug(slug: string): Promise<PublicOrgBySlug> {
-      const raw = await supabaseSafe(() =>
-        supabase.rpc("get_public_org_by_slug", { p_slug: slug })
+    async getPublicOrgBySlug(slug: string) {
+      const body = publicOrgRequestSchema.parse({ orgSlug: slug });
+      const result = publicOrgBySlugSchema.parse(
+        await edgeSafe<unknown>(() =>
+          supabase.functions.invoke("events/public/org", { body }),
+        ),
       );
-
-      const camel = snakeToCamel(raw);
-      return publicOrgBySlugSchema.parse(camel);
+      if (result.profile.slug !== body.orgSlug)
+        throw new Error("CATALOG_SCOPE_INVALID");
+      return result;
     },
   };
 }

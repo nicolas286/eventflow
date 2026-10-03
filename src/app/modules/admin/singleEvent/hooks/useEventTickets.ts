@@ -2,74 +2,10 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { makeEventTicketsAdminRepo } from "../data/makeEventTicketsRepo";
-import type { GetEventTicketsAdminResponse } from "../schemas/admin.eventTickets.schema";
-import { normalizeError } from "@errors/errors";
 
-type State = {
-  loading: boolean;
-  error: string | null;
-  data: GetEventTicketsAdminResponse | null;
-};
-
-function createAdminSingleEventTicketsStore(
-  loadFn: () => Promise<Omit<State, "loading" | "error">>,
-  enabled: boolean,
-) {
-  let state: State = {
-    loading: enabled,
-    error: null,
-    data: null,
-  };
-
-  const listeners = new Set<() => void>();
-  const emit = () => listeners.forEach((l) => l());
-
-  let started = false;
-
-  async function load() {
-    if (!enabled) {
-      state = { ...state, loading: false };
-      emit();
-      return;
-    }
-
-    state = { ...state, loading: true, error: null };
-    emit();
-
-    try {
-      const next = await loadFn();
-      state = { loading: false, error: null, ...next };
-      emit();
-    } catch (e: unknown) {
-      const ne = normalizeError(
-        e,
-        "Impossible de charger les billets de l’événement",
-      );
-      state = { ...state, loading: false, error: ne.message };
-      emit();
-    }
-  }
-
-  function ensureStarted() {
-    if (started || !enabled) return;
-    started = true;
-    void load();
-  }
-
-  return {
-    subscribe(cb: () => void) {
-      ensureStarted();
-      listeners.add(cb);
-      return () => listeners.delete(cb);
-    },
-    getSnapshot() {
-      return state;
-    },
-    refetch() {
-      return load();
-    },
-  };
-}
+import { createSearchEventAdminTicketsStore } from "../../orders/hooks/useSearchEventTicketsView";
+import { useAuth } from "@providers/AuthProvider/useAuth";
+import { getSessionScope } from "@gateways/supabase/sessionScope";
 
 export function useAdminSingleEventTicketsData(params: {
   supabase: SupabaseClient;
@@ -86,6 +22,8 @@ export function useAdminSingleEventTicketsData(params: {
     offset = 0,
   } = params;
 
+  const { session } = useAuth();
+  const sessionScope = getSessionScope(session);
   const ticketsRepo = useMemo(
     () => makeEventTicketsAdminRepo(supabase),
     [supabase],
@@ -106,8 +44,12 @@ export function useAdminSingleEventTicketsData(params: {
   }, [eventId, ticketsRepo, limit, offset]);
 
   const store = useMemo(
-    () => createAdminSingleEventTicketsStore(loadFn, enabled),
-    [loadFn, enabled],
+    () =>
+      createSearchEventAdminTicketsStore(
+        loadFn,
+        enabled && Boolean(eventId) && sessionScope !== null,
+      ),
+    [loadFn, enabled, eventId, sessionScope],
   );
 
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot);

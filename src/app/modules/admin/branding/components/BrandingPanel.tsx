@@ -219,7 +219,7 @@ export default function BrandingPanel({
           hint="PNG/JPG/WebP · max 2MB"
           valueUrl={org.logoUrl ?? ""}
           previewUrl={effectiveLogoPreview}
-          accept="image/*"
+          accept="image/png,image/jpeg,image/webp,image/gif"
           maxBytes={2 * 1024 * 1024}
           maxLabel="2MB"
           variant="logo"
@@ -247,7 +247,7 @@ export default function BrandingPanel({
           hint="Recommandé: large (ex: 1600×600) · max 4MB"
           valueUrl={org.defaultEventBannerUrl ?? ""}
           previewUrl={effectiveBannerPreview}
-          accept="image/*"
+          accept="image/png,image/jpeg,image/webp,image/gif"
           maxBytes={4 * 1024 * 1024}
           maxLabel="4MB"
           variant="banner"

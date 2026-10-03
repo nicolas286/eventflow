@@ -3,6 +3,7 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 import { z } from "zod";
 import { humanBusinessMessage } from "./businessErrorMessages";
+import { EdgeRequestError, humanEdgeRequestMessage } from "./edgeRequestError";
 import {
   isEmailRateLimitMessage,
   humanEmailRateLimitMessage,
@@ -350,6 +351,14 @@ function sanitizeRawMessage(raw: string | null): string | null {
 
 export function normalizeError(e: unknown, fallbackMessage: string): AppError {
   if (isAppError(e)) return e;
+
+  if (e instanceof EdgeRequestError) {
+    return new AppError({
+      code: "NETWORK",
+      message: humanEdgeRequestMessage(e),
+      meta: { kind: "functions", status: e.status, retryAfterSeconds: e.retryAfterSeconds },
+    });
+  }
 
   // ✅ Zod
   if (e instanceof z.ZodError) {

@@ -126,7 +126,7 @@ export function PlatformCommunicationsPage() {
       setActionReason("");
       await announcements.reload();
     } catch (cause) {
-      if ((cause as Error).message !== "Action annulée") {
+      if ((cause instanceof Error ? cause.message : null) !== "Action annulée") {
         setError(normalizeError(cause, "Action impossible.").message);
       }
     }
@@ -169,16 +169,18 @@ export function PlatformCommunicationsPage() {
       if (resultHolder.value) {
         const completed = resultHolder.value;
         setNotice(
-          `Campagne terminée : ${completed.sentCount}/${completed.recipientCount} e-mail(s) envoyé(s), ${completed.failedCount} échec(s).`,
+          `Campagne ${completed.status === "sending" ? "en cours" : "terminée"} : ${completed.sentCount}/${completed.recipientCount} e-mail(s) envoyé(s), ${completed.failedCount} échec(s).${completed.status === "failed" || completed.status === "partial" ? " Vous pouvez réessayer après une minute sans modifier les champs : trois tentatives maximum dans les 23 heures." : ""}`,
         );
       }
-      setEmailSubject("");
-      setEmailBody("");
-      setEmailReason("");
-      setEmailIdempotencyKey(crypto.randomUUID());
+      if (resultHolder.value?.status === "completed") {
+        setEmailSubject("");
+        setEmailBody("");
+        setEmailReason("");
+        setEmailIdempotencyKey(crypto.randomUUID());
+      }
       await campaigns.reload();
     } catch (cause) {
-      if ((cause as Error).message !== "Action annulée") {
+      if ((cause instanceof Error ? cause.message : null) !== "Action annulée") {
         setError(normalizeError(cause, "Envoi impossible.").message);
       }
     } finally {

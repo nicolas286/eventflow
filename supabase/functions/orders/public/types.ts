@@ -58,9 +58,7 @@ export type CheckoutContext = {
 export type RuntimeConfig = {
   supabaseUrl: string;
   serviceKey: string;
-  functionsBase: string;
   appBaseUrl: string;
-  edgeServiceToken: string | null;
   registerRateLimitPer10Min: number;
   turnstileSecret: string | null;
   turnstileBypass: boolean;

@@ -100,7 +100,7 @@ Deno.test("a processed receipt canceled before fulfillment cannot issue tickets 
     throw new Error(`Unexpected fulfillment after cancellation: ${path}`);
   };
   await completeTicketPayment({ admin: createClient(url, "fixture-key"), object,
-    connectedAccountId: "acct_fixture", functionsBase: null, edgeServiceToken: null, logger });
+    connectedAccountId: "acct_fixture", logger });
 }));
 
 for (const providerRefundId of ["re_fixture", "pyr_fixture"]) Deno.test(`late Stripe receipts resume ${providerRefundId} and never issue tickets`, () => withFixture(async () => {
@@ -143,7 +143,7 @@ for (const providerRefundId of ["re_fixture", "pyr_fixture"]) Deno.test(`late St
     throw new Error(`Unexpected call (no tickets on expired orders): ${parsedUrl.pathname}`);
   };
   const input = { admin: createClient(url, "fixture-key"), object, connectedAccountId: "acct_fixture",
-    functionsBase: null, edgeServiceToken: null, logger };
+    logger };
   await assertRejects(() => completeTicketPayment(input), Error, "STRIPE_LATE_REFUND_APPLY_FAILED");
   assertEquals(completed, false);
   await completeTicketPayment(input);
@@ -234,7 +234,7 @@ Deno.test("late Stripe receipts recover a lost refund response and reject partia
     throw new Error(`Unexpected call (must not create a second refund): ${request.method} ${path}`);
   };
   const input = { admin: createClient(url, "fixture-key"), object, connectedAccountId: "acct_fixture",
-    functionsBase: null, edgeServiceToken: null, logger };
+    logger };
   await completeTicketPayment(input);
   assertEquals(recorded, 2);
   amount = 100;

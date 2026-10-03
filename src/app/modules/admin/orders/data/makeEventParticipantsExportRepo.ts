@@ -1,17 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { supabaseSafe } from "@gateways/supabase/supabaseSafe";
-import { snakeToCamel } from "@helpers/snakeToCamel";
+import { edgeSafe } from "@gateways/supabase/supabaseEdgeSafe";
+import { z } from "zod";
+import { participantsExportRequestSchema, participantsExportPageSchema, participantsExportCursorSchema } from "@contracts/orders-management";
+
 
 import {
   eventParticipantsExportSchema,
   type EventParticipantsExportData,
 } from "../schemas/admin.getEventParticipantsExport.schema";
-
-import {
-  getEventParticipantsExportArgsSchema,
-  type GetEventParticipantsExportArgs,
-} from "../schemas/admin.getEventParticipantsExportInput.schema";
 
 export type GetEventParticipantsExportParams =
   | {
@@ -24,40 +21,27 @@ export type GetEventParticipantsExportParams =
       confirmedOnly?: boolean;
     };
 
-function isBySlug(
-  p: GetEventParticipantsExportParams,
-): p is Extract<GetEventParticipantsExportParams, { orgId: string; eventSlug: string }> {
-  return "orgId" in p && "eventSlug" in p;
-}
-
 export function makeEventParticipantsExportRepo(supabase: SupabaseClient) {
   return {
     async getEventParticipantsExportData(
       params: GetEventParticipantsExportParams,
     ): Promise<EventParticipantsExportData> {
-      const candidate: GetEventParticipantsExportArgs = isBySlug(params)
-        ? {
-            p_org_id: params.orgId,
-            p_event_slug: params.eventSlug,
-            p_confirmed_only: params.confirmedOnly ?? true,
-          }
-        : {
-            p_event_id: params.eventId,
-            p_confirmed_only: params.confirmedOnly ?? true,
-          };
-
-      const payload = getEventParticipantsExportArgsSchema.parse(candidate);
-
-      const raw = await supabaseSafe<unknown | null>(() =>
-        supabase.rpc("get_event_admin_participants_export_data", payload),
-      );
-
-      if (!raw) {
-        throw new Error("NOT_FOUND");
-      }
-
-      const camel = snakeToCamel(raw);
-      return eventParticipantsExportSchema.parse(camel);
+      const base = participantsExportRequestSchema.parse(params);
+      const result: EventParticipantsExportData = { orders: { rows: [] }, orderItems: [], attendees: [], attendeeAnswers: [] };
+      let cursor: z.infer<typeof participantsExportCursorSchema> | null = null;
+      do {
+        const raw = await edgeSafe<unknown>(() => supabase.functions.invoke("orders/admin/participants-export", {
+          body: { ...base, cursor },
+        }), "ORDERS_ADMIN_EMPTY_RESPONSE");
+        const page = participantsExportPageSchema.parse(raw);
+        result.orders.rows.push(...page.orders.rows);
+        result.orderItems.push(...page.orderItems);
+        result.attendees.push(...page.attendees);
+        result.attendeeAnswers.push(...page.attendeeAnswers);
+        if (cursor && page.nextCursor && page.nextCursor.after <= cursor.after) throw new Error("EXPORT_CURSOR_INVALID");
+        cursor = page.nextCursor;
+      } while (cursor);
+      return eventParticipantsExportSchema.parse(result);
     },
   };
 }

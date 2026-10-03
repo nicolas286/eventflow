@@ -1,6 +1,9 @@
+import { assertTurnstileBypassAllowed } from "../../_shared/environment-safety.ts";
 import { forbidden, internal } from "../../_shared/errors.ts";
 
-export async function verifyTurnstile(opts: { secret: string; token: string; ip: string | null }) {
+export async function verifyTurnstile(
+  opts: { secret: string; token: string; ip: string | null },
+) {
   const form = new URLSearchParams();
   form.set("secret", opts.secret);
   form.set("response", opts.token);
@@ -29,7 +32,15 @@ export async function verifyTurnstile(opts: { secret: string; token: string; ip:
     data,
   };
 }
-export async function verifyCaptchaOrThrow(opts: { turnstileSecret: string | null; turnstileBypass: boolean; token: string; ip: string | null }) {
+export async function verifyCaptchaOrThrow(
+  opts: {
+    turnstileSecret: string | null;
+    turnstileBypass: boolean;
+    token: string;
+    ip: string | null;
+  },
+) {
+  if (opts.turnstileBypass) assertTurnstileBypassAllowed();
   if (opts.turnstileBypass && opts.token === "TEST_BYPASS") {
     return;
   }

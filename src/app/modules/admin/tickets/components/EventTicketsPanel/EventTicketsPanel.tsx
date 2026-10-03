@@ -29,6 +29,7 @@ type Props = {
   deleteError?: string | null;
 
   onChanged?: () => void;
+  isCurrentScope: () => boolean;
 };
 
 export function EventTicketsPanel(props: Props) {
@@ -39,6 +40,7 @@ export function EventTicketsPanel(props: Props) {
     onUpdate,
     onRemove,
     onChanged,
+    isCurrentScope,
     createLoading = false,
     updateLoading = false,
     deleteLoading = false,
@@ -76,6 +78,7 @@ export function EventTicketsPanel(props: Props) {
     onUpdate,
     onRemove,
     onChanged,
+    isCurrentScope,
     createLoading,
     updateLoading,
     deleteLoading,

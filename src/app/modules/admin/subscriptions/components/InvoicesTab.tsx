@@ -1,9 +1,10 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { EdgeRequestError, humanEdgeRequestMessage } from "@errors/edgeRequestError";
 import { invoicePdfRepo } from "../data/makeInvoicePdfUrlRepo";
 import { Button, Badge, Card, CardBody, CardHeader } from "@ui/components";
 import { useMakeInvoiceList } from "../hooks/useMakeInvoiceList";
 import { supabase } from "@gateways/supabase/supabaseClient";
-import type { Invoice } from "@shared/models/db/db.invoice.schema";
+import type { InvoiceHistoryItem } from "@contracts/invoice-history";
 
 function fmtMoneyCents(v: number | null | undefined) {
   if (v === null || v === undefined) return "—";
@@ -24,6 +25,8 @@ function fmtDateShort(d: string | null | undefined) {
 
 export function InvoicesTab({ orgId }: { orgId: string }) {
   const invoices = useMakeInvoiceList({ supabase });
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const pdfRetryAt = useRef(0);
 
   const pdfRepo = useMemo(() => invoicePdfRepo(supabase), []);
 
@@ -32,15 +35,22 @@ export function InvoicesTab({ orgId }: { orgId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
 
-  async function onDownloadPdf(inv: Invoice) {
+  async function onDownloadPdf(inv: InvoiceHistoryItem) {
+    if (Date.now() < pdfRetryAt.current) return;
+    setPdfError(null);
     try {
       const { url } = await pdfRepo.getPdfUrl({
         invoiceId: inv.id,
       });
 
       window.open(url, "_blank", "noopener,noreferrer");
-    } catch (e) {
-      console.error("PDF download failed", e);
+    } catch (cause) {
+      if (cause instanceof EdgeRequestError) {
+        pdfRetryAt.current = Date.now() + cause.retryAfterSeconds * 1000;
+      }
+      setPdfError(cause instanceof EdgeRequestError
+        ? humanEdgeRequestMessage(cause)
+        : "Impossible de télécharger la facture. Réessayez dans quelques instants.");
     }
   }
 
@@ -53,6 +63,11 @@ export function InvoicesTab({ orgId }: { orgId: string }) {
         subtitle="Historique des factures et téléchargements PDF."
       />
       <CardBody>
+        {pdfError && (
+          <div className="adminSub__alert adminSub__alert--error" role="alert">
+            {pdfError}
+          </div>
+        )}
         {invoices.error && (
           <div className="adminSub__alert adminSub__alert--error">
             {invoices.error}

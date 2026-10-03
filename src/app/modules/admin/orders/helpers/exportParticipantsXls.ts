@@ -45,6 +45,7 @@ import { safeFilename } from "@helpers/normalize";
 const FIXED_COLS = ["Réf commande", "Statut", "Billet", "Index"] as const;
 
 export type ExportParticipantsXlsInput = {
+  shouldDownload?: () => boolean;
   eventTitle?: string | null;
   regFields: EventFormField[];
   localAttendees: Attendee[];
@@ -210,6 +211,7 @@ export async function exportParticipantsXls(input: ExportParticipantsXlsInput) {
   const safeEventTitle = safeFilename(eventTitle ?? "event", "event", 60);
 
   const buffer = await wb.xlsx.writeBuffer();
+  if (input.shouldDownload && !input.shouldDownload()) return;
   const blob = new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });

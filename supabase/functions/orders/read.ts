@@ -1,10 +1,20 @@
 import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
+import { applicationRateLimits } from "../_shared/app/config/rate-limits.ts";
+import { consumeRequestRateLimit } from "../_shared/app/rate-limit/mod.ts";
+import { resolveRequestClientIp } from "../_shared/app/client-ip.ts";
 import { json } from "../_shared/app/http.ts";
 import { orderIdSchema, bookingTokenSchema, orderPublicSchema } from "../../../shared/schemas/orders-read.ts";
 
 export const handleReadOrderRequest = createEdgeHandler({
   name: "orders-read", method: "GET", auth: "none", serviceClient: true,
-}, async ({ req, serviceClient: admin }) => {
+}, async ({ req, serviceClient: admin, logger }) => {
+  const clientIp = await resolveRequestClientIp(req);
+  const ingress = await consumeRequestRateLimit({
+    req, supabase: admin, logger,
+    key: clientIp ? `ip:${clientIp.ip}` : "shared:unresolved",
+    ...(clientIp ? applicationRateLimits.orderReadIp : applicationRateLimits.orderReadFallback),
+  });
+  if (!ingress.allowed) return ingress.response;
   const url = new URL(req.url);
   const orderId = url.pathname.split("/").filter(Boolean).at(-1);
   const token = url.searchParams.get("token") ?? url.searchParams.get("bookingToken");
@@ -14,8 +24,15 @@ export const handleReadOrderRequest = createEdgeHandler({
   const { data: order, error } = await admin.from("orders")
     .select("id, status, total_cents, currency, event_id, org_id, buyer_email").eq("id", orderId)
     .eq("booking_token", bookingToken.data).maybeSingle();
-  if (error) return json(req, { error: "DB_ERROR", details: error.message }, 500);
+  // The filter contains a capability; never return/log a database error that
+  // could include its value or the request URL.
+  if (error) return json(req, { error: "DB_ERROR" }, 500);
   if (!order) return json(req, { error: "NOT_FOUND" }, 404);
+  const resourceQuota = await consumeRequestRateLimit({
+    req, supabase: admin, logger, key: `order:${order.id}`,
+    ...applicationRateLimits.orderReadResource,
+  });
+  if (!resourceQuota.allowed) return resourceQuota.response;
   const [{ data: event }, { data: organization }, { data: itemRows }] = await Promise.all([
     order.event_id
       ? admin.from("events").select("slug").eq("id", order.event_id).maybeSingle()

@@ -1,5 +1,6 @@
+import { EVENTFLOW_PLATFORM_TERMS_VERSION } from "../../../../../../shared/legal/documents";
 import type { Session } from "@supabase/supabase-js";
-import { supabase, supabaseSession } from "@gateways/supabase/supabaseClient";
+import { supabase, authStorage } from "@gateways/supabase/supabaseClient";
 import { normalizeError } from "@errors/errors";
 import { signOutFromBrowser } from "@gateways/supabase/signOutFromBrowser";
 import { loginSchema, signupSchema } from "../schemas/admin.auth.schema";
@@ -27,14 +28,12 @@ async signIn(
   try {
     const parsed = loginSchema.parse(input);
 
-    const client = opts?.rememberMe ? supabase : supabaseSession;
-
-    const { data, error } = await client.auth.signInWithPassword(parsed);
+    authStorage.selectPersistence(opts?.rememberMe === true);
+    // Storage is already empty: this emits SIGNED_OUT locally without revoking
+    // another tab's session, and clears UI data before the new login request.
+    await supabase.auth.signOut({ scope: "local" });
+    const { error } = await supabase.auth.signInWithPassword(parsed);
     if (error) throw error;
-
-    if (!opts?.rememberMe && data.session) {
-      await supabase.auth.setSession(data.session);
-    }
 
   } catch (e) {
     throw normalizeError(e, "Connexion impossible.");
@@ -51,7 +50,7 @@ async signIn(
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo, data: { platform_terms_version: "2026-10-01", platform_terms_accepted: true } },
+      options: { emailRedirectTo, data: { platform_terms_version: EVENTFLOW_PLATFORM_TERMS_VERSION, platform_terms_accepted: true } },
     });
 
     if (error) throw error;

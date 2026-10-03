@@ -50,7 +50,7 @@ export const updateOrgInfoPatchSchema = orgIdSchema
   orgId: organizationSchema.shape.id,
   type: organizationSchema.shape.type,
   name: organizationSchema.shape.name,
-  status: z.enum(["active", "suspended"]),
+  status: organizationSchema.shape.status,
   paymentStatus: organizationSchema.shape.paymentsStatus,
   paymentsLiveReady: organizationSchema.shape.paymentsLiveReady,
 

@@ -13,6 +13,9 @@ import type { AdminEventDetailEvent } from "../../singleEvent/schemas/admin.even
 import type { EventProducts } from "@shared/models/db/db.eventProducts.schema";
 
 import { toRows } from "@helpers/normalize";
+import { OrganizerMutationObsoleteError } from "../../singleEvent/hooks/useScopedEventMutation";
+import { useAuth } from "@providers/AuthProvider/useAuth";
+import { getSessionScope } from "@gateways/supabase/sessionScope";
 
 export function SingleEventTicketsSection(props: {
   orgId: string;
@@ -21,16 +24,20 @@ export function SingleEventTicketsSection(props: {
   onChanged: () => Promise<void>;
 }) {
   const { orgId, event, products, onChanged } = props;
+  const { session } = useAuth();
+  const sessionScope = getSessionScope(session);
 
-  const createProduct = useCreateEventProduct({ supabase });
-  const updateProduct = useUpdateEventProduct({ supabase });
-  const removeProduct = useDeleteEventProduct({ supabase });
+  const createProduct = useCreateEventProduct({ supabase, orgId, eventId: event.id });
+  const updateProduct = useUpdateEventProduct({ supabase, orgId, eventId: event.id });
+  const removeProduct = useDeleteEventProduct({ supabase, orgId, eventId: event.id });
+  const isCurrentScope = () => createProduct.isCurrentScope() && updateProduct.isCurrentScope() && removeProduct.isCurrentScope();
 
   const productsRows = useMemo(() => toRows(products), [products]);
 
   return (
     <div className="adminEventSection adminSingleEventTickets">
       <EventTicketsPanel
+        key={JSON.stringify([sessionScope, orgId, event.id])}
         orgId={orgId}
         event={event}
         products={productsRows}
@@ -40,16 +47,23 @@ export function SingleEventTicketsSection(props: {
         deleteLoading={removeProduct.loading}
         deleteError={removeProduct.error}
         onCreate={async (input) => {
+          if (!isCurrentScope()) throw new OrganizerMutationObsoleteError();
           await createProduct.createEventProduct(input);
+          if (!isCurrentScope()) throw new OrganizerMutationObsoleteError();
         }}
         onUpdate={async ({ productId, patch }) => {
+          if (!isCurrentScope()) throw new OrganizerMutationObsoleteError();
           await updateProduct.updateEventProduct({ productId, patch });
+          if (!isCurrentScope()) throw new OrganizerMutationObsoleteError();
         }}
         onRemove={async (productId) => {
+          if (!isCurrentScope()) throw new OrganizerMutationObsoleteError();
           const ok = await removeProduct.deleteEventProduct({ id: productId });
-          if (!ok) return;
+          if (!isCurrentScope()) throw new OrganizerMutationObsoleteError();
+          if (!ok) throw new Error("Impossible de supprimer le produit.");
         }}
-        onChanged={onChanged}
+        isCurrentScope={isCurrentScope}
+        onChanged={() => { if (isCurrentScope()) return onChanged(); }}
       />
     </div>
   );

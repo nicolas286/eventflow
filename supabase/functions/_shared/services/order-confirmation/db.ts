@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { EdgeLogger } from "../../modules/logger/mod.ts";
-import { badGateway, badRequest, internal, notFound } from "../../errors.ts";
+import { badRequest, internal, notFound } from "../../errors.ts";
 
 export async function loadOrderForConfirmationOrThrow(
   admin: SupabaseClient,
@@ -66,66 +65,4 @@ export async function loadEventForConfirmation(
     location: data?.location ? String(data.location) : null,
     description: data?.description ? String(data.description) : null,
   };
-}
-
-export async function loadOrderItemsForConfirmation(
-  admin: SupabaseClient,
-  orderId: string,
-  logger: EdgeLogger,
-) {
-  const { data: rows, error } = await admin
-    .from("order_items")
-    .select("product_name_snapshot, unit_price_cents_snapshot, quantity")
-    .eq("order_id", orderId)
-    .order("created_at", {
-      ascending: true,
-    });
-
-  if (error) {
-    logger.error("order_items_load_failed", {
-      orderId,
-      error,
-    });
-  }
-
-  return (rows ?? [])
-    .map((r) => {
-      const name = String(r?.product_name_snapshot ?? "").trim() || "Billet";
-      const qty = Number(r?.quantity ?? 0);
-      const unitCents = Number(r?.unit_price_cents_snapshot ?? 0);
-
-      if (!Number.isFinite(qty) || qty <= 0) return null;
-      if (!Number.isFinite(unitCents) || unitCents < 0) return null;
-
-      return {
-        name,
-        qty,
-        unitCents,
-        lineCents: unitCents * qty,
-      };
-    })
-    .filter((item) => item !== null);
-}
-
-export async function claimEmailOnceOrThrow(admin: SupabaseClient, opts: {
-  orderId: string;
-  kind: string;
-  logger: EdgeLogger;
-}) {
-  const { data: canSend, error } = await admin.rpc("log_email_once", {
-    p_order_id: opts.orderId,
-    p_kind: opts.kind,
-  });
-
-  if (error) {
-    opts.logger.error("log_email_once_failed", {
-      orderId: opts.orderId,
-      kind: opts.kind,
-      error,
-    });
-
-    throw badGateway("LOG_FAILED");
-  }
-
-  return Boolean(canSend);
 }

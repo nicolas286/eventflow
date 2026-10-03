@@ -1,3 +1,8 @@
+import {
+  BodyTooLargeError,
+  readLimitedText,
+} from "../_shared/app/request-body.ts";
+import { STRIPE_WEBHOOK_MAX_BODY_BYTES } from "../_shared/payments/stripe-connect-http.ts";
 import { createEdgeHandler } from "../_shared/app/edge-handler/mod.ts";
 import { json } from "../_shared/app/http.ts";
 import { envTrim } from "../_shared/config.ts";
@@ -220,7 +225,16 @@ export const handleStripeWebhookConnect = createEdgeHandler(
     serviceClient: true,
   },
   async ({ req, logger, serviceClient: admin }) => {
-    const rawBody = await req.text();
+    let rawBody: string;
+    try {
+      // Pass the unchanged text to signature verification before JSON parsing.
+      rawBody = await readLimitedText(req, STRIPE_WEBHOOK_MAX_BODY_BYTES);
+    } catch (error) {
+      if (error instanceof BodyTooLargeError) {
+        return json(req, { error: "PAYLOAD_TOO_LARGE" }, 413);
+      }
+      throw error;
+    }
     const webhookSecret = envTrim("STRIPE_CONNECT_WEBHOOK_SECRET");
     if (!webhookSecret) {
       return json(req, { error: "SERVER_MISCONFIGURED" }, 500);
@@ -289,8 +303,6 @@ export const handleStripeWebhookConnect = createEdgeHandler(
           admin,
           object,
           connectedAccountId,
-          functionsBase: envTrim("FUNCTIONS_URL"),
-          edgeServiceToken: envTrim("EDGE_SERVICE_TOKEN"),
           logger,
         });
       } else if (event.type === "checkout.session.async_payment_succeeded") {
@@ -298,8 +310,6 @@ export const handleStripeWebhookConnect = createEdgeHandler(
           admin,
           object,
           connectedAccountId,
-          functionsBase: envTrim("FUNCTIONS_URL"),
-          edgeServiceToken: envTrim("EDGE_SERVICE_TOKEN"),
           logger,
         });
       } else if (event.type === "checkout.session.async_payment_failed") {

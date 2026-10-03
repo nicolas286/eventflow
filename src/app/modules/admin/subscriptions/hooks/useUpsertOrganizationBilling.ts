@@ -1,63 +1,30 @@
-import { useMemo, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { makeOrganizationBillingRepo } from "../data/makeOrganizationBillingRepo";
+import type { OrganizationBillingPatch } from "@shared/models/db/db.organizationBilling.schema";
+import { useAuth } from "@providers/AuthProvider/useAuth";
+import { getSessionScope } from "@gateways/supabase/sessionScope";
+import { createOrganizationBillingStore } from "./useMakeOrganizationBilling";
 
-import type { OrganizationBilling,
-  OrganizationBillingPatch
- } from "@shared/models/db/db.organizationBilling.schema";
-
-import { normalizeError } from "@errors/errors";
-
-/* ------------------------------------------------------------------ */
-/* Types UI                                                            */
-/* ------------------------------------------------------------------ */
-
-type State = {
-  loading: boolean;
-  error: string | null;
-  updated: OrganizationBilling | null;
-};
-
-/* ------------------------------------------------------------------ */
-/* Hook                                                                */
-/* ------------------------------------------------------------------ */
-
-export function useUpsertOrganizationBilling(params: { supabase: SupabaseClient }) {
-  const { supabase } = params;
-
+export function useUpsertOrganizationBilling(params: { supabase: SupabaseClient; orgId?: string }) {
+  const { supabase, orgId } = params;
+  const { session } = useAuth();
+  const sessionScope = getSessionScope(session);
   const repo = useMemo(() => makeOrganizationBillingRepo(supabase), [supabase]);
-
-  const [state, setState] = useState<State>({
-    loading: false,
-    error: null,
-    updated: null,
-  });
-
-  async function upsertOrganizationBilling(
-    input: OrganizationBillingPatch
-  ): Promise<OrganizationBilling | null> {
-    try {
-      setState((s) => ({ ...s, loading: true, error: null, updated: null }));
-
-      const updated = await repo.upsertOrganizationBilling(input);
-
-      setState({ loading: false, error: null, updated });
-      return updated;
-    } catch (e: unknown) {
-      const ne = normalizeError(e, "Impossible de Enregistrer les infos de facturation");
-      setState({ loading: false, error: ne.message, updated: null });
-      return null;
-    }
-  }
-
-  function reset() {
-    setState({ loading: false, error: null, updated: null });
-  }
+  const store = useMemo(() => createOrganizationBillingStore(
+    (input: OrganizationBillingPatch) => repo.upsertOrganizationBilling(input),
+    "Impossible de Enregistrer les infos de facturation",
+    sessionScope !== null,
+    orgId,
+  ), [repo, sessionScope, orgId]);
+  const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
 
   return {
-    ...state,
-    upsertOrganizationBilling,
-    reset,
+    loading: state.loading,
+    error: state.error,
+    updated: state.loading ? null : state.billing,
+    upsertOrganizationBilling: store.load,
+    reset: store.reset,
+    isCurrentScope: store.isCurrentScope,
   };
 }

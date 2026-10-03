@@ -127,13 +127,17 @@ export function SingleEventParticipantsSection(props: {
           </button>
         </div>
 
+        {subView === "orders" && ordersViewError && ordersViewData ? (
+          <div className="adminEventEmpty" role="alert">{ordersViewError}</div>
+        ) : null}
         {subView === "orders" ? (
-          ordersViewLoading ? (
+          ordersViewLoading && !ordersViewData ? (
             <div className="adminEventEmpty">Chargement des commandes…</div>
-          ) : ordersViewError ? (
+          ) : ordersViewError && !ordersViewData ? (
             <div className="adminEventEmpty">{ordersViewError}</div>
           ) : orders && orderItems && payments && attendees && attendeeAnswers ? (
             <SingleEventOrdersSubSection
+              key={`${orgId}:${event.id}`}
               orgId={orgId}
               event={event}
               products={products}
@@ -154,6 +158,7 @@ export function SingleEventParticipantsSection(props: {
           )
         ) : (
           <SingleEventTicketsSubSection
+            key={`${orgId}:${event.id}`}
             eventId={event.id ?? ""}
             eventTitle={event.title ?? "Événement"}
             onChanged={onChanged}

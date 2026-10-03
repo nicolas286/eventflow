@@ -1,49 +1,30 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { z } from "zod";
-import { supabaseSafe } from "@gateways/supabase/supabaseSafe";
+import { edgeSafe } from "@gateways/supabase/supabaseEdgeSafe";
 import {
+  billingRequestSchema,
+  billingReadResponseSchema,
   organizationBillingPatchSchema,
   organizationBillingSchema,
   type OrganizationBilling,
   type OrganizationBillingPatch,
-} from "@shared/models/db/db.organizationBilling.schema";
-import { camelToSnake } from "@helpers/camelToSnake";
-
-const orgIdSchema = z.string().uuid();
-
-function unwrapRpc(raw: unknown): unknown {
-  if (Array.isArray(raw)) return raw[0] ?? null;
-  if (typeof raw === "string") {
-    try { return JSON.parse(raw); } catch { return raw; }
-  }
-  return raw;
-}
+} from "@contracts/organization-billing";
 
 export function makeOrganizationBillingRepo(supabase: SupabaseClient) {
   return {
     async getOrganizationBilling(orgId: string): Promise<OrganizationBilling | null> {
-      const p_org_id = orgIdSchema.parse(orgId);
-
-      const raw = await supabaseSafe<unknown>(() =>
-        supabase.rpc("rpc_get_organization_billing", { p_org_id }),
+      const body = billingRequestSchema.parse({ orgId });
+      const raw = await edgeSafe<unknown>(() =>
+        supabase.functions.invoke("organizations/billing/read", { body }),
       );
-
-      const parsed = unwrapRpc(raw);
-      if (parsed == null) return null;
-
-      return organizationBillingSchema.parse(parsed);
+      return billingReadResponseSchema.parse(raw).billing;
     },
 
     async upsertOrganizationBilling(input: OrganizationBillingPatch): Promise<OrganizationBilling> {
-      const validated = organizationBillingPatchSchema.parse(input);
-      const p_input = camelToSnake(validated);
-
-      const raw = await supabaseSafe<unknown>(() =>
-        supabase.rpc("rpc_upsert_organization_billing", { p_input }),
+      const body = organizationBillingPatchSchema.parse(input);
+      const raw = await edgeSafe<unknown>(() =>
+        supabase.functions.invoke("organizations/billing/update", { body }),
       );
-
-      const parsed = unwrapRpc(raw);
-      return organizationBillingSchema.parse(parsed);
+      return organizationBillingSchema.parse(raw);
     },
   };
 }

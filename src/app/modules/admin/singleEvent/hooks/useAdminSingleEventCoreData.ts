@@ -4,6 +4,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { makeEventDetailAdminCoreRepo } from "../data/makeEventDetailAdminCoreRepo";
 import type { EventDetailAdminCore } from "../schemas/admin.eventDetail.schema";
 import { normalizeError } from "@errors/errors";
+import { useAuth } from "@providers/AuthProvider/useAuth";
+import { getSessionScope } from "@gateways/supabase/sessionScope";
 
 type State = {
   loading: boolean;
@@ -13,30 +15,38 @@ type State = {
   data: EventDetailAdminCore | null;
 };
 
-function createAdminSingleEventCoreStore(
+export function createAdminSingleEventCoreStore(
   loadFn: () => Promise<Omit<State, "loading" | "error">>,
+  enabled = true,
 ) {
-  let state: State = {
-    loading: true,
+  const empty: State = {
+    loading: enabled,
     error: null,
     eventId: null,
     data: null,
   };
+  let state = empty;
 
   const listeners = new Set<() => void>();
   const emit = () => listeners.forEach((l) => l());
 
   let started = false;
+  let generation = 0;
 
   async function load() {
+    if (!enabled || listeners.size === 0) return;
+    const request = ++generation;
+    const isCurrent = () => generation === request && listeners.size > 0;
     state = { ...state, loading: true, error: null };
     emit();
 
     try {
       const next = await loadFn();
+      if (!isCurrent()) return;
       state = { loading: false, error: null, ...next };
       emit();
     } catch (e: unknown) {
+      if (!isCurrent()) return;
       const ne = normalizeError(
         e,
         "Impossible de charger les données principales admin de l’événement",
@@ -54,9 +64,16 @@ function createAdminSingleEventCoreStore(
 
   return {
     subscribe(cb: () => void) {
-      ensureStarted();
       listeners.add(cb);
-      return () => listeners.delete(cb);
+      ensureStarted();
+      return () => {
+        listeners.delete(cb);
+        if (listeners.size === 0) {
+          generation++;
+          state = empty;
+          started = false;
+        }
+      };
     },
     getSnapshot() {
       return state;
@@ -64,6 +81,7 @@ function createAdminSingleEventCoreStore(
     refetch() {
       return load();
     },
+    isCurrentScope: () => enabled && listeners.size > 0,
   };
 }
 
@@ -77,6 +95,8 @@ export function useAdminSingleEventCoreData(params: {
     orgId,
     eventSlug,
   } = params;
+  const { session } = useAuth();
+  const sessionScope = getSessionScope(session);
 
   const detailRepo = useMemo(
     () => makeEventDetailAdminCoreRepo(supabase),
@@ -103,8 +123,8 @@ export function useAdminSingleEventCoreData(params: {
   ]);
 
   const store = useMemo(
-    () => createAdminSingleEventCoreStore(loadFn),
-    [loadFn],
+    () => createAdminSingleEventCoreStore(loadFn, sessionScope !== null && !!orgId && !!eventSlug),
+    [loadFn, sessionScope, orgId, eventSlug],
   );
 
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
@@ -112,5 +132,6 @@ export function useAdminSingleEventCoreData(params: {
   return {
     ...state,
     refetch: store.refetch,
+    isCurrentScope: store.isCurrentScope,
   };
 }

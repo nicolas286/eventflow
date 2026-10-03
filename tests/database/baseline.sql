@@ -209,7 +209,7 @@ BEGIN
      OR NOT has_function_privilege('service_role', 'public.platform_admin_create_email_campaign(uuid,uuid,text,jsonb,text)', 'EXECUTE')
      OR NOT has_function_privilege('service_role', 'public.platform_admin_read_email_campaigns(uuid,uuid,text,integer)', 'EXECUTE')
      OR NOT has_function_privilege('service_role', 'public.platform_admin_email_campaign_deliveries(uuid)', 'EXECUTE')
-     OR NOT has_function_privilege('service_role', 'public.platform_admin_record_email_delivery(uuid,uuid,boolean,text,text,text)', 'EXECUTE')
+     OR NOT has_function_privilege('service_role', 'public.platform_admin_complete_email_delivery(uuid,uuid,uuid,boolean,text,text,text)', 'EXECUTE')
      OR NOT has_function_privilege('service_role', 'public.platform_admin_finish_email_campaign(uuid)', 'EXECUTE')
      OR NOT has_function_privilege('service_role', 'public.platform_public_config(text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Platform Edge Functions cannot reach their service-only RPCs';

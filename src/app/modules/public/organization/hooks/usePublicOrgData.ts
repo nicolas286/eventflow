@@ -29,7 +29,7 @@ export function usePublicOrgData(params: {
   const orgRepo = useMemo(() => makePublicOrgRepo(supabase), [supabase]);
   const eventsRepo = useMemo(
     () => makePublicEventsOverviewRepo(supabase),
-    [supabase]
+    [supabase],
   );
 
   const [state, setState] = useState<State>({
@@ -92,7 +92,7 @@ export function usePublicOrgData(params: {
 
         const ne = normalizeError(
           e,
-          "Impossible de charger la page de l’organisation"
+          "Impossible de charger la page de l’organisation",
         );
 
         setState({
@@ -112,5 +112,15 @@ export function usePublicOrgData(params: {
     };
   }, [orgSlug, orgRepo, eventsRepo]);
 
-  return state;
+  const selectedSlug = orgSlug?.trim() || null;
+  return state.orgSlug === selectedSlug
+    ? state
+    : {
+        loading: Boolean(selectedSlug),
+        error: null,
+        orgSlug: selectedSlug,
+        org: null,
+        profile: null,
+        events: [],
+      };
 }

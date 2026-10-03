@@ -1,4 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
+import { applicationRateLimits } from "../_shared/app/config/rate-limits.ts";
+import { consumeRequestRateLimit } from "../_shared/app/rate-limit/mod.ts";
+import { createEdgeLogger } from "../_shared/modules/logger/mod.ts";
 import { completeManualInvoiceDelivery } from "./invoice-delivery.ts";
 import { parseStartSubscriptionPayload } from "./schema.ts";
 import { applyDiscount, planToPricing, resolvePromo } from "./pricing.ts";
@@ -65,6 +68,13 @@ export async function handleManualStartSubscription(req: Request) {
     .maybeSingle();
   if (memberError) return json(req, { error: "AUTH_CHECK_FAILED" }, 500);
   if (!member) return json(req, { error: "FORBIDDEN" }, 403);
+
+  const quota = await consumeRequestRateLimit({
+    req, supabase: admin, logger: createEdgeLogger("subscriptions-start"),
+    key: `user:${userData.user.id}:org:${orgId.toLowerCase()}`,
+    ...applicationRateLimits.subscriptionStart,
+  });
+  if (!quota.allowed) return quota.response;
 
   const promo = resolvePromo({ plan, promoCode });
   const pricing = applyDiscount(planToPricing(plan), promo.discountPercent);

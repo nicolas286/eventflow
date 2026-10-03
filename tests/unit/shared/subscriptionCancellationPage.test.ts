@@ -21,6 +21,12 @@ vi.mock("../../../src/app/modules/admin/subscriptions/hooks/useStartSubscription
 vi.mock("../../../src/app/modules/admin/subscriptions/hooks/useCancelSubscription", () => ({
   useCancelSubscription: () => ({ loading: fixture.loading, error: null, reset: vi.fn(), cancelSubscription: vi.fn() }),
 }));
+vi.mock("../../../src/app/modules/admin/subscriptions/hooks/useMakeOrganizationBilling", () => ({
+  useMakeOrganizationBilling: () => ({ loading: false, error: null, billing: null, fetchBilling: vi.fn(), reset: vi.fn(), isCurrentScope: () => true }),
+}));
+vi.mock("../../../src/app/modules/admin/subscriptions/hooks/useUpsertOrganizationBilling", () => ({
+  useUpsertOrganizationBilling: () => ({ loading: false, error: null, updated: null, upsertOrganizationBilling: vi.fn(), reset: vi.fn(), isCurrentScope: () => true }),
+}));
 vi.mock("react-router-dom", async (importOriginal) => {
   const original = await importOriginal<typeof import("react-router-dom")>();
   return {

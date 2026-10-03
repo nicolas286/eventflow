@@ -6,6 +6,7 @@ import {
   type LocalColorScheme,
 } from "@shared/ui/components/theme/useLocalColorScheme";
 import "./AdminTheme.css";
+import { getSessionScope } from "@gateways/supabase/sessionScope";
 
 export type AdminLayoutOutletContext = {
   colorScheme: LocalColorScheme;
@@ -13,7 +14,7 @@ export type AdminLayoutOutletContext = {
 };
 
 export function AdminLayout() {
-  const { user, loading } = useAuth();
+  const { user, session, loading } = useAuth();
   const location = useLocation();
   const { colorScheme, toggleColorScheme } = useLocalColorScheme();
 
@@ -30,6 +31,7 @@ export function AdminLayout() {
         />
       ) : null}
       <Outlet
+        key={getSessionScope(session)}
         context={
           {
             colorScheme,

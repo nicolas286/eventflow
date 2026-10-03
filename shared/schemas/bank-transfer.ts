@@ -65,6 +65,7 @@ export const updateOrganizationPaymentSettingsSchema = z
     bankTransferBeneficiary: z.string().trim().max(160).nullable(),
     bankTransferIban: z.string().trim().max(64).nullable(),
   })
+  .strict()
   .superRefine((value, ctx) => {
     if (value.paymentsProvider !== "bank_transfer") return;
 
@@ -107,7 +108,7 @@ export const updateOrganizationPaymentSettingsSchema = z
 export const readOrganizationPaymentSettingsSchema = z.object({
   action: z.literal("read"),
   orgId: z.uuid(),
-});
+}).strict();
 
 export const organizationPaymentSettingsRequestSchema = z.union([
   readOrganizationPaymentSettingsSchema,

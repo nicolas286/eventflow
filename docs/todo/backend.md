@@ -1,5 +1,7 @@
 # Backend — migration directe par domaine
 
+Actualisation du 3 octobre 2026 : les lots B0–B6 migrent les accès métier navigateur vers les Edge. Les abonnements courants sont internes, la billetterie utilise Stripe/virement et les anciennes entrées de renouvellement Mollie répondent 410. Le contenu daté ci-dessous conserve les preuves historiques ; la publication et les révocations différées suivent [le plan de sécurité](../plans/2026-10-02-gitnexus-plan-backend-api-security-audit.md) et ses rapports.
+
 État des sources locales au 20 septembre 2026. **Périmètre autorisé : dev/staging uniquement.** Les cases implémentées ne prouvent ni publication ni recette distante.
 
 ## Décisions

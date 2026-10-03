@@ -235,7 +235,7 @@ export function EventDetailsFields(props: Props) {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/png,image/jpeg,image/webp,image/gif"
             style={{ display: "none" }}
             onChange={(e) => {
               const file = e.target.files?.[0];

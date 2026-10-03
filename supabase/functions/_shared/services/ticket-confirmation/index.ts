@@ -5,7 +5,7 @@ import {
 import { generateTicketsPdf } from "./ticketsPdf.ts";
 
 import { resolveRuntimeConfig } from "./config.ts";
-import { sendEmailOrThrow } from "../../app/email.ts";
+import { type EventflowEmailInput, sendEmailOrThrow } from "../../app/email.ts";
 import { buildOrderConfirmationHtml } from "./templates/order-confirmation.ts";
 
 import {
@@ -30,7 +30,7 @@ function sumDiscountCents(rows: Array<{ discount_cents?: unknown }>) {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EdgeLogger } from "../../modules/logger/mod.ts";
 
-export async function sendTicketConfirmation(
+export async function prepareTicketConfirmation(
   admin: SupabaseClient,
   logger: EdgeLogger,
   orderId: string,
@@ -141,7 +141,9 @@ export async function sendTicketConfirmation(
     })
     : null;
 
-  await sendEmailOrThrow({
+  const email: EventflowEmailInput = {
+    from: Deno.env.get("MAIL_DEFAULT_FROM")?.trim() ||
+      "Eventflow <no-reply@useeventflow.eu>",
     to: order.to,
     subject,
     html: durableHtml,
@@ -160,12 +162,28 @@ export async function sendTicketConfirmation(
       orderId,
       eventId: order.eventId,
     },
-  });
+  };
 
   return {
     ok: true,
-    sent: true,
     ticketsCount: tickets.length,
     pdfAttached: Boolean(pdfAttachment),
+    email,
   };
+}
+
+export async function sendTicketConfirmation(
+  admin: SupabaseClient,
+  logger: EdgeLogger,
+  orderId: string,
+  subjectOverride?: string,
+) {
+  const { email, ...result } = await prepareTicketConfirmation(
+    admin,
+    logger,
+    orderId,
+    subjectOverride,
+  );
+  await sendEmailOrThrow(email);
+  return { ...result, sent: true };
 }

@@ -1,52 +1,16 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { updateEventProductRepo, type UpdateEventProductPatch } from "../data/updateEventProductRepo";
+import { useScopedEventMutation, OrganizerMutationObsoleteError } from "../../singleEvent/hooks/useScopedEventMutation";
 
-import { updateEventProductRepo } from "@app/modules/admin/products/data/updateEventProductRepo";
-import type { UpdateEventProductPatch } from "@app/modules/admin/products/data/updateEventProductRepo";
-import type { EventProduct } from "@shared/models/db/db.eventProducts.schema";
-import { normalizeError } from "@errors/errors";
-
-type State = {
-  loading: boolean;
-  error: string | null;
-  data: EventProduct | null;
-};
-
-export function useUpdateEventProduct(params: { supabase: SupabaseClient }) {
-  const { supabase } = params;
-
-  const repo = useMemo(() => updateEventProductRepo(supabase), [supabase]);
-
-  const [state, setState] = useState<State>({
-    loading: false,
-    error: null,
-    data: null,
-  });
-
-  const reset = useCallback(() => {
-    setState({ loading: false, error: null, data: null });
-  }, []);
-
-  const updateEventProduct = useCallback(
-    async (input: { productId: string; patch: UpdateEventProductPatch }): Promise<EventProduct> => {
-      setState((s) => ({ ...s, loading: true, error: null }));
-
-      try {
-        const data = await repo.updateEventProduct(input);
-        setState({ loading: false, error: null, data });
-        return data;
-      } catch (e: unknown) {
-        const ne = normalizeError(e, "Impossible de mettre à jour le produit");
-        setState((s) => ({ ...s, loading: false, error: ne.message }));
-        throw ne;
-      }
-    },
-    [repo]
-  );
-
-  return {
-    ...state,
-    updateEventProduct,
-    reset,
-  };
+export function useUpdateEventProduct(params: { supabase: SupabaseClient; orgId?: string; eventId?: string }) {
+  const repo = useMemo(() => updateEventProductRepo(params.supabase), [params.supabase]);
+  const update = useMemo(() => (input: { productId: string; patch: UpdateEventProductPatch }) => repo.updateEventProduct(input), [repo]);
+  const { result, mutate, ...state } = useScopedEventMutation(update, params, "Impossible de mettre à jour le produit", true);
+  async function updateEventProduct(input: { productId: string; patch: UpdateEventProductPatch }) {
+    const data = await mutate(input);
+    if (!data) throw new OrganizerMutationObsoleteError();
+    return data;
+  }
+  return { ...state, data: result, updateEventProduct };
 }

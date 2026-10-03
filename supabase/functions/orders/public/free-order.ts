@@ -1,7 +1,6 @@
 import { registerSuccessPaidSchema } from "./registerTickets.contracts.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EdgeLogger } from "../../_shared/modules/logger/mod.ts";
-import type { RuntimeConfig } from "./types.ts";
 import type { createOrderIntentOrThrow } from "./order-intent-repository.ts";
 import { json } from "../../_shared/app/http.ts";
 import { issueFreeOrderTicketsOrThrow } from "./db.ts";
@@ -13,10 +12,9 @@ export async function completeFreeOrderOrThrow(
     admin: SupabaseClient;
     order: Awaited<ReturnType<typeof createOrderIntentOrThrow>>;
     logger: EdgeLogger;
-    config: RuntimeConfig;
   },
 ) {
-  const { admin, order, logger, config } = opts;
+  const { admin, order, logger } = opts;
 
   logger.info("free_order_start", {
     orderId: order.orderId,
@@ -34,8 +32,6 @@ export async function completeFreeOrderOrThrow(
   await sendConfirmationEmailForOrderSafe({
     admin,
     orderId: order.orderId,
-    functionsBase: config.functionsBase,
-    edgeServiceToken: config.edgeServiceToken,
     logger,
   });
 

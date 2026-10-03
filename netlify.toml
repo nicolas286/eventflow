@@ -11,3 +11,6 @@
   from = "/*"
   to = "/index.html"
   status = 200
+# B5: bundle the shared TypeScript DTO consumed by the Node share function.
+[functions."share-event"]
+  node_bundler = "esbuild"

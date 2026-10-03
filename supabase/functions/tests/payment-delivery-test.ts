@@ -31,6 +31,7 @@ async function fixture(run: () => Promise<void>, production = false) {
       ? "https://dixirvllhfkvqoahhfqh.supabase.co"
       : "https://delivery-fixture.supabase.co",
     SUPABASE_ANON_KEY: "fixture-anon",
+    RATE_LIMIT_SALT: "fixture-a8-salt",
     SUPABASE_SERVICE_ROLE_KEY: "fixture-service",
     APP_ENV: production ? "production" : "staging",
     APP_BASE_URL: "https://fixture.example.test",
@@ -198,6 +199,9 @@ function billingFixture(
   globalThis.fetch = (input, init) => {
     const url = new URL(String(input));
     const path = url.pathname;
+    if (path.endsWith("/consume_rate_limit")) {
+      return Promise.resolve(Response.json([{ allowed: true, request_count: 1, retry_after_seconds: 0 }]));
+    }
     if (path.endsWith("/auth/v1/user")) {
       return Promise.resolve(
         Response.json({ id: orderId, email: "fixture@example.test" }),

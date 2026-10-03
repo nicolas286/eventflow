@@ -1,3 +1,5 @@
+import { assertOrganizationManager } from "../_shared/organization-access.ts";
+import { ResponseError } from "../_shared/errors.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateInvoicePdf } from "../_shared/services/invoice-pdf/index.ts";
 
@@ -24,8 +26,8 @@ export interface InvoicePdfUrlRepository {
 }
 
 export function createInvoicePdfUrlRepository(
-  userClient: SupabaseClient,
   serviceClient: SupabaseClient,
+  actorId: string,
 ): InvoicePdfUrlRepository {
   return {
     async loadInvoice(invoiceId) {
@@ -49,13 +51,15 @@ export function createInvoicePdfUrlRepository(
     },
 
     async isOrganizationMember(orgId) {
-      const { data, error } = await userClient.rpc("is_org_member", {
-        p_org_id: orgId,
-      });
-
-      return error
-        ? { data: null, errorMessage: error.message }
-        : { data: Boolean(data), errorMessage: null };
+      try {
+        await assertOrganizationManager(serviceClient, orgId, actorId);
+        return { data: true, errorMessage: null };
+      } catch (error: unknown) {
+        if (error instanceof ResponseError && error.status === 403) {
+          return { data: false, errorMessage: null };
+        }
+        return { data: null, errorMessage: "MEMBERSHIP_LOOKUP_FAILED" };
+      }
     },
 
     async createSignedUrl(path, expiresIn) {

@@ -156,8 +156,9 @@ export default function AdminAbonnementPage() {
   const { bootstrap, refetch, orgId } = useOutletContext<AdminOutletContext>();
   const { showToast } = useToast();
 
-  const billingGet = useMakeOrganizationBilling({ supabase });
-  const billingUpsert = useUpsertOrganizationBilling({ supabase });
+  const billingGet = useMakeOrganizationBilling({ supabase, orgId });
+  const billingUpsert = useUpsertOrganizationBilling({ supabase, orgId });
+  const isCurrentBillingScope = () => billingGet.isCurrentScope() && billingUpsert.isCurrentScope();
   const [promoCode, setPromoCode] = useState("");
 
   const [pendingPlan, setPendingPlan] = useState<PlanKey | null>(null);
@@ -281,6 +282,7 @@ export default function AdminAbonnementPage() {
       Date.parse(pendingInvoiceProcessing.invoice.currentPeriodEnd);
 
   async function requestSubscription(target: "starter" | "pro") {
+    if (!isCurrentBillingScope()) return null;
     const payload: StartSubscriptionPayload = {
       orgId,
       plan: target,
@@ -288,6 +290,7 @@ export default function AdminAbonnementPage() {
     };
     setPendingInvoiceProcessing(null);
     const invoice = await startSubscription(payload);
+    if (!isCurrentBillingScope()) return null;
     if (invoice && hasRetryableInvoiceProcessing(invoice)) {
       setPendingInvoiceProcessing({ payload, invoice });
     }
@@ -295,6 +298,7 @@ export default function AdminAbonnementPage() {
   }
 
   async function retryInvoiceProcessing() {
+    if (!isCurrentBillingScope()) return;
     const pending = pendingInvoiceProcessing;
     if (!pending || !pendingInvoiceForCurrentPlan || startLoading) return;
     if (!(Date.parse(pending.invoice.currentPeriodEnd) > Date.now())) {
@@ -310,6 +314,7 @@ export default function AdminAbonnementPage() {
     }
 
     const invoice = await startSubscription(pending.payload);
+    if (!isCurrentBillingScope()) return;
     if (invoice) {
       setPendingInvoiceProcessing(
         hasRetryableInvoiceProcessing(invoice)
@@ -322,7 +327,9 @@ export default function AdminAbonnementPage() {
   async function ensureBillingOrGoToTab(
     nextPlan: "starter" | "pro",
   ): Promise<boolean> {
+    if (!isCurrentBillingScope()) return false;
     const billing = await billingGet.fetchBilling(orgId);
+    if (!isCurrentBillingScope()) return false;
     if (billing) return true;
 
     setPendingPlan(nextPlan);
@@ -357,14 +364,16 @@ export default function AdminAbonnementPage() {
   }
 
   async function onChoosePlan(target: PlanKey) {
+    if (!isCurrentBillingScope()) return;
     reset();
 
     if (!canStartSubscription(target)) return;
 
     const okBilling = await ensureBillingOrGoToTab(target);
-    if (!okBilling) return;
+    if (!okBilling || !isCurrentBillingScope()) return;
 
     const res = await requestSubscription(target);
+    if (!isCurrentBillingScope()) return;
 
     if (!res) {
       showToast({
@@ -377,10 +386,12 @@ export default function AdminAbonnementPage() {
     }
 
     await refetch();
+    if (!isCurrentBillingScope()) return;
     setTabAndUrl("invoices");
   }
 
   async function onCancelPlan() {
+    if (!isCurrentBillingScope()) return;
     if (
       cancelOrgId !== orgId ||
       !isInternalSubscription ||
@@ -389,10 +400,12 @@ export default function AdminAbonnementPage() {
       return;
 
     const canceled = await cancellation.cancelSubscription({ orgId });
+    if (!isCurrentBillingScope()) return;
     if (!canceled?.ok) return;
 
     setCancelOrgId(null);
     await refetch();
+    if (!isCurrentBillingScope()) return;
     showToast({
       title: "Abonnement résilié",
       description:
@@ -753,11 +766,13 @@ export default function AdminAbonnementPage() {
             loading={billingGet.loading || billingUpsert.loading}
             error={billingGet.error || billingUpsert.error}
             onSave={async (patch) => {
+              if (!isCurrentBillingScope()) return;
               const updated =
                 await billingUpsert.upsertOrganizationBilling(patch);
-              if (!updated) return;
+              if (!updated || !isCurrentBillingScope()) return;
 
-              await billingGet.fetchBilling(orgId);
+              const refreshed = await billingGet.fetchBilling(orgId);
+              if (!refreshed || !isCurrentBillingScope()) return;
               setBillingKey((k) => k + 1);
 
               const planToContinue = pendingPlan;
@@ -765,6 +780,7 @@ export default function AdminAbonnementPage() {
 
               if (planToContinue && canStartSubscription(planToContinue)) {
                 const res = await requestSubscription(planToContinue);
+                if (!isCurrentBillingScope()) return;
 
                 if (!res) {
                   showToast({
@@ -777,6 +793,7 @@ export default function AdminAbonnementPage() {
                 }
 
                 await refetch();
+                if (!isCurrentBillingScope()) return;
                 setTabAndUrl("invoices");
                 return;
               }

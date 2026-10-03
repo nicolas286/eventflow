@@ -48,28 +48,32 @@ export default function AdminEventsPage() {
     loading: creating,
     error: createError,
     reset: resetCreate,
-  } = useCreateEvent({ supabase });
+    isCurrentScope: isCreateScopeCurrent,
+  } = useCreateEvent({ supabase, orgId });
 
   const {
     duplicateEvent: doDuplicate,
     loading: duplicating,
     error: duplicateError,
     reset: resetDuplicate,
-  } = useDuplicateEvent({ supabase });
+    isCurrentScope: isDuplicateScopeCurrent,
+  } = useDuplicateEvent({ supabase, orgId });
 
   const {
     updateEvent: doUpdate,
     loading: saving,
     error: saveError,
     reset: resetSave,
-  } = useUpdateEvent({ supabase });
+    isCurrentScope: isUpdateScopeCurrent,
+  } = useUpdateEvent({ supabase, orgId });
 
   const {
     deleteEvent: doDelete,
     loading: deleting,
     error: deleteError,
     reset: resetDelete,
-  } = useDeleteEvent({ supabase });
+    isCurrentScope: isDeleteScopeCurrent,
+  } = useDeleteEvent({ supabase, orgId });
 
   const { selectedRow, editingId, select, closeIf, onAnimEnd, panelClassName } =
     useEventEditorPanel(events);
@@ -88,12 +92,13 @@ export default function AdminEventsPage() {
   }, [events]);
 
   const updateEvent = async (id: string, patch: EditableEventFields) => {
+    if (!isUpdateScopeCurrent()) return;
     if (!patch || Object.keys(patch).length === 0) return;
 
     resetSave();
 
     const updated = await doUpdate({ eventId: id, patch });
-    if (!updated) return;
+    if (!updated || !isUpdateScopeCurrent()) return;
 
     await refetch();
   };
@@ -115,20 +120,23 @@ export default function AdminEventsPage() {
   };
 
   const confirmDelete = async () => {
+    if (!isDeleteScopeCurrent()) return;
     if (!confirm.eventId) return;
 
     closeIf(confirm.eventId);
 
     const ok = await doDelete({ eventId: confirm.eventId, orgId });
-    if (!ok) return;
+    if (!ok || !isDeleteScopeCurrent()) return;
 
     await refetch();
+    if (!isDeleteScopeCurrent()) return;
     cancelDelete();
   };
 
   const navigate = useNavigate();
 
   const addEvent = async () => {
+    if (!isCreateScopeCurrent()) return;
     if (creating) return;
 
     resetCreate();
@@ -145,13 +153,15 @@ export default function AdminEventsPage() {
       endsAt: null,
     });
 
-    if (!created) return;
+    if (!created || !isCreateScopeCurrent()) return;
 
     await refetch();
+    if (!isCreateScopeCurrent()) return;
     navigate(`/admin/events/${created.slug}`);
   };
 
   const duplicateEvent = async (row: EventOverviewRow) => {
+    if (!isDuplicateScopeCurrent()) return;
     if (duplicating) return;
 
     resetDuplicate();
@@ -161,9 +171,10 @@ export default function AdminEventsPage() {
       title: `${row.event.title} (copie)`,
     });
 
-    if (!duplicated) return;
+    if (!duplicated || !isDuplicateScopeCurrent()) return;
 
     await refetch();
+    if (!isDuplicateScopeCurrent()) return;
     navigate(`/admin/events/${duplicated.slug}`);
   };
 

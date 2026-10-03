@@ -1,3 +1,4 @@
+import { mapPlatformTransport } from "./transport.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
@@ -97,21 +98,11 @@ const emailCampaignDeliverySchema = z.object({
         email: z.email(),
         organizationId: z.uuid(),
         organizationName: z.string(),
+        claimToken: z.uuid(),
       }),
     )
     .max(100),
 });
-
-function camelize(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(camelize);
-  if (!value || typeof value !== "object") return value;
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
-      key.replace(/_([a-z])/g, (_, char: string) => char.toUpperCase()),
-      camelize(entry),
-    ]),
-  );
-}
 
 function routePath(req: Request): string[] {
   const segments = new URL(req.url).pathname.split("/").filter(Boolean);
@@ -131,7 +122,7 @@ async function rpcJson(
   args: Record<string, unknown>,
 ): Promise<unknown> {
   const { data, error } = await serviceClient.rpc(name, args);
-  if (!error) return camelize(data);
+  if (!error) return mapPlatformTransport(name, args.p_resource, data);
 
   const message = error.message ?? "";
   if (message.includes("PLATFORM_STEP_UP_REQUIRED")) {
@@ -704,10 +695,11 @@ export const handlePlatformAdminRequest = createEdgeHandler(
             } catch {
               await rpcJson(
                 serviceClient,
-                "platform_admin_record_email_delivery",
+                "platform_admin_complete_email_delivery",
                 {
                   p_campaign_id: created.id,
                   p_delivery_id: delivery.id,
+                  p_claim_token: delivery.claimToken,
                   p_success: false,
                   p_provider: null,
                   p_provider_message_id: null,
@@ -718,10 +710,11 @@ export const handlePlatformAdminRequest = createEdgeHandler(
             }
             await rpcJson(
               serviceClient,
-              "platform_admin_record_email_delivery",
+              "platform_admin_complete_email_delivery",
               {
                 p_campaign_id: created.id,
                 p_delivery_id: delivery.id,
+                  p_claim_token: delivery.claimToken,
                 p_success: true,
                 p_provider: result.provider,
                 p_provider_message_id: result.id,

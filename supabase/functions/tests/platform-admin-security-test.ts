@@ -33,6 +33,8 @@ async function withRuntime(run: () => Promise<void>) {
     RATE_LIMIT_SALT: "fixture-rate-limit-salt",
     APP_ENV: "staging",
     MAIL_MODE: "capture",
+    MAIL_ALLOWED_RECIPIENTS: "owner@example.test",
+    RESEND_API_KEY: "synthetic-fixture-resend-key",
   };
   const previous = new Map(
     Object.keys(values).map((key) => [key, Deno.env.get(key)]),
@@ -87,6 +89,52 @@ Deno.test("platform endpoint rejects anonymous access", () =>
     assertEquals(response.status, 401);
   }),
 );
+
+Deno.test("campaign provider failure and retry preserve the exact provider idempotency key", () => withRuntime(async () => {
+  const previousFetch = globalThis.fetch;
+  const campaignId = "44444444-4444-4444-8444-444444444444";
+  const deliveryId = "55555555-5555-4555-8555-555555555555";
+  const keys: string[] = [], outcomes: boolean[] = [];
+  let failing = true;
+  Deno.env.set("MAIL_MODE", "send");
+  globalThis.fetch = (input, init) => {
+    const url = String(input);
+    if (url.includes("/auth/v1/user")) return Promise.resolve(Response.json({ id: userId, email: "admin@example.test", email_confirmed_at: new Date().toISOString() }));
+    if (url.includes("consume_rate_limit")) return Promise.resolve(Response.json([{ allowed: true, request_count: 1, retry_after_seconds: 0 }]));
+    if (url.includes("platform_admin_access_state")) return Promise.resolve(Response.json({ isPlatformAdmin: true, sessionActive: true }));
+    const result = { id: campaignId, status: failing ? "failed" : "completed", recipientCount: 1,
+      sentCount: failing ? 0 : 1, failedCount: failing ? 1 : 0,
+      createdAt: "2026-10-03T12:00:00.000Z", completedAt: "2026-10-03T12:01:00.000Z" };
+    if (url.includes("platform_admin_create_email_campaign") || url.includes("platform_admin_finish_email_campaign")) return Promise.resolve(Response.json(result));
+    if (url.includes("platform_admin_email_campaign_deliveries")) return Promise.resolve(Response.json({
+      id: campaignId, subject: "Fixture", body: "Fixture body", deliveries: [{ id: deliveryId,
+        email: "owner@example.test", organizationId: "66666666-6666-4666-8666-666666666666",
+        organizationName: "Fixture", claimToken: "77777777-7777-4777-8777-777777777777" }],
+    }));
+    if (url === "https://api.resend.com/emails") {
+      keys.push(new Headers(init?.headers).get("Idempotency-Key") ?? "");
+      return Promise.resolve(failing ? Response.json({ name: "application_error", message: "synthetic failure" }, { status: 503 }) : Response.json({ id: "synthetic-provider-id" }));
+    }
+    if (url.includes("platform_admin_complete_email_delivery")) {
+      const body = JSON.parse(String(init?.body)); outcomes.push(body.p_success);
+      assertEquals(body.p_claim_token, "77777777-7777-4777-8777-777777777777");
+      return Promise.resolve(Response.json(true));
+    }
+    throw new Error(`Unexpected fixture request: ${url}`);
+  };
+  const request = () => new Request("https://edge.test/platform-admin/communications/email", {
+    method: "POST", headers: { authorization: `Bearer ${jwt("aal2", true)}`, "content-type": "application/json", "x-platform-step-up": "synthetic-step-up" },
+    body: JSON.stringify({ target: "organization", organizationId: "66666666-6666-4666-8666-666666666666",
+      subject: "Fixture", body: "Fixture body", reason: "Synthetic fixture", idempotencyKey: "88888888-8888-4888-8888-888888888888" }),
+  });
+  try {
+    const failed = await handlePlatformAdminRequest(request()); assertEquals(failed.status, 201); assertEquals((await failed.json()).status, "failed");
+    failing = false;
+    const retried = await handlePlatformAdminRequest(request()); assertEquals(retried.status, 201); assertEquals((await retried.json()).status, "completed");
+    assertEquals(outcomes, [false, true]);
+    assertEquals(keys, [`platform-email/${campaignId}/${deliveryId}`, `platform-email/${campaignId}/${deliveryId}`]);
+  } finally { globalThis.fetch = previousFetch; }
+}));
 
 Deno.test("platform endpoint rejects a signed-in non-admin", () =>
   withRuntime(async () => {
@@ -419,6 +467,7 @@ Deno.test(
                   email: "owner@example.test",
                   organizationId: "66666666-6666-4666-8666-666666666666",
                   organizationName: "Organisation test",
+                  claimToken: "55555555-5555-4555-8555-555555555555",
                 },
               ],
             }),
@@ -427,7 +476,7 @@ Deno.test(
           captures += 1;
           return Promise.resolve(Response.json({}));
         }
-        if (url.includes("platform_admin_record_email_delivery")) {
+        if (url.includes("platform_admin_complete_email_delivery")) {
           recorded += 1;
           return Promise.resolve(Response.json(null));
         }

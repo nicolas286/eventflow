@@ -30,7 +30,7 @@ Les features comportent souvent `pages`, `components`, `hooks`, `data`, `schemas
 
 Le chemin recherché est `page → hook → repository → wrapper Supabase → RPC ou Edge Function`. Il faut tracer le chemin réel pour chaque modification ; tout le code historique ne suit pas encore cette convention.
 
-La billetterie payante crée une commande, charge/renouvelle la connexion OAuth de l'organisation, puis crée le paiement Mollie. Les webhooks vérifient le paiement et déclenchent les suites métier. Une erreur OAuth peut donc laisser une commande en attente sans paiement. La fonction Netlify de partage lit les informations publiques de son propre backend.
+La billetterie payante crée une commande puis une session Stripe Checkout sur le compte Connect autorisé, ou fournit les instructions de virement. Les webhooks Stripe vérifiés déclenchent les transactions métier ; l’expiration des réservations reste atomique en PostgreSQL. Mollie est conservé pour l’historique. La fonction Netlify de partage utilise le catalogue public Edge borné.
 
 ## API par domaine — migration dev
 
@@ -42,27 +42,27 @@ Les chemins sont relatifs à `/functions/v1`. Ils décrivent les sources de la t
 | `POST /orders/admin` | Commande administrative : session et appartenance à l'organisation de l'événement |
 | `GET /orders/:orderId?token=…` | Consultation publique limitée, avec booking token correspondant à la commande |
 | `POST /subscriptions` | Démarrage/changement d'abonnement avec session et permissions organisation |
-| `DELETE /subscriptions/:orgId` | Résiliation autorisée, annulation Mollie avant mise à jour locale |
-| `POST /subscriptions/webhooks/first-payment` | Premier paiement vérifié auprès de Mollie |
-| `POST /subscriptions/webhooks/recurring-payment` | Renouvellement vérifié auprès de Mollie |
+| `DELETE /subscriptions/:orgId` | Résiliation de l’abonnement interne après autorisation organisation |
+| `POST /subscriptions/webhooks/first-payment` | Ancienne entrée Mollie : réponse 410 |
+| `POST /subscriptions/webhooks/recurring-payment` | Ancienne entrée Mollie : réponse 410 |
 | `DELETE /accounts/me` | Suppression : session et rôle owner/admin sur l'organisation sélectionnée |
 | `GET /invoices/:invoiceId/pdf` | Lien Storage signé après vérification de l'appartenance à l'organisation |
 | `POST /workers/reminders` | Rappels manuels/cron avec authentification interne |
 | `POST /workers/expire-orders` | Expiration d'un lot avec `x-cron-secret` |
 
-Mollie Connect et les webhooks de billetterie gardent leurs points d'entrée dédiés. Le worker `POST /workers/migrate-subscription-webhooks` prépare la migration des URL de renouvellement existantes : staging uniquement, clé Mollie test et authentification interne.
+Les parcours actuels utilisent Stripe Connect et les abonnements internes. Le worker historique `POST /workers/migrate-subscription-webhooks` reste protégé pour les besoins de transition ; il ne fait pas partie de la recette nominale actuelle.
 
 Les services `_shared/services/{order-confirmation,ticket-confirmation,order-reminders,invoice-pdf,billit}` portent les effets internes. Les handlers appelants gardent la responsabilité de les autoriser. Il n'existe plus de point d'entrée HTTP autonome pour envoyer une confirmation, générer un PDF ou transmettre à Billit. La facturation asynchrone utilise `runInBackground` (`EdgeRuntime.waitUntil`, attente en Deno local).
 
-Un seul `createEdgeHandler` demeure dans `_shared/app/edge-handler`. Il centralise HTTP/CORS et le contexte ; permissions métier et vérification des webhooks restent explicites. Les anciens chemins sont supprimés directement : frontend, crons et URL enregistrées chez Mollie doivent être migrés ensemble.
+Un seul `createEdgeHandler` demeure dans `_shared/app/edge-handler`. Il centralise HTTP/CORS, lecture bornée et quotas ; permissions métier et vérification des webhooks restent explicites. Les lots B0–B6 migrent les opérations métier navigateur vers les Edge avec client serveur privilégié et contrats partagés. Les révocations différées exigent le nouveau frontend publié : voir les rapports dans `docs/audits/` et `supabase/deferred-migrations/`. Les sources locales ne prouvent aucune publication.
 
 La création utilise `POST`, car elle crée une nouvelle ressource ; `PUT` impliquerait le remplacement idempotent d'une ressource identifiée. Les parcours métier sont préservés, mais l'enveloppe HTTP est harmonisée : certains préflights passent de 200 à 204, certaines méthodes invalides reçoivent l'erreur commune, et une configuration Supabase absente peut être rejetée par le wrapper avant le handler. Ne pas affirmer que tous les statuts/en-têtes sont strictement identiques.
 
-La correction d'autorisation de suppression de compte est un changement de sécurité explicitement approuvé : le rôle owner/admin sur l'organisation demandée est vérifié avant toute mutation ou annulation Mollie.
+La suppression de compte vérifie le rôle owner/admin sur l’organisation demandée avant les mutations et préserve les protections financières existantes.
 
 ## Contrats et contrôles
 
-`shared/schemas` contient les payloads et réponses front/API, sans dépendance React ou Deno. Le frontend les importe via `@contracts`, le backend par imports relatifs. Le serveur valide systématiquement les entrées ; le lecteur HTTP limite aussi la taille avant parsing. Les consommateurs RPC frontend restants ne sont pas tous migrés vers HTTP dans cette tranche.
+`shared/schemas` contient les payloads et réponses front/API, sans dépendance React ou Deno. Le frontend les importe via `@contracts`, le backend par imports relatifs. Le serveur valide les entrées ; le lecteur HTTP limite leur taille avant parsing. Les mappings transport sont explicites et préservent les clés du JSON métier imbriqué. `check:browser-boundary` interdit les accès métier directs navigateur ; Auth et les capacités Storage autorisées sont contrôlés séparément.
 
 Deno `2.9.6` vérifie toutes les fonctions et tous les contrats en mode strict. ESLint suit le frontend/outillage ; Deno assure le lint backend. Utiliser `check:backend`, `lint:backend` et `test:backend`. L'alias temporaire `zod-legacy` subsiste pour certains modules internes, pas pour les nouveaux contrats front/API.
 

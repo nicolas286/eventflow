@@ -1,52 +1,18 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { makeUpdateEventRepo } from "@app/modules/admin/singleEvent/data/updateEventRepo";
 import type { Event } from "@shared/models/db/db.event.schema";
-import { normalizeError } from "@errors/errors";
+import type { UpdateEventFullPatch } from "../schemas/admin.updateEventFullPatch.schema";
+import { useScopedEventMutation } from "./useScopedEventMutation";
 
-export type UpdateEventInput<Patch extends Record<string, unknown>> = {
-  eventId: string;
-  patch: Patch;
-};
+export type UpdateEventInput<Patch extends Record<string, unknown>> = { eventId: string; patch: Patch };
 
-type State = {
-  loading: boolean;
-  error: string | null;
-  updated: Event | null;
-};
-
-export function useUpdateEvent(params: { supabase: SupabaseClient }) {
-  const { supabase } = params;
-
-  const repo = useMemo(() => makeUpdateEventRepo(supabase), [supabase]);
-
-  const [state, setState] = useState<State>({
-    loading: false,
-    error: null,
-    updated: null,
-  });
-
-  async function updateEvent<Patch extends Record<string, unknown>>(
-    input: UpdateEventInput<Patch>
-  ): Promise<Event | null> {
-    try {
-      setState({ loading: true, error: null, updated: null });
-
-      const updated = await repo.updateEvent(input);
-
-      setState({ loading: false, error: null, updated });
-      return updated;
-    } catch (e: unknown) {
-      const ne = normalizeError(e, "Impossible d’enregistrer l’événement");
-      setState({ loading: false, error: ne.message, updated: null });
-      return null;
-    }
+export function useUpdateEvent(params: { supabase: SupabaseClient; orgId?: string; eventId?: string }) {
+  const repo = useMemo(() => makeUpdateEventRepo(params.supabase), [params.supabase]);
+  const update = useMemo(() => (input: UpdateEventInput<UpdateEventFullPatch>) => repo.updateEvent(input), [repo]);
+  const { result, mutate, ...state } = useScopedEventMutation(update, params, "Impossible d'enregistrer l'événement");
+  async function updateEvent<Patch extends Record<string, unknown>>(input: UpdateEventInput<Patch>): Promise<Event | null> {
+    return mutate(input);
   }
-
-  function reset() {
-    setState({ loading: false, error: null, updated: null });
-  }
-
-  return { ...state, updateEvent, reset };
+  return { ...state, updated: result, updateEvent };
 }

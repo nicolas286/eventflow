@@ -10,3 +10,10 @@ un environnement dont le proxy écrase ces headers, ou au développement local.
 
 Le module ne lit aucune variable d'environnement et ne journalise jamais l'IP.
 Il utilise `node:net` pour la validation et Web Crypto pour la signature.
+
+Attention : la signature Netlify vérifiée ici ne lie pas le header IP au
+payload signé. Cette option ne suffit donc pas à établir la provenance de l'IP
+à une origine joignable directement. Le resolver applicatif Eventflow
+`../../app/client-ip.ts` ne l'utilise pas ; il n'active Cloudflare qu'avec une
+attestation serveur explicite de la frontière d'entrée. Sans cette garantie,
+les routes utilisent un quota de repli borné. Voir le rapport A8.

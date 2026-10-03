@@ -1,21 +1,19 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabaseSafe } from "@gateways/supabase/supabaseSafe";
-import { snakeToCamel } from "@helpers/snakeToCamel";
+import { edgeSafe } from "@gateways/supabase/supabaseEdgeSafe";
 import { eventsOverviewSchema, type EventsOverview } from "../schemas/admin.eventsOverview.schema";
 
-import { getEventsOverviewRpcArgsSchema } from "../schemas/admin.getEventsOverviewRpcArgs.schema";
+import { eventsOverviewRequestSchema } from "@contracts/events";
 
 export function makeEventsRepo(supabase: SupabaseClient) {
   return {
     async getEventsOverview(orgId: string): Promise<EventsOverview> {
-      const payload = getEventsOverviewRpcArgsSchema.parse({ p_org_id: orgId });
+      const body = eventsOverviewRequestSchema.parse({ orgId });
 
-      const raw = await supabaseSafe<unknown>(() =>
-        supabase.rpc("get_events_overview", payload),
+      const raw = await edgeSafe<unknown>(() =>
+        supabase.functions.invoke("events/overview", { body }),
       );
 
-      const camel = snakeToCamel(raw);
-      return eventsOverviewSchema.parse(camel);
+      return eventsOverviewSchema.parse(raw);
     },
   };
 }

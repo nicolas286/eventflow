@@ -1,4 +1,5 @@
 import { registerSuccessSchema } from "./registerTickets.contracts.ts";
+import { assertOrganizationRegistrationsAllowed } from "../organization-registration.ts";
 import { registerTicketsRateLimits } from "../../_shared/app/config/rate-limits.ts";
 import { createEdgeHandler } from "../../_shared/app/edge-handler/mod.ts";
 import { json as baseJson } from "../../_shared/app/http.ts";
@@ -75,6 +76,11 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
     await assertPlatformRegistrationsOpen(admin);
 
     const body = await parseRegisterPayload(req);
+    const { orgId, eventTitle } = await getEventPaymentContextOrThrow(
+      admin,
+      body.eventId,
+    );
+    await assertOrganizationRegistrationsAllowed(admin, orgId);
 
     logger.info("payload_parsed", {
       eventId: body.eventId,
@@ -103,7 +109,7 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
       req,
       supabase: admin,
       logger,
-      key: `event:${body.eventId}:ip:${ip ?? "unresolved"}`,
+      key: `event:${body.eventId.toLowerCase()}:ip:${ip ?? "unresolved"}`,
       scope: registerTicketsRateLimits.registration.scope,
       limit: config.registerRateLimitPer10Min,
       windowSeconds: registerTicketsRateLimits.registration.windowSeconds,
@@ -118,11 +124,6 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
 
     const buyer = buildBuyer(body);
     if (!buyer.email) throw badRequest("BUYER_EMAIL_REQUIRED");
-
-    const { orgId, eventTitle } = await getEventPaymentContextOrThrow(
-      admin,
-      body.eventId,
-    );
 
     const order = await createOrderIntentOrThrow({
       admin,
@@ -163,7 +164,6 @@ export const handleRegisterTicketsRequest = createEdgeHandler(
         req,
         admin,
         order,
-        config,
         logger,
       });
     }

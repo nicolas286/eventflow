@@ -1,3 +1,4 @@
+import { EVENTFLOW_BUYER_TERMS_VERSION } from "../../../../../../shared/legal/documents";
 import { SellerIdentity } from "../../register/components/SellerIdentity";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
@@ -77,7 +78,7 @@ export function WidgetPaymentPage() {
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
   const [pendingPay, setPendingPay] = useState(false);
   const [salesTermsOpen, setSalesTermsOpen] = useState(false);
-  const termsKey = `${orgSlug}:${eventSlug}:${data?.org.salesTermsVersion ?? ""}:2026-10-01`;
+  const termsKey = `${orgSlug}:${eventSlug}:${data?.org.salesTermsVersion ?? ""}:${EVENTFLOW_BUYER_TERMS_VERSION}`;
   const [readTermsKey, setReadTermsKey] = useState<string | null>(null);
   const [acceptedTermsKey, setAcceptedTermsKey] = useState<string | null>(null);
   const salesTermsRead = readTermsKey === termsKey;
@@ -213,14 +214,14 @@ export function WidgetPaymentPage() {
       attendees: buildAttendeesPayload(),
       buyerEmail: buyerEmail.trim(),
       turnstileToken: withToken,
-      widgetReturnUrl,
-      checkoutSource: "widget",
+      widgetReturnUrl: widgetReturnUrl ?? undefined,
+      checkoutSource: "widget" as const,
       termsAccepted: true as const,
       organizerSalesTermsVersion: requiresOrganizerTerms ? org.salesTermsVersion : null,
-      platformTermsVersion: "2026-10-01",
+      platformTermsVersion: EVENTFLOW_BUYER_TERMS_VERSION,
     };
 
-    return register(payload as any);
+    return register(payload);
   }
 
   async function pay() {
@@ -247,7 +248,7 @@ export function WidgetPaymentPage() {
       return;
     }
 
-    let r: any;
+    let r: Awaited<ReturnType<typeof doRegister>>;
     try {
       r = await doRegister(turnstileToken);
     } catch {
@@ -297,8 +298,8 @@ export function WidgetPaymentPage() {
       return;
     }
 
-    if (r?.ok === true && status === "awaiting_payment") {
-      const checkoutUrl = r?.checkoutUrl;
+    if (r?.ok === true && r.status === "awaiting_payment") {
+      const checkoutUrl = "checkoutUrl" in r ? r.checkoutUrl : null;
 
       clearDraft(orgSlug, eventSlug);
 

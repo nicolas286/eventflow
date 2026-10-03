@@ -156,6 +156,7 @@ async function authorizedFixture(
     APP_ENV: "staging",
     MOLLIE_API_KEY: "test_fixture",
     SUPABASE_URL: "https://fixture.supabase.co",
+    RATE_LIMIT_SALT: "fixture-a8-salt",
     SUPABASE_ANON_KEY: "fixture-anon",
     SUPABASE_SERVICE_ROLE_KEY: "fixture-service",
     APP_ALLOWED_ORIGINS: "https://staging.example.test",
@@ -167,6 +168,9 @@ async function authorizedFixture(
   const original = globalThis.fetch;
   globalThis.fetch = (input, init) => {
     const url = input instanceof Request ? input.url : String(input);
+    if (url.includes("/rpc/consume_rate_limit")) {
+      return Promise.resolve(Response.json([{ allowed: true, request_count: 1, retry_after_seconds: 0 }]));
+    }
     if (url.includes("/auth/v1/user")) {
       return Promise.resolve(
         Response.json({

@@ -1,50 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { createEventsRepo } from "@app/modules/admin/singleEvent/data/createEventRepo";
 import type { CreateEventInput } from "../../events/schemas/admin.createEvent.schema";
-import type { Event } from "@shared/models/db/db.event.schema";
-import { normalizeError } from "@errors/errors";
+import { useScopedEventMutation } from "./useScopedEventMutation";
 
-type State = {
-  loading: boolean;
-  error: string | null;
-  created: Event | null;
-};
-
-export function useCreateEvent(params: { supabase: SupabaseClient }) {
-  const { supabase } = params;
-
-  const eventsRepo = useMemo(() => createEventsRepo(supabase), [supabase]);
-
-  const [state, setState] = useState<State>({
-    loading: false,
-    error: null,
-    created: null,
-  });
-
-  async function createEvent(input: CreateEventInput): Promise<Event | null> {
-    try {
-      setState({ loading: true, error: null, created: null });
-
-      const created = await eventsRepo.createEvent(input);
-
-      setState({ loading: false, error: null, created });
-      return created;
-    } catch (e: unknown) {
-      const ne = normalizeError(e, "Impossible de créer l’événement");
-      setState({ loading: false, error: ne.message, created: null });
-      return null;
-    }
-  }
-
-  function reset() {
-    setState({ loading: false, error: null, created: null });
-  }
-
-  return {
-    ...state,
-    createEvent,
-    reset,
-  };
+export function useCreateEvent(params: { supabase: SupabaseClient; orgId?: string }) {
+  const repo = useMemo(() => createEventsRepo(params.supabase), [params.supabase]);
+  const create = useMemo(() => (input: CreateEventInput) => repo.createEvent(input), [repo]);
+  const { result, mutate, ...state } = useScopedEventMutation(create, params, "Impossible de créer l'événement");
+  return { ...state, created: result, createEvent: mutate };
 }

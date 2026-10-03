@@ -11,6 +11,10 @@ export function humanBusinessMessage(msg: string): string | null {
   // ------------------------------------------------------------------
 
   const exactMessages: Record<string, string> = {
+    TOO_MANY_REQUESTS:
+      "Trop de demandes. Patientez une minute avant de réessayer.",
+    RATE_LIMIT_UNAVAILABLE:
+      "Le service est temporairement indisponible. Réessayez dans quelques instants.",
     PLATFORM_EMAIL_NO_RECIPIENTS:
       "Aucun propriétaire avec une adresse e-mail confirmée n’a été trouvé pour cette sélection.",
 
@@ -35,7 +39,20 @@ export function humanBusinessMessage(msg: string): string | null {
     PLAN_LIMIT:
       "Limite de votre abonnement atteinte. Passez sur un plan supérieur pour continuer.",
 
+    STOCK_BELOW_ALLOCATED:
+      "Le stock ne peut pas être inférieur au nombre de places déjà réservées ou vendues.",
+    RESOURCE_IN_USE:
+      "Cet élément est utilisé par des données existantes et ne peut pas être supprimé.",
+    RESOURCE_BUSY:
+      "Une réservation est en cours. Réessayez dans quelques instants.",
+    RELATIONSHIP_CONFLICT:
+      "La suppression est bloquée par une relation incohérente. Contactez le support.",
+    DUPLICATE_PROMO_CODE: "Ce code promotionnel existe déjà pour cet événement.",
+    DUPLICATE_FIELD_KEY:
+      "Cette clé de champ existe déjà pour cet événement. Choisissez une autre clé.",
+
     FORBIDDEN: "Accès refusé : vous n'avez pas les droits nécessaires.",
+    ORGANIZATION_SUSPENDED: "Les inscriptions sont temporairement suspendues pour cet organisateur.",
 
     STRIPE_CONNECT_NOT_ALLOWED:
       "Stripe Connect n’est pas encore activé pour votre compte.",
