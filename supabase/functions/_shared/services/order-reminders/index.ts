@@ -58,7 +58,7 @@ function isInsideCronHorizon(startsAtIso: string, now: Date, max: Date) {
   const starts = new Date(startsAtIso);
 
   if (!Number.isFinite(starts.getTime())) return false;
-  if (starts.getTime() < now.getTime() - 6 * 60 * 60 * 1000) return false;
+  if (starts.getTime() <= now.getTime()) return false;
   if (starts.getTime() > max.getTime()) return false;
 
   return true;
@@ -202,6 +202,7 @@ export async function runCron(input: {
   const orders: ReminderCandidateOrder[] = await loadReminderCandidateOrders(
     input.admin,
     input.logger,
+    { startsAfter: now.toISOString(), startsBefore: max.toISOString() },
     limit,
   );
 
@@ -237,7 +238,7 @@ export async function runCron(input: {
       continue;
     }
 
-    if (!isInsideCronHorizon(candidate.startsAt!, now, max)) continue;
+    if (!isInsideCronHorizon(candidate.startsAt!, new Date(), max)) continue;
     if (!shouldSendToday(candidate.startsAt!, reminderDays)) continue;
 
     eligible++;
