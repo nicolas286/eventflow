@@ -46,11 +46,17 @@ export function looksLikeEmail(value: unknown) {
 export async function loadReminderCandidateOrders(
   admin: SupabaseClient,
   logger: EdgeLogger,
+  window: { startsAfter: string; startsBefore: string },
   limit = 250,
 ) {
-  const { data: orders, error } = await admin
-    .from("orders")
-    .select(`
+  const candidates: ReminderCandidateOrder[] = [];
+  let afterOrderId: string | undefined;
+
+  // Filter events before limiting orders, then traverse every page by stable ID.
+  while (true) {
+    let query = admin
+      .from("orders")
+      .select(`
       id,
       buyer_email,
       booking_token,
@@ -59,7 +65,7 @@ export async function loadReminderCandidateOrders(
       currency,
       total_cents,
       paid_cents,
-      events:events (
+      events:events!inner (
         id,
         org_id,
         title,
@@ -68,37 +74,48 @@ export async function loadReminderCandidateOrders(
         location
       )
     `)
-    .in("status", ["created", "pending", "paid", "confirmed"])
-    .not("event_id", "is", null)
-    .limit(limit);
+      .in("status", ["created", "pending", "paid", "confirmed"])
+      .not("event_id", "is", null)
+      .gt("events.starts_at", window.startsAfter)
+      .lte("events.starts_at", window.startsBefore)
+      .order("id", { ascending: true })
+      .limit(limit);
 
-  if (error) {
-    logger.error("reminder_orders_load_failed", { error });
-    throw badGateway("REMINDER_ORDERS_LOAD_FAILED");
+    if (afterOrderId) query = query.gt("id", afterOrderId);
+    const { data: orders, error } = await query;
+
+    if (error) {
+      logger.error("reminder_orders_load_failed", { error });
+      throw badGateway("REMINDER_ORDERS_LOAD_FAILED");
+    }
+
+    const page = (orders ?? []).map((order) => {
+      const rawEvent: unknown = order?.events;
+      const event =
+        rawEvent && typeof rawEvent === "object" && !Array.isArray(rawEvent)
+          ? rawEvent as Record<string, unknown>
+          : null;
+
+      return {
+        orderId: compactString(order?.id),
+        buyerEmail: compactString(order?.buyer_email),
+        bookingToken: compactString(order?.booking_token),
+        eventId: compactString(order?.event_id),
+        orgId: compactString(event?.org_id),
+        eventTitle: compactString(event?.title) || "Votre événement",
+        startsAt: event?.starts_at ? String(event.starts_at) : null,
+        location: event?.location ? String(event.location) : null,
+        description: event?.description ? String(event.description) : null,
+        currency: compactString(order?.currency) || "EUR",
+        totalCents: Number(order?.total_cents ?? 0) || 0,
+        paidCents: Number(order?.paid_cents ?? 0) || 0,
+      } satisfies ReminderCandidateOrder;
+    });
+
+    candidates.push(...page);
+    if (page.length < limit) return candidates;
+    afterOrderId = page[page.length - 1].orderId;
   }
-
-  return (orders ?? []).map((order) => {
-    const rawEvent: unknown = order?.events;
-    const event =
-      rawEvent && typeof rawEvent === "object" && !Array.isArray(rawEvent)
-        ? rawEvent as Record<string, unknown>
-        : null;
-
-    return {
-      orderId: compactString(order?.id),
-      buyerEmail: compactString(order?.buyer_email),
-      bookingToken: compactString(order?.booking_token),
-      eventId: compactString(order?.event_id),
-      orgId: compactString(event?.org_id),
-      eventTitle: compactString(event?.title) || "Votre événement",
-      startsAt: event?.starts_at ? String(event.starts_at) : null,
-      location: event?.location ? String(event.location) : null,
-      description: event?.description ? String(event.description) : null,
-      currency: compactString(order?.currency) || "EUR",
-      totalCents: Number(order?.total_cents ?? 0) || 0,
-      paidCents: Number(order?.paid_cents ?? 0) || 0,
-    } satisfies ReminderCandidateOrder;
-  });
 }
 
 export async function loadReminderDaysByOrgId(
