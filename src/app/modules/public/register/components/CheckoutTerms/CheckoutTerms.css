@@ -1,0 +1,134 @@
+.checkoutTerms {
+  color: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.checkoutTermsReading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid currentColor;
+  border-bottom-color: rgb(var(--primary) / 0.16);
+}
+
+.checkoutTermsStep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkoutTermsStep h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.checkoutTermsNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgb(var(--primary) / 0.09);
+  font-weight: 750;
+}
+
+.checkoutTermsReading p,
+.checkoutTermsHelp {
+  margin: 8px 0 0;
+  opacity: 0.8;
+}
+
+.checkoutTermsReadAction {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.checkoutTermsStatus {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.checkoutTermsStatus--read {
+  color: #15803d;
+  opacity: 1;
+  font-weight: 650;
+}
+
+.checkoutTermsReadButton {
+  min-height: 44px;
+}
+
+.widgetRoot .checkoutTermsReadButton {
+  color: var(--widget-button);
+  border-color: var(--widget-button);
+  background: transparent;
+}
+
+.widgetRoot .checkoutTermsStatus--read,
+.widgetRoot .checkoutTerms .message--error {
+  color: var(--widget-text);
+}
+
+.checkoutTermsAcceptance {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  margin-top: 12px;
+  border: 1px solid rgb(var(--primary) / 0.25);
+  border-radius: 12px;
+  background: rgb(var(--primary) / 0.03);
+  cursor: pointer;
+}
+
+.checkoutTermsAcceptance input {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: rgb(var(--primary));
+}
+
+.checkoutTermsAcceptance--error {
+  border-color: #dc2626;
+}
+
+.checkoutTerms a {
+  display: inline;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.checkoutTerms .message--error {
+  color: #b91c1c;
+  font-style: normal;
+  font-size: 14px;
+}
+
+.checkoutTermsFocus:focus-visible {
+  outline: 2px solid rgb(var(--primary));
+  outline-offset: 6px;
+}
+
+@media (max-width: 600px) {
+  .checkoutTermsReading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .checkoutTermsReadAction {
+    align-items: stretch;
+    text-align: center;
+  }
+}

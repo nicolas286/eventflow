@@ -1,3 +1,5 @@
+import { CheckoutTerms } from "../components/CheckoutTerms/CheckoutTerms";
+import { getCheckoutTermsError } from "../helpers/checkoutTermsValidation";
 import { SellerIdentity } from "../components/SellerIdentity";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -71,6 +73,8 @@ export function EventPaymentPage() {
   const [charterOpen, setCharterOpen] = useState(false);
   const [charterRead, setCharterRead] = useState(false);
   const [salesTermsOpen, setSalesTermsOpen] = useState(false);
+  const [termsSubmitAttempted, setTermsSubmitAttempted] = useState(false);
+  const termsRef = useRef<HTMLDivElement>(null);
   const termsKey = `${orgSlug}:${eventSlug}:${data?.org.salesTermsVersion ?? ""}:2026-10-01`;
   const [readTermsKey, setReadTermsKey] = useState<string | null>(null);
   const [acceptedTermsKey, setAcceptedTermsKey] = useState<string | null>(null);
@@ -250,9 +254,13 @@ export function EventPaymentPage() {
     if (!orgSlug || !eventSlug) return;
     if (picked.length === 0) return;
     if (requiresOrganizerTerms && !paidSalesAvailable) return;
-    if (!accepted) return;
-    if (requiresOrganizerTerms && (!org.salesTermsAccepted || !salesTermsRead))
+    if (requiresOrganizerTerms && !org.salesTermsAccepted) return;
+    setTermsSubmitAttempted(true);
+    if (termsValidationError) {
+      termsRef.current?.focus({ preventScroll: true });
+      termsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
+    }
     if (attendeesMismatch) return;
 
     const email = buyerEmail.trim();
@@ -353,12 +361,18 @@ export function EventPaymentPage() {
   const hasCharter = charterText.length > 0;
   const organizerSalesTerms = org.salesTerms.trim();
 
+  const termsValidationError = getCheckoutTermsError({
+    accepted,
+    requiresOrganizerTerms,
+    salesTermsRead,
+    charterRequired: hasCharter,
+    charterRead,
+  });
+
   const canPay =
     picked.length > 0 &&
     (!requiresOrganizerTerms || paidSalesAvailable) &&
-    accepted &&
-    (!requiresOrganizerTerms || (org.salesTermsAccepted && salesTermsRead)) &&
-    (!hasCharter || charterRead) &&
+    (!requiresOrganizerTerms || org.salesTermsAccepted) &&
     !registering &&
     !pendingPay &&
     !attendeesMismatch &&
@@ -530,7 +544,7 @@ export function EventPaymentPage() {
 
                 {requiresOrganizerTerms ? (
                   <Card>
-                    <CardHeader title="Vendeur et conditions de l’organisateur" />
+                    <CardHeader title="Vendeur des billets" />
                     <CardBody>
                       {!paidSalesAvailable ? (
                         <div className="publicEmpty" style={{ marginBottom: 12 }}>
@@ -560,36 +574,12 @@ export function EventPaymentPage() {
                           "à compléter par l’organisateur"
                         )}
                       </div>
-                      <Button
-                        variant="secondary"
-                        label={
-                          salesTermsRead
-                            ? "Relire les conditions"
-                            : "Lire les conditions"
-                        }
-                        onClick={() => setSalesTermsOpen(true)}
-                        disabled={
-                          registering || pendingPay || !org.salesTermsAccepted
-                        }
-                      />
-                      {!org.salesTermsAccepted && requiresOrganizerTerms ? (
-                        <div className="publicEmpty" style={{ marginTop: 12 }}>
-                          Les paiements sont temporairement indisponibles :
-                          l’organisateur doit valider ses conditions de vente et
-                          son contact public.
-                        </div>
-                      ) : !salesTermsRead && requiresOrganizerTerms ? (
-                        <div className="publicEmpty" style={{ marginTop: 12 }}>
-                          Vous devez lire les conditions de l’organisateur avant
-                          de confirmer.
-                        </div>
-                      ) : null}
                     </CardBody>
                   </Card>
                 ) : null}
 
                 <Card>
-                  <CardHeader title="Contact & validation" />
+                  <CardHeader title="Contact acheteur" />
                   <CardBody>
                     <div
                       style={{
@@ -657,52 +647,38 @@ export function EventPaymentPage() {
                         </div>
                       )}
 
-                      <label
-                        style={{
-                          display: "flex",
-                          gap: 10,
-                          alignItems: "center",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={accepted}
-                          onChange={(e) => setAccepted(e.target.checked)}
-                          style={{ width: 18, height: 18 }}
-                          disabled={
-                            registering ||
-                            pendingPay ||
-                            (requiresOrganizerTerms &&
-                              (!org.salesTermsAccepted || !salesTermsRead)) ||
-                            (hasCharter && !charterRead)
-                          }
-                        />
-                        <span style={{ fontWeight: 700 }}>
-                          J’accepte{" "}
-                          {requiresOrganizerTerms
-                            ? "les conditions de " + org.displayName + ", "
-                            : ""}
-                          les{" "}
-                          <a href="/conditions-billetterie" target="_blank" rel="noreferrer">
-                            Conditions de billetterie Eventflow
-                          </a>{" "}
-                          et je prends connaissance de la{" "}
-                          <a
-                            href="/politique-confidentialite"
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            politique de confidentialité
-                          </a>
-                          , et je confirme l’achat.
-                        </span>
-                      </label>
-
                       {registerError ? (
                         <div className="publicEmpty">
                           Erreur : {formatRegisterError(registerError)}
                         </div>
                       ) : null}
+                    </div>
+                  </CardBody>
+                </Card>
+
+                <Card>
+                  <CardHeader title="Conditions et confirmation" />
+                  <CardBody>
+                    <div
+                      ref={termsRef}
+                      tabIndex={-1}
+                      className="checkoutTermsFocus"
+                      role="group"
+                      aria-label="Conditions et confirmation"
+                    >
+                      <CheckoutTerms
+                        organizerName={
+                          requiresOrganizerTerms ? org.displayName : undefined
+                        }
+                        salesTermsRead={salesTermsRead}
+                        organizerTermsAvailable={org.salesTermsAccepted}
+                        accepted={accepted}
+                        disabled={registering || pendingPay}
+                        charterPending={hasCharter && !charterRead}
+                        error={termsSubmitAttempted ? termsValidationError : null}
+                        onRead={() => setSalesTermsOpen(true)}
+                        onAcceptedChange={setAccepted}
+                      />
                     </div>
                   </CardBody>
                 </Card>
