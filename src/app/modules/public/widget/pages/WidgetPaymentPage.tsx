@@ -1,3 +1,5 @@
+import { CheckoutTerms } from "../../register/components/CheckoutTerms/CheckoutTerms";
+import { getCheckoutTermsError } from "../../register/helpers/checkoutTermsValidation";
 import { SellerIdentity } from "../../register/components/SellerIdentity";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
@@ -77,6 +79,8 @@ export function WidgetPaymentPage() {
   const [turnstileError, setTurnstileError] = useState<string | null>(null);
   const [pendingPay, setPendingPay] = useState(false);
   const [salesTermsOpen, setSalesTermsOpen] = useState(false);
+  const [termsSubmitAttempted, setTermsSubmitAttempted] = useState(false);
+  const termsRef = useRef<HTMLDivElement>(null);
   const termsKey = `${orgSlug}:${eventSlug}:${data?.org.salesTermsVersion ?? ""}:2026-10-01`;
   const [readTermsKey, setReadTermsKey] = useState<string | null>(null);
   const [acceptedTermsKey, setAcceptedTermsKey] = useState<string | null>(null);
@@ -227,9 +231,13 @@ export function WidgetPaymentPage() {
     if (!orgSlug || !eventSlug) return;
     if (picked.length === 0) return;
     if (requiresOrganizerTerms && !paidSalesAvailable) return;
-    if (!accepted) return;
-    if (requiresOrganizerTerms && (!org.salesTermsAccepted || !salesTermsRead))
+    if (requiresOrganizerTerms && !org.salesTermsAccepted) return;
+    setTermsSubmitAttempted(true);
+    if (termsValidationError) {
+      termsRef.current?.focus({ preventScroll: true });
+      termsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
+    }
     if (attendeesMismatch) return;
 
     const email = buyerEmail.trim();
@@ -371,11 +379,16 @@ export function WidgetPaymentPage() {
     }
   }
 
+  const termsValidationError = getCheckoutTermsError({
+    accepted,
+    requiresOrganizerTerms,
+    salesTermsRead,
+  });
+
   const canPay =
     picked.length > 0 &&
     (!requiresOrganizerTerms || paidSalesAvailable) &&
-    accepted &&
-    (!requiresOrganizerTerms || (org.salesTermsAccepted && salesTermsRead)) &&
+    (!requiresOrganizerTerms || org.salesTermsAccepted) &&
     !registering &&
     !pendingPay &&
     !attendeesMismatch &&
@@ -455,7 +468,7 @@ export function WidgetPaymentPage() {
 
           {requiresOrganizerTerms ? (
             <div className="widgetPaymentCard">
-              <div className="widgetSectionTitle">Vendeur et conditions</div>
+              <div className="widgetSectionTitle">Vendeur des billets</div>
               {!paidSalesAvailable ? (
                 <MessageBox variant="error">
                   Les paiements sont temporairement indisponibles pour cet organisateur.
@@ -475,32 +488,11 @@ export function WidgetPaymentPage() {
                   "à compléter par l’organisateur"
                 )}
               </div>
-              <Button
-                className="widgetButton"
-                variant="secondary"
-                label={
-                  salesTermsRead
-                    ? "Relire les conditions"
-                    : "Lire les conditions"
-                }
-                onClick={() => setSalesTermsOpen(true)}
-                disabled={registering || pendingPay || !org.salesTermsAccepted}
-              />
-              {!org.salesTermsAccepted && requiresOrganizerTerms ? (
-                <MessageBox variant="error">
-                  Paiement temporairement indisponible : l’organisateur doit
-                  valider ses conditions et son contact public.
-                </MessageBox>
-              ) : !salesTermsRead && requiresOrganizerTerms ? (
-                <MessageBox variant="info">
-                  Lisez les conditions de l’organisateur avant de confirmer.
-                </MessageBox>
-              ) : null}
             </div>
           ) : null}
 
           <div className="widgetPaymentCard">
-            <div className="widgetSectionTitle">Contact & validation</div>
+            <div className="widgetSectionTitle">Contact acheteur</div>
 
             <div className="widgetPaymentForm">
               <div className="widgetFieldBlock">
@@ -544,44 +536,35 @@ export function WidgetPaymentPage() {
                 </MessageBox>
               )}
 
-              <label className="widgetCheckboxRow">
-                <input
-                  type="checkbox"
-                  checked={accepted}
-                  onChange={(e) => setAccepted(e.target.checked)}
-                  disabled={
-                    registering ||
-                    pendingPay ||
-                    (requiresOrganizerTerms &&
-                      (!org.salesTermsAccepted || !salesTermsRead))
-                  }
-                />
-                <span>
-                  J’accepte{" "}
-                  {requiresOrganizerTerms
-                    ? "les conditions de " + org.displayName + ", "
-                    : ""}
-                  les{" "}
-                  <a href="/conditions-billetterie" target="_blank" rel="noreferrer">
-                    Conditions de billetterie Eventflow
-                  </a>{" "}
-                  et je prends connaissance de la{" "}
-                  <a
-                    href="/politique-confidentialite"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    politique de confidentialité
-                  </a>
-                  , et je confirme l’achat.
-                </span>
-              </label>
-
               {registerError ? (
                 <MessageBox variant="error">
                   Erreur : {registerError}
                 </MessageBox>
               ) : null}
+            </div>
+          </div>
+
+          <div className="widgetPaymentCard">
+            <div className="widgetSectionTitle">Conditions et confirmation</div>
+            <div
+              ref={termsRef}
+              tabIndex={-1}
+              className="checkoutTermsFocus"
+              role="group"
+              aria-label="Conditions et confirmation"
+            >
+              <CheckoutTerms
+                organizerName={
+                  requiresOrganizerTerms ? org.displayName : undefined
+                }
+                salesTermsRead={salesTermsRead}
+                organizerTermsAvailable={org.salesTermsAccepted}
+                accepted={accepted}
+                disabled={registering || pendingPay}
+                error={termsSubmitAttempted ? termsValidationError : null}
+                onRead={() => setSalesTermsOpen(true)}
+                onAcceptedChange={setAccepted}
+              />
             </div>
           </div>
         </div>
