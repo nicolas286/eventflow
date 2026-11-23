@@ -4,6 +4,7 @@
     "jsr:@std/assert@^1.0.14": "1.0.19",
     "jsr:@std/internal@^1.0.12": "1.0.14",
     "npm:@supabase/supabase-js@2.75.0": "2.75.0",
+    "npm:pngjs@5.0.0": "5.0.0",
     "npm:zod@*": "4.3.6",
     "npm:zod@4.3.6": "4.3.6"
   },
@@ -84,6 +85,9 @@
         "@types/node"
       ]
     },
+    "pngjs@5.0.0": {
+      "integrity": "sha512-40QW5YalBNfQo5yRYmiw7Yz6TKKVr3h6970B2YE+3fQpsWcrbj1PzJgxeJ19DRQjhMbKPIuMY8rFaXc8moolVw=="
+    },
     "tr46@0.0.3": {
       "integrity": "sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw=="
     },
@@ -117,7 +121,6 @@
     "https://esm.sh/pako@^1.0.10?target=denonext": "https://esm.sh/pako@1.0.11?target=denonext",
     "https://esm.sh/pako@^1.0.11?target=denonext": "https://esm.sh/pako@1.0.11?target=denonext",
     "https://esm.sh/pako@^1.0.6?target=denonext": "https://esm.sh/pako@1.0.11?target=denonext",
-    "https://esm.sh/pngjs@^5.0.0?target=denonext": "https://esm.sh/pngjs@5.0.0?target=denonext",
     "https://esm.sh/tslib@^1.11.1?target=denonext": "https://esm.sh/tslib@1.14.1?target=denonext"
   },
   "remote": {
@@ -135,8 +138,6 @@
     "https://esm.sh/pdf-lib@1.17.1/denonext/es/utils.mjs": "cf96c5836fdd5f60eeccd53603c87b52c43c11c8b99e85f79f586be58a59f4d1",
     "https://esm.sh/pdf-lib@1.17.1/denonext/es/utils/index.mjs": "34773d399ffdacd2972f527377d293aa3bff9d3a0d31d48d956a00c9c0c32329",
     "https://esm.sh/pdf-lib@1.17.1/denonext/pdf-lib.mjs": "3be07aa3466e0e9eee79730a775211d6bb8547c0cb9d203c09dde6feca1dc559",
-    "https://esm.sh/pngjs@5.0.0/denonext/pngjs.mjs": "8508982830545aa92f309480dcaa27bff7eed6b4485c21d8006b6b6e3937a445",
-    "https://esm.sh/pngjs@5.0.0?target=denonext": "7821c15edb0826535e6c8c59c6dc52fb190aa6bdecfbf3ecf0dec1339e72f02f",
     "https://esm.sh/qrcode@1.5.4": "db5f81bc5a339015d2a6d91018b9c9e382b7d7659aff51a1dd6e0b2c5a9df124",
     "https://esm.sh/qrcode@1.5.4/denonext/qrcode.mjs": "0def02c940fef53bd2aa3110ba0f3b00a60348b4f5e37fa7dbac9c97c4b76fcb",
     "https://esm.sh/tslib@1.14.1/denonext/tslib.mjs": "748739307d67fbaa8ae634eed70715714dd1f54f04fe8635bcb7f72cb0aaed62",
@@ -146,6 +147,7 @@
     "dependencies": [
       "jsr:@std/assert@^1.0.14",
       "npm:@supabase/supabase-js@2.75.0",
+      "npm:pngjs@5.0.0",
       "npm:zod@4.3.6"
     ]
   }

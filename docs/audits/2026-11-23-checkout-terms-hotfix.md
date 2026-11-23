@@ -12,7 +12,7 @@ La [première CI de la PR #201](https://github.com/nicolas286/eventflow/actions/
 - Le module ne déclare que les imports Node attendus (`process`, `buffer`, `util`, `stream`, `zlib`, `assert`). Aucun appel `fetch`, `XMLHttpRequest` ou `eval` n’a été trouvé.
 - Comparaison locale de 16 cas (quatre dimensions, quatre types de couleur) : octets PNG encodés, décodage synchrone et décodage asynchrone identiques au paquet npm.
 
-Une seule empreinte de `deno.lock` est actualisée. Versions, imports applicatifs et permissions sont conservés. Le pipeline republie les fonctions avec ce module recompilé : il s’agit d’une dépendance runtime chargée par la génération des billets, même si ce code utilise la matrice QR plutôt que l’encodeur PNG. La comparaison ne prétend pas établir l’identité binaire avec l’ancien artefact CDN, indisponible localement.
+La première tentative actualise une seule empreinte de `deno.lock`. La comparaison ne prétend pas établir l’identité binaire avec l’ancien artefact CDN, indisponible localement.
 
 ## Contrôles avant publication
 
@@ -22,3 +22,11 @@ Une seule empreinte de `deno.lock` est actualisée. Versions, imports applicatif
 - Revue du diff : PASS. Quatre usages frontend de `any` préexistants restent hors périmètre. Aucun changement SQL ni de contrat API.
 
 Ces résultats précèdent le déploiement ; l’état final de publication est à vérifier dans GitHub Actions.
+
+## Stabilisation après réponse CDN divergente
+
+Après fusion de #201, la [CI sur `main`](https://github.com/nicolas286/eventflow/actions/runs/45251818011) reçoit l’ancienne empreinte tandis que le job de déploiement reçoit la nouvelle. Changer seulement le hash n’est donc pas une solution reproductible. Le [déploiement est annulé](https://github.com/nicolas286/eventflow/actions/runs/45251817990) avant le lien distant, les migrations et la publication des fonctions et du frontend. Le verrou existant d’inscriptions Auth avait déjà été réappliqué par le pipeline.
+
+Le mapping transitoire exact `https://esm.sh/pngjs@^5.0.0?target=denonext` est résolu vers `npm:pngjs@5.0.0`. Le lockfile conserve l’intégrité SHA-512 du paquet officiel et retire les trois entrées CDN devenues inaccessibles dans ce graphe. `qrcode`, `pdf-lib`, les autres versions et les permissions sont conservés. La provenance du module runtime PNG change du CDN vers npm ; la comparaison de sources et de comportement ci-dessus couvre cette version. Les fonctions continuent d’utiliser leur import map existante dans `supabase/config.toml`.
+
+Validation supplémentaire : 126 tests Edge réussis avec Deno 2.9.6, cache totalement neuf et `--frozen-lockfile`. Le graphe de génération des billets ne contient plus que `npm:/pngjs@5.0.0` pour PNG ; types et lint réussis. Aucun test n’a créé de commande réelle ni envoyé de message client.
